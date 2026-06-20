@@ -9,6 +9,7 @@ BenchmarkDotNet.Artifacts/
 coverage/
 
 # Visual Studio
+.vscode/
 .vs/
 *.rsuser
 *.suo
