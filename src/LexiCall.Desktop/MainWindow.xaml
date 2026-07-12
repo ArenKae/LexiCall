@@ -7,8 +7,225 @@
         mc:Ignorable="d"
         Title="LexiCall" Height="720" Width="1100"
         MinHeight="600" MinWidth="900"
-        WindowStartupLocation="CenterScreen">
-    <Grid>
+        WindowStartupLocation="CenterScreen"
+        Background="#F7F7FA"
+        FontFamily="Segoe UI">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0">
+            <Button DockPanel.Dock="Right"
+                    Content="Ajouter un mot"
+                    Padding="16,8"
+                    Click="AddEntryButton_Click"
+                    ToolTip="Ouvre le formulaire d'ajout." />
+
+            <StackPanel>
+                <TextBlock Text="Mon vocabulaire"
+                           FontSize="28"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="Sélectionne un mot pour consulter ses détails."
+                           Margin="0,4,0,0"
+                           Foreground="#666676" />
+            </StackPanel>
+        </DockPanel>
+
+        <Grid Grid.Row="1" Margin="0,24,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="360" />
+                <ColumnDefinition Width="24" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <ListBox Grid.Column="0"
+                     ItemsSource="{Binding Entries}"
+                     SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
+                     Background="White"
+                     BorderBrush="#DDDDE5"
+                     BorderThickness="1"
+                     Padding="4"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Padding" Value="12" />
+                        <Setter Property="Margin" Value="0,0,0,2" />
+                    </Style>
+                </ListBox.ItemContainerStyle>
+
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Word}"
+                                       FontSize="17"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Definition}"
+                                       Margin="0,4,0,0"
+                                       TextWrapping="Wrap"
+                                       Foreground="#555566"
+                                       MaxHeight="42" />
+                            <TextBlock Text="{Binding Source}"
+                                       Margin="0,8,0,0"
+                                       FontSize="11"
+                                       Foreground="#888896"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Border Grid.Column="2"
+                    Padding="28"
+                    Background="White"
+                    BorderBrush="#DDDDE5"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <DockPanel Grid.Row="0" Margin="0,0,0,20">
+                        <TextBlock Text="Détails"
+                                   VerticalAlignment="Center"
+                                   Foreground="#666676"
+                                   FontWeight="SemiBold" />
+
+                        <StackPanel DockPanel.Dock="Right"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right">
+                            <Button Content="Modifier"
+                                    Width="96"
+                                    Padding="12,8"
+                                    Margin="0,0,10,0"
+                                    Click="EditEntryButton_Click">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="IsEnabled" Value="True" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SelectedEntry}" Value="{x:Null}">
+                                                <Setter Property="IsEnabled" Value="False" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <Button Content="Supprimer"
+                                    Width="96"
+                                    Padding="12,8"
+                                    Click="DeleteEntryButton_Click">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="IsEnabled" Value="True" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SelectedEntry}" Value="{x:Null}">
+                                                <Setter Property="IsEnabled" Value="False" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </StackPanel>
+                    </DockPanel>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <ContentControl Content="{Binding SelectedEntry}">
+                        <ContentControl.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Word}"
+                                               FontSize="32"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Definition}"
+                                               Margin="0,12,0,0"
+                                               FontSize="17"
+                                               TextWrapping="Wrap" />
+
+                                    <Separator Margin="0,24" />
+
+                                    <TextBlock Text="Synonymes"
+                                               FontWeight="SemiBold" />
+                                    <ItemsControl ItemsSource="{Binding Synonyms}"
+                                                  Margin="0,8,0,0">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Margin="0,0,8,8"
+                                                        Padding="9,4"
+                                                        Background="#ECECF4"
+                                                        CornerRadius="12">
+                                                    <TextBlock Text="{Binding}" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <TextBlock Text="Exemples"
+                                               Margin="0,16,0,0"
+                                               FontWeight="SemiBold" />
+                                    <ItemsControl ItemsSource="{Binding ExampleSentences}"
+                                                  Margin="0,8,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}"
+                                                           Margin="0,0,0,8"
+                                                           FontStyle="Italic"
+                                                           TextWrapping="Wrap" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <TextBlock Text="Notes personnelles"
+                                               Margin="0,16,0,0"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Notes}"
+                                               Margin="0,8,0,0"
+                                               TextWrapping="Wrap" />
+
+                                    <TextBlock Text="Source"
+                                               Margin="0,16,0,0"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Source}"
+                                               Margin="0,8,0,0"
+                                               TextWrapping="Wrap" />
+
+                                    <TextBlock Text="Catégories"
+                                               Margin="0,16,0,0"
+                                               FontWeight="SemiBold" />
+                                    <ItemsControl ItemsSource="{Binding Categories}"
+                                                  Margin="0,8,0,0">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Margin="0,0,8,8"
+                                                        Padding="9,4"
+                                                        Background="#E5F0FF"
+                                                        CornerRadius="12">
+                                                    <TextBlock Text="{Binding}" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ContentControl.ContentTemplate>
+                    </ContentControl>
+                </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
 
     </Grid>
 </Window>
