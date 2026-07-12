@@ -47,9 +47,7 @@
                 <ComboBox ItemsSource="{Binding ParentOptions}"
                           SelectedItem="{Binding SelectedParentOption, Mode=TwoWay}"
                           DisplayMemberPath="DisplayName"
-                          Margin="0,6,0,0"
-                          Padding="9,6"
-                          FontFamily="Consolas, Segoe UI" />
+                          Margin="0,6,0,0" />
 
                 <TextBlock Text="Description"
                            Margin="0,14,0,0"
