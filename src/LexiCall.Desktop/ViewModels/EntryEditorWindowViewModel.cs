@@ -30,13 +30,14 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         SaveEntryCommand = new RelayCommand(SaveEntry);
 
         // Les catégories sont optionnelles : aucune case cochée produit une entrée
-        // valide avec CategoryIds vide.
+        // valide avec CategoryIds vide. L'ordre hiérarchique (parent puis enfants,
+        // avec Depth) permet à la liste de refléter l'arborescence par indentation.
         CategorySelections = new ObservableCollection<CategorySelectionViewModel>(
-            (availableCategories ?? [])
-            .OrderBy(category => category.Name)
-            .Select(category => new CategorySelectionViewModel(
-                category,
-                existingEntry?.CategoryIds.Contains(category.Id) == true)));
+            CategoryHierarchy.Flatten((availableCategories ?? []).ToList())
+            .Select(item => new CategorySelectionViewModel(
+                item.Category,
+                existingEntry?.CategoryIds.Contains(item.Category.Id) == true,
+                item.Depth)));
 
         if (existingEntry is not null)
         {

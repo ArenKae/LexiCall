@@ -1,10 +1,16 @@
 // Point d'entrée WPF de l'application.
-// App.xaml choisit la fenêtre de démarrage ; ce fichier restera léger tant que
-// l'application n'a pas besoin d'initialisation globale.
+// Charge le thème sauvegardé (clair par défaut) avant l'ouverture de la
+// fenêtre principale déclarée dans App.xaml.
 using System.Windows;
+using LexiCall.Desktop.Services;
 
 namespace LexiCall.Desktop;
 
 public partial class App : Application
 {
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+        ThemeService.Initialize();
+    }
 }

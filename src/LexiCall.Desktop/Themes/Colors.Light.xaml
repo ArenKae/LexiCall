@@ -1,0 +1,36 @@
+<!--
+    Thème clair. Palette dérivée de l'icône de l'application :
+    fond crème/parchemin, marine profond pour le texte, bleu ruban pour l'accent.
+    Les clés doivent rester identiques à Colors.Dark.xaml : le ThemeService
+    remplace ce dictionnaire à chaud, les DynamicResource font le reste.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <SolidColorBrush x:Key="Brush.Window.Background" Color="#F5EFE4" />
+    <SolidColorBrush x:Key="Brush.Surface" Color="#FCFAF4" />
+    <SolidColorBrush x:Key="Brush.Surface.Hover" Color="#F0E9DA" />
+    <SolidColorBrush x:Key="Brush.Border.Subtle" Color="#E4DAC6" />
+    <SolidColorBrush x:Key="Brush.Border.Strong" Color="#CBBFA6" />
+
+    <SolidColorBrush x:Key="Brush.Text.Primary" Color="#16213D" />
+    <SolidColorBrush x:Key="Brush.Text.Secondary" Color="#7A7264" />
+    <SolidColorBrush x:Key="Brush.Text.OnAccent" Color="#FFFFFF" />
+
+    <SolidColorBrush x:Key="Brush.Accent" Color="#2F5FA8" />
+    <SolidColorBrush x:Key="Brush.Accent.Hover" Color="#3A6FBE" />
+    <SolidColorBrush x:Key="Brush.Accent.Pressed" Color="#254A85" />
+
+    <SolidColorBrush x:Key="Brush.Danger" Color="#B42318" />
+
+    <SolidColorBrush x:Key="Brush.Chip.Neutral.Background" Color="#EDE6D6" />
+    <SolidColorBrush x:Key="Brush.Chip.Neutral.Foreground" Color="#5C5546" />
+    <SolidColorBrush x:Key="Brush.Chip.Accent.Background" Color="#DFE9F8" />
+    <SolidColorBrush x:Key="Brush.Chip.Accent.Foreground" Color="#24487F" />
+
+    <SolidColorBrush x:Key="Brush.Selection.Background" Color="#DCE7F8" />
+    <SolidColorBrush x:Key="Brush.Selection.Foreground" Color="#16213D" />
+
+    <SolidColorBrush x:Key="Brush.Input.Background" Color="#FFFFFF" />
+
+</ResourceDictionary>

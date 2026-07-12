@@ -1,12 +1,12 @@
 // Petit ViewModel utilisé par la liste de cases à cocher du formulaire d'entrée.
 // Il découple l'état de sélection UI du modèle VocabularyCategory lui-même.
+// Depth indique la profondeur hiérarchique, pour l'indentation visuelle.
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using LexiCall.Desktop.Models;
 
 namespace LexiCall.Desktop.ViewModels;
 
-public sealed class CategorySelectionViewModel(VocabularyCategory category, bool isSelected)
+public sealed class CategorySelectionViewModel(VocabularyCategory category, bool isSelected, int depth)
     : INotifyPropertyChanged
 {
     private bool _isSelected = isSelected;
@@ -16,6 +16,8 @@ public sealed class CategorySelectionViewModel(VocabularyCategory category, bool
     public Guid CategoryId => category.Id;
 
     public string Name => category.Name;
+
+    public int Depth { get; } = depth;
 
     public bool IsSelected
     {

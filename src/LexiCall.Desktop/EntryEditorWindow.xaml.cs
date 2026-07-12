@@ -3,6 +3,7 @@
 // qu'une entrée valide a été construite.
 using System.Windows;
 using LexiCall.Desktop.Models;
+using LexiCall.Desktop.Services;
 using LexiCall.Desktop.ViewModels;
 
 namespace LexiCall.Desktop;
@@ -19,6 +20,7 @@ public partial class EntryEditorWindow : Window
 
         InitializeComponent();
         DataContext = _viewModel;
+        ThemeService.RegisterWindow(this);
 
         // Le ViewModel ne connaît pas WPF. Il émet donc un événement métier simple
         // que la fenêtre traduit en DialogResult.

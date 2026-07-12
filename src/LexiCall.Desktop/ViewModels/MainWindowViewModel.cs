@@ -1,6 +1,7 @@
 // ViewModel principal de l'application.
-// Il expose les données bindées par MainWindow.xaml : liste complète, liste
-// filtrée, sélection courante, recherche, catégories et opérations CRUD.
+// Il expose les données bindées par MainWindow.xaml : l'arbre des catégories
+// (navigation principale), la liste filtrée par catégorie + recherche, la
+// sélection courante et les opérations CRUD sur les entrées et les catégories.
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
@@ -8,6 +9,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using LexiCall.Desktop.Models;
 using LexiCall.Desktop.Services;
+using LexiCall.Desktop.Utilities;
 
 namespace LexiCall.Desktop.ViewModels;
 
@@ -17,6 +19,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _searchQuery = string.Empty;
     private string _searchStatusText = string.Empty;
     private VocabularyEntry? _selectedEntry;
+    private CategoryNodeViewModel? _selectedCategoryNode;
+    private HashSet<Guid>? _activeCategoryFilterIds;
 
     public MainWindowViewModel(VocabularyRepository? repository = null)
     {
@@ -29,12 +33,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Entries = new ObservableCollection<VocabularyEntry>(database.Entries);
         Categories = new ObservableCollection<VocabularyCategory>(database.Categories);
         FilteredEntries = [];
+        CategoryTree = [];
+        RebuildCategoryTree();
         RefreshFilteredEntries();
         SelectedEntry = FilteredEntries.FirstOrDefault();
 
         if (!_repository.DataFileExists)
         {
-            SaveEntries();
+            SaveDatabase();
         }
     }
 
@@ -45,6 +51,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     // La liste affichée par l'UI. On garde Entries comme source complète, puis on
     // reconstruit FilteredEntries à chaque recherche ou modification importante.
     public ObservableCollection<VocabularyEntry> FilteredEntries { get; }
+
+    // Arbre latéral : nœuds virtuels ("Toutes", "Sans catégorie") puis les
+    // catégories racines avec leurs sous-catégories.
+    public ObservableCollection<CategoryNodeViewModel> CategoryTree { get; }
 
     public string DataFilePath => _repository.FilePath;
 
@@ -72,13 +82,45 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public bool HasSelectedEntry => SelectedEntry is not null;
 
+    public bool HasCategories => Categories.Count > 0;
+
+    public CategoryNodeViewModel? SelectedCategoryNode => _selectedCategoryNode;
+
+    // Fil d'ariane affiché au-dessus de la liste : nom du nœud virtuel, ou
+    // chemin complet "Parent › Enfant" pour une catégorie.
+    public string SelectedCategoryLabel
+    {
+        get
+        {
+            if (_selectedCategoryNode is null)
+            {
+                return "Toutes les entrées";
+            }
+
+            return _selectedCategoryNode.Category is null
+                ? _selectedCategoryNode.DisplayName
+                : GetCategoryPath(_selectedCategoryNode.Category);
+        }
+    }
+
     public IReadOnlyList<string> SelectedEntryCategoryNames => SelectedEntry is null
         ? []
         : GetCategoryNames(SelectedEntry.CategoryIds).ToList();
 
-    public string EmptyListMessage => HasEntries
-        ? "Aucun résultat pour cette recherche."
-        : "Aucun mot pour l’instant. Clique sur « Ajouter un mot » pour commencer.";
+    public string EmptyListMessage
+    {
+        get
+        {
+            if (!HasEntries)
+            {
+                return "Aucun mot pour l’instant. Clique sur « Ajouter un mot » pour commencer.";
+            }
+
+            return string.IsNullOrWhiteSpace(SearchQuery)
+                ? "Aucun mot dans cette catégorie."
+                : "Aucun résultat pour cette recherche.";
+        }
+    }
 
     public string EmptyDetailMessage
     {
@@ -91,7 +133,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             return HasFilteredEntries
                 ? "Sélectionne un mot dans la liste pour afficher ses détails."
-                : "Aucun mot ne correspond à cette recherche.";
+                : "Aucun mot ne correspond à ce filtre.";
         }
     }
 
@@ -109,16 +151,32 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public string ThemeToggleText => ThemeService.CurrentTheme == AppTheme.Dark
+        ? "☀  Thème clair"
+        : "🌙  Thème sombre";
+
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public void ToggleTheme()
+    {
+        ThemeService.Toggle();
+        OnPropertyChanged(nameof(ThemeToggleText));
+    }
 
     public void AddEntry(VocabularyEntry entry)
     {
         Entries.Insert(0, entry);
         OnEntriesChanged();
-        SearchQuery = string.Empty;
+
+        // On réinitialise les filtres pour que le mot ajouté soit toujours visible.
+        _searchQuery = string.Empty;
+        OnPropertyChanged(nameof(SearchQuery));
+        _selectedCategoryNode = null;
+
+        RebuildCategoryTree();
         RefreshFilteredEntries();
         SelectedEntry = entry;
-        SaveEntries();
+        SaveDatabase();
     }
 
     public void UpdateEntry(VocabularyEntry updatedEntry)
@@ -131,6 +189,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         Entries[index] = updatedEntry;
+        RebuildCategoryTree();
         RefreshFilteredEntries();
 
         if (FilteredEntries.Any(entry => entry.Id == updatedEntry.Id))
@@ -138,30 +197,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SelectedEntry = updatedEntry;
         }
 
-        SaveEntries();
-    }
-
-    public void ReplaceCategories(IEnumerable<VocabularyCategory> categories)
-    {
-        Categories.Clear();
-
-        foreach (var category in categories.OrderBy(category => category.Name))
-        {
-            Categories.Add(category);
-        }
-
-        var categoryIds = Categories.Select(category => category.Id).ToHashSet();
-
-        // Une catégorie supprimée ne doit pas laisser d'Id mort dans les entrées.
-        // Les entrées restent valides même si elles n'ont plus aucune catégorie.
-        foreach (var entry in Entries)
-        {
-            entry.CategoryIds.RemoveAll(categoryId => !categoryIds.Contains(categoryId));
-        }
-
-        OnPropertyChanged(nameof(SelectedEntryCategoryNames));
-        RefreshFilteredEntries();
-        SaveEntries();
+        SaveDatabase();
     }
 
     public void DeleteEntry(VocabularyEntry entry)
@@ -175,11 +211,250 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         Entries.RemoveAt(index);
         OnEntriesChanged();
+        RebuildCategoryTree();
         RefreshFilteredEntries();
         SelectedEntry = FilteredEntries.Count == 0
             ? null
             : FilteredEntries[Math.Min(index, FilteredEntries.Count - 1)];
-        SaveEntries();
+        SaveDatabase();
+    }
+
+    // Ajout ou remplacement d'une catégorie validée par CategoryEditorWindow.
+    // Retourne un message d'erreur, ou null si l'opération a réussi.
+    public string? SaveCategory(VocabularyCategory category)
+    {
+        // Garde-fou anti-cycle : la fenêtre d'édition exclut déjà les descendants
+        // du sélecteur de parent, mais une incohérence ne doit jamais être persistée.
+        if (category.ParentId is Guid parentId &&
+            (parentId == category.Id ||
+             CategoryHierarchy.GetDescendantIds(Categories, category.Id).Contains(parentId)))
+        {
+            return "Le parent choisi créerait un cycle dans la hiérarchie.";
+        }
+
+        var index = FindCategoryIndex(category.Id);
+
+        if (index < 0)
+        {
+            Categories.Add(category);
+        }
+        else
+        {
+            Categories[index] = category;
+        }
+
+        OnCategoriesChanged();
+        return null;
+    }
+
+    public string? RenameCategory(Guid categoryId, string newName)
+    {
+        var index = FindCategoryIndex(categoryId);
+
+        if (index < 0)
+        {
+            return null;
+        }
+
+        var name = newName.Trim();
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "Le nom est obligatoire.";
+        }
+
+        var category = Categories[index];
+
+        var duplicateExists = Categories.Any(other =>
+            other.Id != categoryId &&
+            other.ParentId == category.ParentId &&
+            string.Equals(other.Name, name, StringComparison.OrdinalIgnoreCase));
+
+        if (duplicateExists)
+        {
+            return "Une catégorie porte déjà ce nom au même niveau.";
+        }
+
+        category.Name = name;
+        category.UpdatedAt = DateTimeOffset.Now;
+        OnCategoriesChanged();
+        return null;
+    }
+
+    public string? DeleteCategory(Guid categoryId)
+    {
+        var index = FindCategoryIndex(categoryId);
+
+        if (index < 0)
+        {
+            return null;
+        }
+
+        if (Categories.Any(category => category.ParentId == categoryId))
+        {
+            return "Impossible de supprimer une catégorie qui contient des sous-catégories.";
+        }
+
+        var usageCount = Entries.Count(entry => entry.CategoryIds.Contains(categoryId));
+
+        if (usageCount > 0)
+        {
+            return $"Impossible de supprimer : cette catégorie est utilisée par {usageCount} mot(s).";
+        }
+
+        Categories.RemoveAt(index);
+        OnCategoriesChanged();
+        return null;
+    }
+
+    private void OnCategoriesChanged()
+    {
+        RebuildCategoryTree();
+        OnPropertyChanged(nameof(SelectedEntryCategoryNames));
+        RefreshFilteredEntries();
+        SaveDatabase();
+    }
+
+    // Appelé par les nœuds quand le TreeView les sélectionne (binding IsSelected).
+    private void OnCategoryNodeSelected(CategoryNodeViewModel node)
+    {
+        if (_selectedCategoryNode == node)
+        {
+            return;
+        }
+
+        // Le TreeView désélectionne déjà l'ancien nœud via le binding, mais le
+        // ViewModel doit rester cohérent même sans vue attachée.
+        var previousNode = _selectedCategoryNode;
+        _selectedCategoryNode = node;
+        previousNode?.IsSelected = false;
+        OnPropertyChanged(nameof(SelectedCategoryNode));
+        OnPropertyChanged(nameof(SelectedCategoryLabel));
+        RefreshFilteredEntries();
+    }
+
+    private void RebuildCategoryTree()
+    {
+        // L'arbre est reconstruit à chaque mutation (les compteurs et le tri
+        // changent). On préserve l'état d'expansion et la sélection courante.
+        var expandedIds = CollectNodes(CategoryTree)
+            .Where(node => node.Category is not null && node.IsExpanded)
+            .Select(node => node.Category!.Id)
+            .ToHashSet();
+        var selectedCategoryId = _selectedCategoryNode?.Category?.Id;
+        var selectedKind = _selectedCategoryNode?.Kind;
+
+        CategoryTree.Clear();
+
+        var allNode = CategoryNodeViewModel.CreateAllEntries(OnCategoryNodeSelected);
+        allNode.EntryCount = Entries.Count;
+        CategoryTree.Add(allNode);
+
+        var uncategorizedNode = CategoryNodeViewModel.CreateUncategorized(OnCategoryNodeSelected);
+        uncategorizedNode.EntryCount = Entries.Count(entry => entry.CategoryIds.Count == 0);
+        CategoryTree.Add(uncategorizedNode);
+
+        // Flatten fournit un parcours en profondeur avec la profondeur de chaque
+        // nœud : une pile suffit pour reconstituer l'imbrication.
+        var nodeStack = new List<CategoryNodeViewModel>();
+
+        foreach (var (category, depth) in CategoryHierarchy.Flatten(Categories))
+        {
+            var node = CategoryNodeViewModel.CreateForCategory(category, OnCategoryNodeSelected);
+            node.IsExpanded = expandedIds.Contains(category.Id);
+
+            if (depth == 0)
+            {
+                CategoryTree.Add(node);
+            }
+            else
+            {
+                nodeStack[depth - 1].Children.Add(node);
+            }
+
+            if (nodeStack.Count > depth)
+            {
+                nodeStack[depth] = node;
+                nodeStack.RemoveRange(depth + 1, nodeStack.Count - depth - 1);
+            }
+            else
+            {
+                nodeStack.Add(node);
+            }
+        }
+
+        foreach (var rootNode in CategoryTree.Skip(2))
+        {
+            ComputeEntryCounts(rootNode);
+        }
+
+        RestoreSelection(selectedKind, selectedCategoryId, allNode);
+        OnPropertyChanged(nameof(HasCategories));
+    }
+
+    private void RestoreSelection(
+        CategoryNodeKind? selectedKind,
+        Guid? selectedCategoryId,
+        CategoryNodeViewModel allNode)
+    {
+        var nodeToSelect = selectedKind switch
+        {
+            CategoryNodeKind.Category => CollectNodes(CategoryTree)
+                .FirstOrDefault(node => node.Category?.Id == selectedCategoryId),
+            CategoryNodeKind.Uncategorized => CategoryTree[1],
+            _ => allNode
+        } ?? allNode;
+
+        // Le nœud précédent n'existe plus : le callback mettra le filtre à jour.
+        _selectedCategoryNode = null;
+        nodeToSelect.IsSelected = true;
+    }
+
+    // Compte les entrées du sous-arbre (catégorie + descendantes) et retourne
+    // l'ensemble des Ids couverts pour le calcul du parent.
+    private HashSet<Guid> ComputeEntryCounts(CategoryNodeViewModel node)
+    {
+        var subtreeIds = new HashSet<Guid> { node.Category!.Id };
+
+        foreach (var child in node.Children)
+        {
+            subtreeIds.UnionWith(ComputeEntryCounts(child));
+        }
+
+        node.EntryCount = Entries.Count(entry => entry.CategoryIds.Any(subtreeIds.Contains));
+        return subtreeIds;
+    }
+
+    private static IEnumerable<CategoryNodeViewModel> CollectNodes(
+        IEnumerable<CategoryNodeViewModel> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            yield return node;
+
+            foreach (var descendant in CollectNodes(node.Children))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+    private string GetCategoryPath(VocabularyCategory category)
+    {
+        var categoriesById = Categories.ToDictionary(item => item.Id);
+        var segments = new List<string> { category.Name };
+        var visited = new HashSet<Guid> { category.Id };
+        var current = category;
+
+        while (current.ParentId is Guid parentId &&
+               categoriesById.TryGetValue(parentId, out var parent) &&
+               visited.Add(parent.Id))
+        {
+            segments.Insert(0, parent.Name);
+            current = parent;
+        }
+
+        return string.Join(" › ", segments);
     }
 
     private static VocabularyDatabase CreateSampleDatabase()
@@ -257,7 +532,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         };
     }
 
-    private void SaveEntries()
+    private void SaveDatabase()
     {
         _repository.SaveDatabase(new VocabularyDatabase
         {
@@ -278,8 +553,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         // ObservableCollection notifie WPF des ajouts/retraits. C'est pour cela
         // que la ListBox se met à jour automatiquement après le filtrage.
         var selectedEntryId = SelectedEntry?.Id;
+        _activeCategoryFilterIds = BuildCategoryFilterIds();
+
         var matchingEntries = Entries
-            .Where(EntryMatchesSearch)
+            .Where(entry => EntryMatchesCategory(entry) && EntryMatchesSearch(entry))
             .ToList();
 
         FilteredEntries.Clear();
@@ -303,11 +580,41 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SelectedEntry = FilteredEntries.FirstOrDefault();
     }
 
+    // Ensemble des Ids couverts par le nœud sélectionné (catégorie + descendantes),
+    // ou null quand aucun filtre de catégorie ne s'applique.
+    private HashSet<Guid>? BuildCategoryFilterIds()
+    {
+        if (_selectedCategoryNode?.Category is not VocabularyCategory category)
+        {
+            return null;
+        }
+
+        var ids = CategoryHierarchy.GetDescendantIds(Categories, category.Id);
+        ids.Add(category.Id);
+        return ids;
+    }
+
+    private bool EntryMatchesCategory(VocabularyEntry entry)
+    {
+        if (_selectedCategoryNode is null || _selectedCategoryNode.Kind == CategoryNodeKind.AllEntries)
+        {
+            return true;
+        }
+
+        if (_selectedCategoryNode.Kind == CategoryNodeKind.Uncategorized)
+        {
+            return entry.CategoryIds.Count == 0;
+        }
+
+        return _activeCategoryFilterIds is not null &&
+            entry.CategoryIds.Any(_activeCategoryFilterIds.Contains);
+    }
+
     private string BuildSearchStatusText()
     {
         if (string.IsNullOrWhiteSpace(SearchQuery))
         {
-            return $"{Entries.Count} mot(s)";
+            return $"{FilteredEntries.Count} mot(s)";
         }
 
         return FilteredEntries.Count == 0
@@ -387,6 +694,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         for (var index = 0; index < Entries.Count; index++)
         {
             if (Entries[index].Id == entryId)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private int FindCategoryIndex(Guid categoryId)
+    {
+        for (var index = 0; index < Categories.Count; index++)
+        {
+            if (Categories[index].Id == categoryId)
             {
                 return index;
             }

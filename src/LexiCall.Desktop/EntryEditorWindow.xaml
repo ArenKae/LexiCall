@@ -5,11 +5,13 @@
         Height="620" Width="760"
         MinHeight="560" MinWidth="700"
         WindowStartupLocation="CenterOwner"
-        Background="#F7F7FA"
+        Background="{DynamicResource Brush.Window.Background}"
+        Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
     <!--
         Formulaire modal d'ajout/modification d'une entrée.
-        Les catégories sont optionnelles et sélectionnées par cases à cocher.
+        Les catégories sont optionnelles et sélectionnées par cases à cocher,
+        indentées selon leur profondeur dans la hiérarchie.
     -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
@@ -24,16 +26,13 @@
                        FontWeight="SemiBold" />
             <TextBlock Text="{Binding DescriptionText}"
                        Margin="0,4,0,0"
-                       Foreground="#666676" />
+                       Foreground="{DynamicResource Brush.Text.Secondary}" />
         </StackPanel>
 
         <Border Grid.Row="1"
                 Margin="0,20,0,20"
                 Padding="20"
-                Background="White"
-                BorderBrush="#DDDDE5"
-                BorderThickness="1"
-                CornerRadius="8">
+                Style="{StaticResource CardBorderStyle}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -60,7 +59,6 @@
                     <TextBox Grid.Row="1"
                              Grid.Column="0"
                              Margin="0,6,0,14"
-                             Padding="10,7"
                              Text="{Binding Word, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="0"
@@ -70,7 +68,6 @@
                     <TextBox Grid.Row="1"
                              Grid.Column="2"
                              Margin="0,6,0,14"
-                             Padding="10,7"
                              Text="{Binding Source, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="2"
@@ -81,10 +78,10 @@
                              Grid.Column="0"
                              Margin="0,6,0,14"
                              Height="84"
-                             Padding="10,7"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
                              VerticalScrollBarVisibility="Auto"
+                             VerticalContentAlignment="Top"
                              Text="{Binding Definition, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="2"
@@ -95,10 +92,10 @@
                              Grid.Column="2"
                              Margin="0,6,0,14"
                              Height="84"
-                             Padding="10,7"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
                              VerticalScrollBarVisibility="Auto"
+                             VerticalContentAlignment="Top"
                              Text="{Binding ExampleSentencesText, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="4"
@@ -108,7 +105,6 @@
                     <TextBox Grid.Row="5"
                              Grid.Column="0"
                              Margin="0,6,0,14"
-                             Padding="10,7"
                              Text="{Binding SynonymsText, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="4"
@@ -118,13 +114,12 @@
                     <Grid Grid.Row="5"
                           Grid.Column="2"
                           Margin="0,6,0,14">
-                        <ListBox ItemsSource="{Binding CategorySelections}"
-                                 Height="88"
-                                 Padding="6"
-                                 BorderBrush="#DDDDE5"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                            <ListBox.Style>
-                                <Style TargetType="ListBox">
+                        <Border BorderBrush="{DynamicResource Brush.Border.Strong}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Background="{DynamicResource Brush.Input.Background}">
+                            <Border.Style>
+                                <Style TargetType="Border">
                                     <Setter Property="Visibility" Value="Visible" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding HasAvailableCategories}" Value="False">
@@ -132,18 +127,30 @@
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </ListBox.Style>
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <CheckBox Content="{Binding Name}"
-                                              IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+                            </Border.Style>
+                            <ListBox ItemsSource="{Binding CategorySelections}"
+                                     Height="88"
+                                     Padding="6"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                                        <Setter Property="Padding" Value="4,3" />
+                                        <Setter Property="Margin" Value="0" />
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Content="{Binding Name}"
+                                                  Margin="{Binding Depth, Converter={StaticResource DepthToIndentConverter}}"
+                                                  IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Border>
 
-                        <TextBlock Text="Aucune catégorie disponible. Tu peux en créer depuis la fenêtre principale."
+                        <TextBlock Text="Aucune catégorie disponible. Tu peux en créer depuis le panneau latéral de la fenêtre principale."
                                    TextWrapping="Wrap"
-                                   Foreground="#666676"
+                                   Foreground="{DynamicResource Brush.Text.Secondary}"
                                    VerticalAlignment="Center">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
@@ -166,10 +173,10 @@
                              Grid.Column="0"
                              Margin="0,6,0,0"
                              Height="70"
-                             Padding="10,7"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
                              VerticalScrollBarVisibility="Auto"
+                             VerticalContentAlignment="Top"
                              Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="6"
@@ -179,14 +186,13 @@
                     <TextBox Grid.Row="7"
                              Grid.Column="2"
                              Margin="0,6,0,0"
-                             Padding="10,7"
                              Text="{Binding TagsText, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="8"
                                Grid.ColumnSpan="3"
                                Text="{Binding ErrorMessage}"
                                Margin="0,14,0,0"
-                               Foreground="#B42318"
+                               Foreground="{DynamicResource Brush.Danger}"
                                FontWeight="SemiBold" />
                 </Grid>
             </ScrollViewer>
@@ -195,19 +201,18 @@
         <DockPanel Grid.Row="2">
             <TextBlock Text="Les catégories sont optionnelles. Sépare les synonymes et tags par des virgules."
                        VerticalAlignment="Center"
-                       Foreground="#666676" />
+                       Foreground="{DynamicResource Brush.Text.Secondary}" />
 
             <StackPanel DockPanel.Dock="Right"
                         Orientation="Horizontal"
                         HorizontalAlignment="Right">
                 <Button Content="Annuler"
                         Width="96"
-                        Padding="12,8"
                         Margin="0,0,10,0"
                         IsCancel="True" />
                 <Button Content="{Binding SaveButtonText}"
-                        Width="96"
-                        Padding="12,8"
+                        Width="110"
+                        Style="{StaticResource AccentButtonStyle}"
                         IsDefault="True"
                         Command="{Binding SaveEntryCommand}" />
             </StackPanel>

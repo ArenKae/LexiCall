@@ -48,6 +48,7 @@ pnpm-debug.log*
 
 # Secrets et configuration locale
 AGENTS.md
+.claude/
 .env
 .env.*
 !.env.example
