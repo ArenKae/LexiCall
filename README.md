@@ -18,8 +18,18 @@ Fonctionnalités disponibles :
 - navigation par arbre de catégories dans la fenêtre principale : compteurs
   par catégorie (descendants inclus), filtres « Toutes les entrées » et
   « Sans catégorie », renommage inline (F2 ou menu contextuel) ;
-- filtrage par catégorie combinable avec la recherche texte ;
-- assignation optionnelle de plusieurs catégories à une entrée ;
+- repères visuels dans l'arbre : une couleur distincte par catégorie racine
+  (répartition par angle d'or, lisible même avec une quinzaine de racines),
+  héritée en atténué par ses sous-catégories, séparateur marqué entre les
+  grandes familles ;
+- panneaux latéraux (catégories / liste / détail) redimensionnables par
+  glisser-déposer, pour les noms de catégories longs ;
+- filtrage par catégorie combinable avec la recherche texte ; fil d'ariane
+  compact (dernier niveau affiché, chemin complet en infobulle) ;
+- liste centrale volontairement compacte (mot, chips de catégories, source)
+  pour voir un maximum d'entrées sans défiler ;
+- assignation optionnelle de plusieurs catégories à une entrée, via un
+  formulaire où le bloc catégories est mis en avant (grande hauteur, en haut) ;
 - entrées autorisées sans catégorie ;
 - recherche locale sur mots, définitions, notes, source, exemples, tags et catégories ;
 - recherche tolérante aux accents ;
@@ -127,7 +137,7 @@ src/
     ├── ViewModels/           État et logique de présentation MVVM
     ├── Services/             Persistance locale JSON, gestion du thème
     ├── Commands/             Commandes WPF réutilisables
-    ├── Converters/           Convertisseurs XAML (chips, indentation)
+    ├── Converters/           Convertisseurs XAML (chips, indentation, couleur des catégories)
     ├── Utilities/            Helpers texte et hiérarchie de catégories
     ├── Themes/               Couleurs clair/sombre et styles partagés
     ├── MainWindow.xaml       Vue principale : arbre de catégories, liste, détail
@@ -170,6 +180,15 @@ Objectif : application Windows utilisable sans serveur.
 - thème clair/sombre persisté ;
 - persistance JSON.
 
+Prochaines améliorations probables :
+
+- illustration des mots par image (upload, stockage encodé en base64
+  directement dans `vocabulary.json` — pas de fichiers séparés à gérer/lier) ;
+- import/export ;
+- raccourcis clavier (au-delà de F2) ;
+- tests unitaires sur repository, recherche, hiérarchie et validation ;
+- mode révision/apprentissage (parcours des mots par catégorie).
+
 ### Phase 2 — Backend partagé
 
 - FastAPI ;
@@ -192,6 +211,10 @@ Idées possibles :
 - suggestions de synonymes ;
 - exemples de phrases ;
 - suggestions de tags ou catégories ;
+- génération automatique d'une icône par catégorie, via un LLM (Mistral API)
+  lors d'une étape finale d'enrichissement (nécessite forcément un appel LLM :
+  contrairement aux autres idées de cette section, pas d'équivalent local/manuel
+  raisonnable pour cette fonctionnalité) ;
 - enrichissement local via Ollama ou service serveur optionnel.
 
 L’IA ne doit jamais devenir une dépendance obligatoire : LexiCall doit rester
