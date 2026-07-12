@@ -97,7 +97,8 @@ dotnet run --project src/LexiCall.Desktop
 ```text
 LexiCall.sln
 src/
-└── LexiCall.Desktop/    Application Windows WPF
+└── LexiCall.Desktop/                  Application Windows WPF
+    └── Assets/Branding/               Identité visuelle de l'application
 ```
 
 La prochaine étape consiste à réaliser une première tranche fonctionnelle :
