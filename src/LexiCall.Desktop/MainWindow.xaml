@@ -40,42 +40,60 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <ListBox Grid.Column="0"
-                     ItemsSource="{Binding Entries}"
-                     SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
-                     Background="White"
-                     BorderBrush="#DDDDE5"
-                     BorderThickness="1"
-                     Padding="4"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                        <Setter Property="Padding" Value="12" />
-                        <Setter Property="Margin" Value="0,0,0,2" />
-                    </Style>
-                </ListBox.ItemContainerStyle>
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
 
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel>
-                            <TextBlock Text="{Binding Word}"
-                                       FontSize="17"
-                                       FontWeight="SemiBold" />
-                            <TextBlock Text="{Binding Definition}"
-                                       Margin="0,4,0,0"
-                                       TextWrapping="Wrap"
-                                       Foreground="#555566"
-                                       MaxHeight="42" />
-                            <TextBlock Text="{Binding Source}"
-                                       Margin="0,8,0,0"
-                                       FontSize="11"
-                                       Foreground="#888896"
-                                       TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+                <TextBox Grid.Row="0"
+                         Padding="10,8"
+                         Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="Recherche dans les mots, définitions, notes, exemples, catégories et tags." />
+
+                <TextBlock Grid.Row="1"
+                           Text="{Binding SearchStatusText}"
+                           Margin="2,8,0,10"
+                           Foreground="#666676" />
+
+                <ListBox Grid.Row="2"
+                         ItemsSource="{Binding FilteredEntries}"
+                         SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
+                         Background="White"
+                         BorderBrush="#DDDDE5"
+                         BorderThickness="1"
+                         Padding="4"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Padding" Value="12" />
+                            <Setter Property="Margin" Value="0,0,0,2" />
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Word}"
+                                           FontSize="17"
+                                           FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Definition}"
+                                           Margin="0,4,0,0"
+                                           TextWrapping="Wrap"
+                                           Foreground="#555566"
+                                           MaxHeight="42" />
+                                <TextBlock Text="{Binding Source}"
+                                           Margin="0,8,0,0"
+                                           FontSize="11"
+                                           Foreground="#888896"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
 
             <Border Grid.Column="2"
                     Padding="28"

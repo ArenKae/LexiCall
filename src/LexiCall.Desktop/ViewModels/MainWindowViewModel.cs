@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text;
 using LexiCall.Desktop.Models;
 using LexiCall.Desktop.Services;
 
@@ -9,6 +11,8 @@ namespace LexiCall.Desktop.ViewModels;
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private readonly VocabularyRepository _repository;
+    private string _searchQuery = string.Empty;
+    private string _searchStatusText = string.Empty;
     private VocabularyEntry? _selectedEntry;
 
     public MainWindowViewModel(VocabularyRepository? repository = null)
@@ -20,7 +24,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             : CreateSampleEntries();
 
         Entries = new ObservableCollection<VocabularyEntry>(entries);
-        SelectedEntry = Entries.FirstOrDefault();
+        FilteredEntries = [];
+        RefreshFilteredEntries();
+        SelectedEntry = FilteredEntries.FirstOrDefault();
 
         if (!_repository.DataFileExists)
         {
@@ -30,7 +36,27 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public ObservableCollection<VocabularyEntry> Entries { get; }
 
+    public ObservableCollection<VocabularyEntry> FilteredEntries { get; }
+
     public string DataFilePath => _repository.FilePath;
+
+    public string SearchQuery
+    {
+        get => _searchQuery;
+        set
+        {
+            if (SetProperty(ref _searchQuery, value))
+            {
+                RefreshFilteredEntries();
+            }
+        }
+    }
+
+    public string SearchStatusText
+    {
+        get => _searchStatusText;
+        private set => SetProperty(ref _searchStatusText, value);
+    }
 
     public VocabularyEntry? SelectedEntry
     {
@@ -43,6 +69,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public void AddEntry(VocabularyEntry entry)
     {
         Entries.Insert(0, entry);
+        SearchQuery = string.Empty;
+        RefreshFilteredEntries();
         SelectedEntry = entry;
         SaveEntries();
     }
@@ -57,7 +85,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         Entries[index] = updatedEntry;
-        SelectedEntry = updatedEntry;
+        RefreshFilteredEntries();
+
+        if (FilteredEntries.Any(entry => entry.Id == updatedEntry.Id))
+        {
+            SelectedEntry = updatedEntry;
+        }
+
         SaveEntries();
     }
 
@@ -71,9 +105,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         Entries.RemoveAt(index);
-        SelectedEntry = Entries.Count == 0
+        RefreshFilteredEntries();
+        SelectedEntry = FilteredEntries.Count == 0
             ? null
-            : Entries[Math.Min(index, Entries.Count - 1)];
+            : FilteredEntries[Math.Min(index, FilteredEntries.Count - 1)];
         SaveEntries();
     }
 
@@ -128,6 +163,93 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void SaveEntries()
     {
         _repository.SaveEntries(Entries);
+    }
+
+    private void RefreshFilteredEntries()
+    {
+        var selectedEntryId = SelectedEntry?.Id;
+        var matchingEntries = Entries
+            .Where(EntryMatchesSearch)
+            .ToList();
+
+        FilteredEntries.Clear();
+
+        foreach (var entry in matchingEntries)
+        {
+            FilteredEntries.Add(entry);
+        }
+
+        SearchStatusText = BuildSearchStatusText();
+
+        if (selectedEntryId is not null &&
+            FilteredEntries.Any(entry => entry.Id == selectedEntryId))
+        {
+            return;
+        }
+
+        SelectedEntry = FilteredEntries.FirstOrDefault();
+    }
+
+    private string BuildSearchStatusText()
+    {
+        if (string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            return $"{Entries.Count} mot(s)";
+        }
+
+        return FilteredEntries.Count == 0
+            ? "Aucun résultat"
+            : $"{FilteredEntries.Count} résultat(s)";
+    }
+
+    private bool EntryMatchesSearch(VocabularyEntry entry)
+    {
+        if (string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            return true;
+        }
+
+        var normalizedQuery = NormalizeForSearch(SearchQuery);
+
+        return SearchFieldMatches(entry.Word, normalizedQuery) ||
+            SearchFieldMatches(entry.Definition, normalizedQuery) ||
+            SearchFieldMatches(entry.Notes, normalizedQuery) ||
+            SearchFieldMatches(entry.Source, normalizedQuery) ||
+            SearchFieldsMatch(entry.Synonyms, normalizedQuery) ||
+            SearchFieldsMatch(entry.ExampleSentences, normalizedQuery) ||
+            SearchFieldsMatch(entry.Categories, normalizedQuery) ||
+            SearchFieldsMatch(entry.Tags, normalizedQuery);
+    }
+
+    private static bool SearchFieldsMatch(IEnumerable<string> values, string normalizedQuery)
+    {
+        return values.Any(value => SearchFieldMatches(value, normalizedQuery));
+    }
+
+    private static bool SearchFieldMatches(string value, string normalizedQuery)
+    {
+        return NormalizeForSearch(value)
+            .Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeForSearch(string value)
+    {
+        var normalized = value.Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(normalized.Length);
+
+        foreach (var character in normalized)
+        {
+            var category = CharUnicodeInfo.GetUnicodeCategory(character);
+
+            if (category != UnicodeCategory.NonSpacingMark)
+            {
+                builder.Append(character);
+            }
+        }
+
+        return builder
+            .ToString()
+            .Normalize(NormalizationForm.FormC);
     }
 
     private int FindEntryIndex(Guid entryId)
