@@ -4,13 +4,13 @@ using LexiCall.Desktop.ViewModels;
 
 namespace LexiCall.Desktop;
 
-public partial class AddEntryWindow : Window
+public partial class EntryEditorWindow : Window
 {
-    private readonly AddEntryWindowViewModel _viewModel;
+    private readonly EntryEditorWindowViewModel _viewModel;
 
-    public AddEntryWindow(VocabularyEntry? existingEntry = null)
+    public EntryEditorWindow(VocabularyEntry? existingEntry = null)
     {
-        _viewModel = new AddEntryWindowViewModel(existingEntry);
+        _viewModel = new EntryEditorWindowViewModel(existingEntry);
 
         InitializeComponent();
         DataContext = _viewModel;

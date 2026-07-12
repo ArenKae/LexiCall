@@ -2,10 +2,11 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using LexiCall.Desktop.Commands;
 using LexiCall.Desktop.Models;
+using LexiCall.Desktop.Utilities;
 
 namespace LexiCall.Desktop.ViewModels;
 
-public sealed class AddEntryWindowViewModel : INotifyPropertyChanged
+public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 {
     private readonly VocabularyEntry? _existingEntry;
     private string _word = string.Empty;
@@ -18,7 +19,7 @@ public sealed class AddEntryWindowViewModel : INotifyPropertyChanged
     private string _tagsText = string.Empty;
     private string _errorMessage = string.Empty;
 
-    public AddEntryWindowViewModel(VocabularyEntry? existingEntry = null)
+    public EntryEditorWindowViewModel(VocabularyEntry? existingEntry = null)
     {
         _existingEntry = existingEntry;
         SaveEntryCommand = new RelayCommand(SaveEntry);
@@ -27,12 +28,12 @@ public sealed class AddEntryWindowViewModel : INotifyPropertyChanged
         {
             Word = existingEntry.Word;
             Definition = existingEntry.Definition;
-            SynonymsText = string.Join(", ", existingEntry.Synonyms);
-            ExampleSentencesText = string.Join(Environment.NewLine, existingEntry.ExampleSentences);
+            SynonymsText = TextListParser.FormatCommaSeparatedText(existingEntry.Synonyms);
+            ExampleSentencesText = TextListParser.FormatLineSeparatedText(existingEntry.ExampleSentences);
             Notes = existingEntry.Notes;
             Source = existingEntry.Source;
-            CategoriesText = string.Join(", ", existingEntry.Categories);
-            TagsText = string.Join(", ", existingEntry.Tags);
+            CategoriesText = TextListParser.FormatCommaSeparatedText(existingEntry.Categories);
+            TagsText = TextListParser.FormatCommaSeparatedText(existingEntry.Tags);
         }
     }
 
@@ -147,12 +148,12 @@ public sealed class AddEntryWindowViewModel : INotifyPropertyChanged
             Id = _existingEntry?.Id ?? Guid.NewGuid(),
             Word = word,
             Definition = definition,
-            Synonyms = ParseCommaSeparatedText(SynonymsText).ToList(),
-            ExampleSentences = ParseLineSeparatedText(ExampleSentencesText).ToList(),
+            Synonyms = TextListParser.ParseCommaSeparatedText(SynonymsText),
+            ExampleSentences = TextListParser.ParseLineSeparatedText(ExampleSentencesText),
             Notes = Notes.Trim(),
             Source = Source.Trim(),
-            Categories = ParseCommaSeparatedText(CategoriesText).ToList(),
-            Tags = ParseCommaSeparatedText(TagsText).ToList(),
+            Categories = TextListParser.ParseCommaSeparatedText(CategoriesText),
+            Tags = TextListParser.ParseCommaSeparatedText(TagsText),
             CreatedAt = _existingEntry?.CreatedAt ?? now,
             UpdatedAt = now
         };
@@ -166,20 +167,6 @@ public sealed class AddEntryWindowViewModel : INotifyPropertyChanged
         {
             ErrorMessage = string.Empty;
         }
-    }
-
-    private static IEnumerable<string> ParseCommaSeparatedText(string value)
-    {
-        return value
-            .Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(item => item.Length > 0);
-    }
-
-    private static IEnumerable<string> ParseLineSeparatedText(string value)
-    {
-        return value
-            .Split(["\r\n", "\n", "\r"], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(item => item.Length > 0);
     }
 
     private bool SetProperty<T>(

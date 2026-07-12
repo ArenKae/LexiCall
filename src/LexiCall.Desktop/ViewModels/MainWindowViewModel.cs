@@ -58,10 +58,42 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _searchStatusText, value);
     }
 
+    public bool HasEntries => Entries.Count > 0;
+
+    public bool HasFilteredEntries => FilteredEntries.Count > 0;
+
+    public bool HasSelectedEntry => SelectedEntry is not null;
+
+    public string EmptyListMessage => HasEntries
+        ? "Aucun résultat pour cette recherche."
+        : "Aucun mot pour l’instant. Clique sur « Ajouter un mot » pour commencer.";
+
+    public string EmptyDetailMessage
+    {
+        get
+        {
+            if (!HasEntries)
+            {
+                return "Ajoute ton premier mot pour commencer à construire ton vocabulaire.";
+            }
+
+            return HasFilteredEntries
+                ? "Sélectionne un mot dans la liste pour afficher ses détails."
+                : "Aucun mot ne correspond à cette recherche.";
+        }
+    }
+
     public VocabularyEntry? SelectedEntry
     {
         get => _selectedEntry;
-        set => SetProperty(ref _selectedEntry, value);
+        set
+        {
+            if (SetProperty(ref _selectedEntry, value))
+            {
+                OnPropertyChanged(nameof(HasSelectedEntry));
+                OnPropertyChanged(nameof(EmptyDetailMessage));
+            }
+        }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -69,6 +101,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public void AddEntry(VocabularyEntry entry)
     {
         Entries.Insert(0, entry);
+        OnEntriesChanged();
         SearchQuery = string.Empty;
         RefreshFilteredEntries();
         SelectedEntry = entry;
@@ -105,6 +138,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         Entries.RemoveAt(index);
+        OnEntriesChanged();
         RefreshFilteredEntries();
         SelectedEntry = FilteredEntries.Count == 0
             ? null
@@ -165,6 +199,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _repository.SaveEntries(Entries);
     }
 
+    private void OnEntriesChanged()
+    {
+        OnPropertyChanged(nameof(HasEntries));
+        OnPropertyChanged(nameof(EmptyListMessage));
+        OnPropertyChanged(nameof(EmptyDetailMessage));
+    }
+
     private void RefreshFilteredEntries()
     {
         var selectedEntryId = SelectedEntry?.Id;
@@ -180,6 +221,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         SearchStatusText = BuildSearchStatusText();
+        OnPropertyChanged(nameof(HasFilteredEntries));
+        OnPropertyChanged(nameof(EmptyListMessage));
+        OnPropertyChanged(nameof(EmptyDetailMessage));
 
         if (selectedEntryId is not null &&
             FilteredEntries.Any(entry => entry.Id == selectedEntryId))
@@ -265,6 +309,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return -1;
     }
 
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
     private bool SetProperty<T>(
         ref T field,
         T value,
@@ -276,7 +325,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        OnPropertyChanged(propertyName);
         return true;
     }
 }

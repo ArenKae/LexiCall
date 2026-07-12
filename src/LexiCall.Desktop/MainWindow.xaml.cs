@@ -13,7 +13,7 @@ public partial class MainWindow : Window
 
     private void AddEntryButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new AddEntryWindow
+        var dialog = new EntryEditorWindow
         {
             Owner = this
         };
@@ -34,7 +34,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dialog = new AddEntryWindow(viewModel.SelectedEntry)
+        var dialog = new EntryEditorWindow(viewModel.SelectedEntry)
         {
             Owner = this
         };
