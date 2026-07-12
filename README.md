@@ -163,21 +163,12 @@ mutation déclenche une sauvegarde complète immédiate du fichier JSON.
 
 Objectif : application Windows utilisable sans serveur.
 
-Déjà fait :
-
 - CRUD entrées ;
 - CRUD catégories, sous-catégories comprises ;
 - navigation et filtrage par arbre de catégories ;
 - recherche locale ;
 - thème clair/sombre persisté ;
 - persistance JSON.
-
-Prochaines améliorations probables :
-
-- import/export ;
-- raccourcis clavier (au-delà de F2) ;
-- tests unitaires sur repository, recherche, hiérarchie et validation ;
-- mode révision/apprentissage (parcours des mots par catégorie).
 
 ### Phase 2 — Backend partagé
 
