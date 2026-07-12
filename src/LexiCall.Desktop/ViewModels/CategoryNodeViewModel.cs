@@ -20,6 +20,7 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
 {
     private readonly Action<CategoryNodeViewModel> _onSelected;
     private int _entryCount;
+    private int _colorIndex;
     private bool _isExpanded;
     private bool _isSelected;
     private bool _isEditing;
@@ -71,6 +72,18 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
     {
         get => _entryCount;
         set => SetProperty(ref _entryCount, value);
+    }
+
+    // Profondeur dans la hiérarchie (0 = racine ou nœud virtuel) : pilote
+    // l'épaisseur des séparateurs et l'opacité du repère de couleur.
+    public int Depth { get; set; }
+
+    // Index de la catégorie racine dont ce nœud descend (partagé par toute la
+    // sous-arborescence) : sert de graine à CategoryColorConverter.
+    public int ColorIndex
+    {
+        get => _colorIndex;
+        set => SetProperty(ref _colorIndex, value);
     }
 
     public bool IsExpanded

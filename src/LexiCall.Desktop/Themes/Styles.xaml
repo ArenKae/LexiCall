@@ -305,6 +305,30 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
+    <!-- Poignée de redimensionnement entre panneaux : discrète au repos, visible au survol. -->
+    <Style TargetType="GridSplitter">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="GridSplitter">
+                    <Border Background="Transparent">
+                        <Rectangle x:Name="Bar"
+                                   Width="2"
+                                   HorizontalAlignment="Center"
+                                   Fill="{DynamicResource Brush.Border.Subtle}"
+                                   RadiusX="1"
+                                   RadiusY="1" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bar" Property="Fill" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="Bar" Property="Width" Value="3" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Sélecteur déroulant aux couleurs du thème (non éditable). -->
     <Style TargetType="ComboBox">
         <Setter Property="Background" Value="{DynamicResource Brush.Input.Background}" />

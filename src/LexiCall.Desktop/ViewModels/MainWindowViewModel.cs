@@ -86,22 +86,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public CategoryNodeViewModel? SelectedCategoryNode => _selectedCategoryNode;
 
-    // Fil d'ariane affiché au-dessus de la liste : nom du nœud virtuel, ou
-    // chemin complet "Parent › Enfant" pour une catégorie.
-    public string SelectedCategoryLabel
-    {
-        get
-        {
-            if (_selectedCategoryNode is null)
-            {
-                return "Toutes les entrées";
-            }
+    // Nom de la catégorie sélectionnée (dernier niveau seulement : avec des
+    // noms de catégories longs, afficher tout le chemin ne tenait pas dans la
+    // largeur disponible). Le chemin complet reste accessible en infobulle.
+    public string SelectedCategoryLabel => _selectedCategoryNode?.DisplayName ?? "Toutes les entrées";
 
-            return _selectedCategoryNode.Category is null
-                ? _selectedCategoryNode.DisplayName
-                : GetCategoryPath(_selectedCategoryNode.Category);
-        }
-    }
+    // Null quand le chemin complet n'apporterait rien (nœud virtuel ou racine).
+    public string? SelectedCategoryTooltip => _selectedCategoryNode?.Category is VocabularyCategory { ParentId: not null } category
+        ? GetCategoryPath(category)
+        : null;
 
     public IReadOnlyList<string> SelectedEntryCategoryNames => SelectedEntry is null
         ? []
@@ -330,6 +323,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         previousNode?.IsSelected = false;
         OnPropertyChanged(nameof(SelectedCategoryNode));
         OnPropertyChanged(nameof(SelectedCategoryLabel));
+        OnPropertyChanged(nameof(SelectedCategoryTooltip));
         RefreshFilteredEntries();
     }
 
@@ -357,18 +351,24 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         // Flatten fournit un parcours en profondeur avec la profondeur de chaque
         // nœud : une pile suffit pour reconstituer l'imbrication.
         var nodeStack = new List<CategoryNodeViewModel>();
+        var rootColorCounter = 0;
 
         foreach (var (category, depth) in CategoryHierarchy.Flatten(Categories))
         {
             var node = CategoryNodeViewModel.CreateForCategory(category, OnCategoryNodeSelected);
             node.IsExpanded = expandedIds.Contains(category.Id);
+            node.Depth = depth;
 
             if (depth == 0)
             {
+                // Chaque racine reçoit sa propre couleur ; ses descendantes
+                // héritent de la même, pour signaler visuellement leur famille.
+                node.ColorIndex = rootColorCounter++;
                 CategoryTree.Add(node);
             }
             else
             {
+                node.ColorIndex = nodeStack[depth - 1].ColorIndex;
                 nodeStack[depth - 1].Children.Add(node);
             }
 

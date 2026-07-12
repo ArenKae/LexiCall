@@ -6,8 +6,8 @@
         xmlns:local="clr-namespace:LexiCall.Desktop"
         xmlns:viewModels="clr-namespace:LexiCall.Desktop.ViewModels"
         mc:Ignorable="d"
-        Title="LexiCall" Height="740" Width="1180"
-        MinHeight="620" MinWidth="960"
+        Title="LexiCall" Height="760" Width="1260"
+        MinHeight="620" MinWidth="1000"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
@@ -51,12 +51,27 @@
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="252" />
-                <ColumnDefinition Width="14" />
-                <ColumnDefinition Width="330" />
-                <ColumnDefinition Width="14" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="320" MinWidth="220" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="330" MinWidth="240" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" MinWidth="320" />
             </Grid.ColumnDefinitions>
+
+            <!-- Poignées de redimensionnement : les catégories réelles ont des noms
+                 longs, aucune largeur fixe ne convient à tous les cas. -->
+            <GridSplitter Grid.Column="1"
+                          Width="12"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          Background="Transparent"
+                          ResizeBehavior="PreviousAndNext" />
+            <GridSplitter Grid.Column="3"
+                          Width="12"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          Background="Transparent"
+                          ResizeBehavior="PreviousAndNext" />
 
             <!-- ═══ Panneau des catégories ═══ -->
             <Border Grid.Column="0"
@@ -90,75 +105,148 @@
                         <TreeView.ItemTemplate>
                             <HierarchicalDataTemplate DataType="{x:Type viewModels:CategoryNodeViewModel}"
                                                       ItemsSource="{Binding Children}">
-                                <Grid Background="Transparent"
-                                      ToolTip="{Binding DescriptionToolTip}"
-                                      ContextMenuOpening="CategoryNode_ContextMenuOpening">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <Grid ToolTip="{Binding DescriptionToolTip}"
+                                          ContextMenuOpening="CategoryNode_ContextMenuOpening">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="4" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
 
-                                    <Grid.ContextMenu>
-                                        <ContextMenu>
-                                            <MenuItem Header="Nouvelle sous-catégorie…"
-                                                      Click="AddSubCategoryMenuItem_Click" />
-                                            <MenuItem Header="Renommer"
-                                                      InputGestureText="F2"
-                                                      Click="RenameCategoryMenuItem_Click" />
-                                            <MenuItem Header="Modifier…"
-                                                      Click="EditCategoryMenuItem_Click" />
-                                            <Separator />
-                                            <MenuItem Header="Supprimer"
-                                                      Click="DeleteCategoryMenuItem_Click" />
-                                        </ContextMenu>
-                                    </Grid.ContextMenu>
+                                        <Grid.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Nouvelle sous-catégorie…"
+                                                          Click="AddSubCategoryMenuItem_Click" />
+                                                <MenuItem Header="Renommer"
+                                                          InputGestureText="F2"
+                                                          Click="RenameCategoryMenuItem_Click" />
+                                                <MenuItem Header="Modifier…"
+                                                          Click="EditCategoryMenuItem_Click" />
+                                                <Separator />
+                                                <MenuItem Header="Supprimer"
+                                                          Click="DeleteCategoryMenuItem_Click" />
+                                            </ContextMenu>
+                                        </Grid.ContextMenu>
 
-                                    <TextBlock Grid.Column="0"
-                                               Text="{Binding DisplayName}"
-                                               VerticalAlignment="Center"
-                                               TextTrimming="CharacterEllipsis">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
+                                        <!-- Halo de fond : identifie d'un coup d'œil la famille de catégorie
+                                             en parcourant la liste, sans nuire à la lisibilité du texte. -->
+                                        <Border Grid.Column="0" Grid.ColumnSpan="3"
+                                                CornerRadius="4"
+                                                Margin="-4,-1,-4,-1">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{Binding ColorIndex, Converter={StaticResource CategoryColorConverter}}" />
+                                                    <Setter Property="Opacity" Value="0.14" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Depth}" Value="0">
+                                                            <Setter Property="Opacity" Value="0.22" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsVirtual}" Value="True">
+                                                            <Setter Property="Opacity" Value="0" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                        </Border>
+
+                                        <!-- Repère de couleur plein : la sous-catégorie reprend la teinte de sa
+                                             racine, atténuée, pour montrer son appartenance. -->
+                                        <Border Grid.Column="0"
+                                                CornerRadius="2"
+                                                Margin="0,1,4,1">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{Binding ColorIndex, Converter={StaticResource CategoryColorConverter}}" />
+                                                    <Setter Property="Opacity" Value="0.5" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Depth}" Value="0">
+                                                            <Setter Property="Opacity" Value="1" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsVirtual}" Value="True">
+                                                            <Setter Property="Opacity" Value="0" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                        </Border>
+
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding DisplayName}"
+                                                   TextWrapping="Wrap"
+                                                   VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Margin" Value="4,1,0,1" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Depth}" Value="0">
+                                                            <Setter Property="Margin" Value="4,3,0,3" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+
+                                        <!-- Renommage inline : Entrée valide, Échap annule. -->
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}"
+                                                 Padding="4,1"
+                                                 Margin="2,-2,4,-2"
+                                                 Loaded="RenameTextBox_Loaded"
+                                                 KeyDown="RenameTextBox_KeyDown"
+                                                 LostFocus="RenameTextBox_LostFocus">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+
+                                        <Border Grid.Column="2"
+                                                Background="{DynamicResource Brush.Chip.Neutral.Background}"
+                                                CornerRadius="8"
+                                                Padding="7,1"
+                                                VerticalAlignment="Top">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Margin" Value="6,1,2,1" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Depth}" Value="0">
+                                                            <Setter Property="Margin" Value="6,3,2,3" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding EntryCount}"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource Brush.Chip.Neutral.Foreground}" />
+                                        </Border>
+                                    </Grid>
+
+                                    <Border>
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="BorderThickness" Value="0" />
+                                                <Setter Property="Margin" Value="0" />
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsEditing}" Value="True">
-                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    <DataTrigger Binding="{Binding Depth}" Value="0">
+                                                        <Setter Property="BorderThickness" Value="0,0,0,2" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Strong}" />
+                                                        <Setter Property="Margin" Value="0,4,0,4" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-
-                                    <!-- Renommage inline : Entrée valide, Échap annule. -->
-                                    <TextBox Grid.Column="0"
-                                             Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}"
-                                             Padding="4,1"
-                                             Margin="0,-2,4,-2"
-                                             Loaded="RenameTextBox_Loaded"
-                                             KeyDown="RenameTextBox_KeyDown"
-                                             LostFocus="RenameTextBox_LostFocus">
-                                        <TextBox.Style>
-                                            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                                                <Setter Property="Visibility" Value="Collapsed" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsEditing}" Value="True">
-                                                        <Setter Property="Visibility" Value="Visible" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBox.Style>
-                                    </TextBox>
-
-                                    <Border Grid.Column="1"
-                                            Background="{DynamicResource Brush.Chip.Neutral.Background}"
-                                            CornerRadius="8"
-                                            Padding="7,1"
-                                            Margin="6,0,2,0"
-                                            VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding EntryCount}"
-                                                   FontSize="11"
-                                                   Foreground="{DynamicResource Brush.Chip.Neutral.Foreground}" />
+                                        </Border.Style>
                                     </Border>
-                                </Grid>
+                                </StackPanel>
                             </HierarchicalDataTemplate>
                         </TreeView.ItemTemplate>
                     </TreeView>
@@ -184,6 +272,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0"
                                Text="{Binding SelectedCategoryLabel}"
+                               ToolTip="{Binding SelectedCategoryTooltip}"
                                FontWeight="SemiBold"
                                FontSize="13"
                                TextTrimming="CharacterEllipsis" />
@@ -201,25 +290,21 @@
                         <ListBox ItemsSource="{Binding FilteredEntries}"
                                  SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
+                            <!-- Layout compact : priorité au nombre de mots visibles sans défiler. -->
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                                    <Setter Property="Padding" Value="8,4" />
+                                    <Setter Property="Margin" Value="0" />
+                                </Style>
+                            </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel>
                                         <TextBlock Text="{Binding Word}"
-                                                   FontSize="16"
+                                                   FontSize="14"
                                                    FontWeight="SemiBold" />
-                                        <!--
-                                            LineStackingStrategy fige la hauteur de chaque ligne :
-                                            MaxHeight = 3 lignes exactement, jamais de ligne rognée.
-                                        -->
-                                        <TextBlock Text="{Binding Definition}"
-                                                   Margin="0,3,0,0"
-                                                   TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource Brush.Text.Secondary}"
-                                                   LineHeight="16"
-                                                   LineStackingStrategy="BlockLineHeight"
-                                                   MaxHeight="48" />
 
-                                        <ItemsControl Margin="0,6,0,0">
+                                        <ItemsControl Margin="0,2,0,0">
                                             <ItemsControl.ItemsSource>
                                                 <MultiBinding Converter="{StaticResource CategoryNamesConverter}">
                                                     <Binding Path="CategoryIds" />
@@ -234,12 +319,12 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border Margin="0,0,5,4"
-                                                            Padding="7,2"
+                                                    <Border Margin="0,0,4,2"
+                                                            Padding="6,1"
                                                             Background="{DynamicResource Brush.Chip.Accent.Background}"
-                                                            CornerRadius="9">
+                                                            CornerRadius="8">
                                                         <TextBlock Text="{Binding}"
-                                                                   FontSize="11"
+                                                                   FontSize="10"
                                                                    Foreground="{DynamicResource Brush.Chip.Accent.Foreground}" />
                                                     </Border>
                                                 </DataTemplate>
@@ -247,8 +332,8 @@
                                         </ItemsControl>
 
                                         <TextBlock Text="{Binding Source}"
-                                                   Margin="0,4,0,0"
-                                                   FontSize="11"
+                                                   Margin="0,2,0,0"
+                                                   FontSize="10"
                                                    Foreground="{DynamicResource Brush.Text.Secondary}"
                                                    Opacity="0.8"
                                                    TextTrimming="CharacterEllipsis" />
