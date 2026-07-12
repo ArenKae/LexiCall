@@ -1,3 +1,6 @@
+// ViewModel de la fenêtre de gestion des catégories.
+// Les changements sont d'abord appliqués à une copie locale ; ils ne remplacent
+// les catégories de l'application que lorsque l'utilisateur clique sur Valider.
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -22,6 +25,8 @@ public sealed class CategoriesWindowViewModel : INotifyPropertyChanged
                 .Select(CloneCategory)
                 .OrderBy(category => category.Name));
 
+        // On garde la liste des catégories utilisées pour empêcher une suppression
+        // qui laisserait des entrées pointer vers une catégorie inexistante.
         _usedCategoryIds = entries
             .SelectMany(entry => entry.CategoryIds)
             .ToHashSet();
@@ -172,6 +177,8 @@ public sealed class CategoriesWindowViewModel : INotifyPropertyChanged
 
     public bool SavePendingChanges()
     {
+        // Valider doit être confortable : si l'utilisateur vient de saisir une
+        // nouvelle catégorie, on l'ajoute avant de fermer la fenêtre.
         if (SelectedCategory is null)
         {
             return string.IsNullOrWhiteSpace(Name) && string.IsNullOrWhiteSpace(Description)

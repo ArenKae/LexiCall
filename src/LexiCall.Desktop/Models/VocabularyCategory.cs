@@ -1,3 +1,6 @@
+// Représente une catégorie de vocabulaire.
+// Les entrées référencent les catégories par Id pour permettre de renommer une
+// catégorie sans modifier toutes les entrées qui l'utilisent.
 namespace LexiCall.Desktop.Models;
 
 public sealed class VocabularyCategory

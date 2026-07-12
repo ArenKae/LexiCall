@@ -7,6 +7,10 @@
         WindowStartupLocation="CenterOwner"
         Background="#F7F7FA"
         FontFamily="Segoe UI">
+    <!--
+        CRUD minimal des catégories. Les changements restent locaux à cette
+        fenêtre jusqu'au clic sur Valider.
+    -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

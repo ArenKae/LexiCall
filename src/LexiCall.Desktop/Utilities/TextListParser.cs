@@ -1,3 +1,5 @@
+// Fonctions utilitaires pour convertir les champs texte du formulaire en listes.
+// Exemple : "rapide, vif" devient ["rapide", "vif"].
 namespace LexiCall.Desktop.Utilities;
 
 public static class TextListParser

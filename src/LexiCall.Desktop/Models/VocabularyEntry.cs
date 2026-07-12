@@ -1,3 +1,6 @@
+// Représente un mot enregistré dans LexiCall.
+// Une entrée peut exister sans catégorie : les catégories servent seulement au tri
+// et à l'organisation visuelle, elles ne sont pas obligatoires.
 namespace LexiCall.Desktop.Models;
 
 public sealed class VocabularyEntry

@@ -10,6 +10,10 @@
         WindowStartupLocation="CenterScreen"
         Background="#F7F7FA"
         FontFamily="Segoe UI">
+    <!--
+        Fenêtre principale : recherche, liste filtrée, détail du mot sélectionné
+        et boutons ouvrant les fenêtres modales.
+    -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

@@ -1,13 +1,10 @@
-﻿using System.Configuration;
-using System.Data;
+// Point d'entrée WPF de l'application.
+// App.xaml choisit la fenêtre de démarrage ; ce fichier restera léger tant que
+// l'application n'a pas besoin d'initialisation globale.
 using System.Windows;
 
 namespace LexiCall.Desktop;
 
-/// <summary>
-/// Interaction logic for App.xaml
-/// </summary>
 public partial class App : Application
 {
 }
-

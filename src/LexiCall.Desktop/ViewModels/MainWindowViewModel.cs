@@ -1,3 +1,6 @@
+// ViewModel principal de l'application.
+// Il expose les données bindées par MainWindow.xaml : liste complète, liste
+// filtrée, sélection courante, recherche, catégories et opérations CRUD.
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
@@ -39,6 +42,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public ObservableCollection<VocabularyCategory> Categories { get; }
 
+    // La liste affichée par l'UI. On garde Entries comme source complète, puis on
+    // reconstruit FilteredEntries à chaque recherche ou modification importante.
     public ObservableCollection<VocabularyEntry> FilteredEntries { get; }
 
     public string DataFilePath => _repository.FilePath;
@@ -147,6 +152,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         var categoryIds = Categories.Select(category => category.Id).ToHashSet();
 
+        // Une catégorie supprimée ne doit pas laisser d'Id mort dans les entrées.
+        // Les entrées restent valides même si elles n'ont plus aucune catégorie.
         foreach (var entry in Entries)
         {
             entry.CategoryIds.RemoveAll(categoryId => !categoryIds.Contains(categoryId));
@@ -268,6 +275,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void RefreshFilteredEntries()
     {
+        // ObservableCollection notifie WPF des ajouts/retraits. C'est pour cela
+        // que la ListBox se met à jour automatiquement après le filtrage.
         var selectedEntryId = SelectedEntry?.Id;
         var matchingEntries = Entries
             .Where(EntryMatchesSearch)
@@ -315,6 +324,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         var normalizedQuery = NormalizeForSearch(SearchQuery);
 
+        // La recherche reste volontairement simple : pas d'index, juste un scan en
+        // mémoire. C'est suffisant pour la Phase 1 et quelques centaines de mots.
         return SearchFieldMatches(entry.Word, normalizedQuery) ||
             SearchFieldMatches(entry.Definition, normalizedQuery) ||
             SearchFieldMatches(entry.Notes, normalizedQuery) ||
@@ -351,6 +362,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private static string NormalizeForSearch(string value)
     {
+        // Supprime les accents avant comparaison : "ephemere" peut retrouver
+        // "Éphémère". Utile pour une application centrée sur le français.
         var normalized = value.Normalize(NormalizationForm.FormD);
         var builder = new StringBuilder(normalized.Length);
 

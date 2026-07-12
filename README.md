@@ -1,82 +1,90 @@
 # LexiCall
 
-LexiCall est une application personnelle pour collecter, organiser et mémoriser
-le vocabulaire rencontré pendant la lecture.
+LexiCall est une application Windows personnelle pour collecter, organiser,
+rechercher et mémoriser le vocabulaire rencontré pendant la lecture.
 
-Le projet privilégie une application simple, rapide et agréable à utiliser, et peu coûteuse à héberger. Il sert également de projet d'apprentissage full-stack construit progressivement.
+Le projet privilégie une approche simple : une application utile rapidement,
+un stockage local lisible, peu de dépendances, et une architecture suffisamment
+claire pour rester maintenable par une seule personne.
 
-## État du projet
+## État actuel
 
-LexiCall est au début de sa première phase. Le dépôt contient actuellement le
-socle de l'application Windows WPF ; les fonctionnalités métier et le stockage
-JSON restent à implémenter.
+LexiCall est dans sa Phase 1 : application desktop locale, sans backend.
 
-## Fonctionnalités prévues
+Fonctionnalités disponibles :
 
-Une entrée de vocabulaire pourra contenir :
+- CRUD des entrées de vocabulaire ;
+- CRUD des catégories ;
+- assignation optionnelle de plusieurs catégories à une entrée ;
+- entrées autorisées sans catégorie ;
+- recherche locale sur mots, définitions, notes, source, exemples, tags et catégories ;
+- recherche tolérante aux accents ;
+- sauvegarde et rechargement depuis un fichier JSON local ;
+- migration automatique de l’ancien format JSON si nécessaire.
 
-- le mot et sa définition ;
-- des synonymes et des phrases d'exemple ;
-- des notes personnelles ;
-- sa source, par exemple un livre et son auteur ;
-- ses dates de création et de modification ;
-- une ou plusieurs catégories, avec sous-catégories éventuelles ;
-- des tags facultatifs.
+## Modèle fonctionnel
 
-L'application permettra également de gérer les catégories et d'effectuer une
-recherche rapide dans les mots, définitions, notes, exemples et catégories.
+Une entrée de vocabulaire contient :
 
-## Roadmap
+- mot ;
+- définition ;
+- synonymes ;
+- phrases d’exemple ;
+- notes personnelles ;
+- source ;
+- tags ;
+- zéro, une ou plusieurs catégories ;
+- dates de création et modification.
 
-### Phase 1 — Application Windows locale
+Une catégorie contient :
 
-- C# et WPF ;
-- architecture MVVM simple ;
-- fichier JSON unique comme stockage local ;
-- aucun backend et aucune synchronisation.
+- nom ;
+- description optionnelle ;
+- identifiant stable ;
+- parent optionnel, prévu pour de futures sous-catégories ;
+- dates de création et modification.
 
-### Phase 2 — Backend partagé
+Les catégories sont des données d’organisation, pas des données obligatoires.
+Une entrée reste valide même si elle n’a aucune catégorie.
 
-- API REST avec FastAPI ;
-- MongoDB comme source de vérité ;
-- auto-hébergement sur un petit VPS OVH ;
-- migration du client Windows vers l'API.
+## Stockage local
 
-### Phase 3 — Application Android
+Les données sont sauvegardées dans un seul fichier JSON :
 
-- React Native avec Expo ;
-- ajout, modification, révision et recherche du vocabulaire ;
-- utilisation de la même API que l'application Windows.
+```text
+%LOCALAPPDATA%\LexiCall\vocabulary.json
+```
 
-### Phase 4 — Enrichissement facultatif par IA
+Le fichier contient un document racine :
 
-L'IA pourra suggérer des catégories, synonymes, exemples ou tags. Elle restera
-strictement optionnelle : LexiCall devra continuer à fonctionner sans modèle de
-langage. Une première intégration pourra utiliser Ollama sur la machine locale.
+```json
+{
+  "Entries": [],
+  "Categories": []
+}
+```
+
+Les entrées référencent les catégories par `CategoryIds`. Cela permet de
+renommer une catégorie sans modifier toutes les entrées qui l’utilisent.
 
 ## Technologies
 
 | Composant | Technologie |
 | --- | --- |
-| Client Windows | .NET 10, C#, WPF |
-| Stockage initial | JSON |
-| Backend futur | Python, FastAPI |
+| Application desktop | .NET 10, C#, WPF |
+| Architecture UI | MVVM simple |
+| Stockage Phase 1 | JSON local |
+| Backend futur | FastAPI |
 | Base de données future | MongoDB |
-| Client Android futur | React Native, Expo |
-
-Les bibliothèques supplémentaires seront choisies au moment où un besoin concret
-apparaîtra. Le projet évite volontairement les microservices, Kubernetes et les
-abstractions prématurées.
+| Mobile futur | React Native, Expo |
 
 ## Prérequis
 
 - Windows 10 ou 11 ;
 - SDK [.NET 10](https://dotnet.microsoft.com/download/dotnet/10.0) ;
-- VS Code avec **C# Dev Kit**, ou Visual Studio avec la charge de travail
-  « Développement Desktop en .NET ».
+- VS Code avec C# Dev Kit, ou Visual Studio avec la charge Desktop .NET.
 
-Le fichier `global.json` sélectionne le SDK attendu par le dépôt. Vérifier
-l'installation avec :
+Vérifier le SDK :
 
 ```powershell
 dotnet --version
@@ -92,15 +100,89 @@ dotnet build
 dotnet run --project src/LexiCall.Desktop
 ```
 
-## Structure actuelle
+Si `just` est installé :
 
-```text
-LexiCall.sln
-src/
-└── LexiCall.Desktop/                  Application Windows WPF
-    └── Assets/Branding/               Identité visuelle de l'application
+```powershell
+just run
 ```
 
-La prochaine étape consiste à réaliser une première tranche fonctionnelle :
-afficher une liste de mots, ajouter un mot, puis sauvegarder et recharger cette
-liste depuis un fichier JSON.
+## Structure du projet
+
+```text
+src/
+└── LexiCall.Desktop/
+    ├── Models/             Modèles métier : entrée, catégorie, base JSON
+    ├── ViewModels/         État et logique de présentation MVVM
+    ├── Services/           Persistance locale JSON
+    ├── Commands/           Commandes WPF réutilisables
+    ├── Utilities/          Helpers texte simples
+    ├── MainWindow.xaml     Vue principale : recherche, liste, détail
+    ├── EntryEditorWindow   Modale d’ajout/modification d’entrée
+    └── CategoriesWindow    Modale de gestion des catégories
+```
+
+## Architecture actuelle
+
+Le flux principal est :
+
+```text
+MainWindow.xaml
+  ↕ bindings
+MainWindowViewModel
+  ↕
+VocabularyRepository
+  ↕
+vocabulary.json
+```
+
+Les fenêtres modales (`EntryEditorWindow`, `CategoriesWindow`) travaillent sur
+un ViewModel dédié. Quand l’utilisateur valide, elles renvoient le résultat à
+`MainWindowViewModel`, qui met à jour les collections et sauvegarde le JSON.
+
+## Roadmap
+
+### Phase 1 — Desktop local
+
+Objectif : application Windows utilisable sans serveur.
+
+Déjà fait :
+
+- CRUD entrées ;
+- CRUD catégories ;
+- recherche locale ;
+- persistance JSON.
+
+Prochaines améliorations probables :
+
+- meilleure présentation visuelle des catégories ;
+- sous-catégories ;
+- import/export ;
+- raccourcis clavier ;
+- tests unitaires sur repository, recherche et validation.
+
+### Phase 2 — Backend partagé
+
+- FastAPI ;
+- MongoDB ;
+- API REST ;
+- hébergement léger sur VPS OVH ;
+- migration progressive du stockage local vers une source de vérité serveur.
+
+### Phase 3 — Android
+
+- React Native avec Expo ;
+- ajout rapide de mots pendant la lecture ;
+- recherche, édition et révision depuis mobile ;
+- synchronisation via l’API.
+
+### Phase 4 — IA optionnelle
+
+Idées possibles :
+
+- suggestions de synonymes ;
+- exemples de phrases ;
+- suggestions de tags ou catégories ;
+- enrichissement local via Ollama ou service serveur optionnel.
+
+L’IA ne doit jamais devenir une dépendance obligatoire : LexiCall doit rester
+utilisable sans modèle de langage.

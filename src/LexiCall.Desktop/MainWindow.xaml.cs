@@ -1,3 +1,6 @@
+// Code-behind de la fenêtre principale.
+// Il reste volontairement mince : il ouvre les fenêtres modales WPF, puis délègue
+// les changements de données au MainWindowViewModel.
 using System.Windows;
 using LexiCall.Desktop.ViewModels;
 
@@ -42,6 +45,8 @@ public partial class MainWindow : Window
             Owner = this
         };
 
+        // Les catégories ne sont remplacées dans l'application qu'après validation
+        // explicite de la fenêtre modale.
         if (dialog.ShowDialog() == true)
         {
             viewModel.ReplaceCategories(dialog.SavedCategories);
@@ -77,6 +82,8 @@ public partial class MainWindow : Window
         }
 
         var selectedEntry = viewModel.SelectedEntry;
+        // Suppression confirmée : elle modifie ensuite immédiatement le JSON local
+        // via le ViewModel.
         var result = MessageBox.Show(
             this,
             $"Supprimer « {selectedEntry.Word} » ?",

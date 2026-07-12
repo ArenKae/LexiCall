@@ -1,3 +1,6 @@
+// ViewModel du formulaire d'ajout/modification d'une entrée.
+// La fenêtre renvoie une SavedEntry validée au MainWindowViewModel, qui décidera
+// ensuite de l'ajouter ou de remplacer l'entrée existante.
 using System.ComponentModel;
 using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
@@ -25,6 +28,9 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     {
         _existingEntry = existingEntry;
         SaveEntryCommand = new RelayCommand(SaveEntry);
+
+        // Les catégories sont optionnelles : aucune case cochée produit une entrée
+        // valide avec CategoryIds vide.
         CategorySelections = new ObservableCollection<CategorySelectionViewModel>(
             (availableCategories ?? [])
             .OrderBy(category => category.Name)
@@ -135,6 +141,8 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         var word = Word.Trim();
         var definition = Definition.Trim();
 
+        // Validation minimale pour rester productif : seules les données
+        // nécessaires à l'existence d'une entrée sont obligatoires.
         if (string.IsNullOrWhiteSpace(word))
         {
             ErrorMessage = "Le mot est obligatoire.";
@@ -150,6 +158,8 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         var now = DateTimeOffset.Now;
         SavedEntry = new VocabularyEntry
         {
+            // En édition, on conserve l'identité et la date de création.
+            // En ajout, on génère un nouvel Id.
             Id = _existingEntry?.Id ?? Guid.NewGuid(),
             Word = word,
             Definition = definition,

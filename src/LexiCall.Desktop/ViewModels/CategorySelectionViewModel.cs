@@ -1,3 +1,5 @@
+// Petit ViewModel utilisé par la liste de cases à cocher du formulaire d'entrée.
+// Il découple l'état de sélection UI du modèle VocabularyCategory lui-même.
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using LexiCall.Desktop.Models;

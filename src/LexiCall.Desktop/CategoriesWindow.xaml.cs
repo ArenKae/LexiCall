@@ -1,3 +1,5 @@
+// Code-behind de la fenêtre de gestion des catégories.
+// Il relaie les clics vers le ViewModel et renvoie au parent la liste validée.
 using System.Windows;
 using LexiCall.Desktop.Models;
 using LexiCall.Desktop.ViewModels;
