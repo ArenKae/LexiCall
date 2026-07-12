@@ -16,7 +16,7 @@ public sealed class VocabularyEntry
 
     public string Source { get; set; } = string.Empty;
 
-    public List<string> Categories { get; init; } = [];
+    public List<Guid> CategoryIds { get; init; } = [];
 
     public List<string> Tags { get; init; } = [];
 

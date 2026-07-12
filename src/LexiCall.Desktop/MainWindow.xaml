@@ -17,11 +17,18 @@
         </Grid.RowDefinitions>
 
         <DockPanel Grid.Row="0">
-            <Button DockPanel.Dock="Right"
-                    Content="Ajouter un mot"
-                    Padding="16,8"
-                    Click="AddEntryButton_Click"
-                    ToolTip="Ouvre le formulaire d'ajout." />
+            <StackPanel DockPanel.Dock="Right"
+                        Orientation="Horizontal">
+                <Button Content="Gérer les catégories"
+                        Padding="16,8"
+                        Margin="0,0,10,0"
+                        Click="ManageCategoriesButton_Click"
+                        ToolTip="Ouvre la gestion des catégories." />
+                <Button Content="Ajouter un mot"
+                        Padding="16,8"
+                        Click="AddEntryButton_Click"
+                        ToolTip="Ouvre le formulaire d'ajout." />
+            </StackPanel>
 
             <StackPanel>
                 <TextBlock Text="Mon vocabulaire"
@@ -249,7 +256,7 @@
                                         <TextBlock Text="Catégories"
                                                    Margin="0,16,0,0"
                                                    FontWeight="SemiBold" />
-                                        <ItemsControl ItemsSource="{Binding Categories}"
+                                        <ItemsControl ItemsSource="{Binding DataContext.SelectedEntryCategoryNames, RelativeSource={RelativeSource AncestorType=Window}}"
                                                       Margin="0,8,0,0">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>

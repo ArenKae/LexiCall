@@ -19,11 +19,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         _repository = repository ?? new VocabularyRepository();
 
-        var entries = _repository.DataFileExists
-            ? _repository.LoadEntries()
-            : CreateSampleEntries();
+        var database = _repository.DataFileExists
+            ? _repository.LoadDatabase()
+            : CreateSampleDatabase();
 
-        Entries = new ObservableCollection<VocabularyEntry>(entries);
+        Entries = new ObservableCollection<VocabularyEntry>(database.Entries);
+        Categories = new ObservableCollection<VocabularyCategory>(database.Categories);
         FilteredEntries = [];
         RefreshFilteredEntries();
         SelectedEntry = FilteredEntries.FirstOrDefault();
@@ -35,6 +36,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public ObservableCollection<VocabularyEntry> Entries { get; }
+
+    public ObservableCollection<VocabularyCategory> Categories { get; }
 
     public ObservableCollection<VocabularyEntry> FilteredEntries { get; }
 
@@ -64,6 +67,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public bool HasSelectedEntry => SelectedEntry is not null;
 
+    public IReadOnlyList<string> SelectedEntryCategoryNames => SelectedEntry is null
+        ? []
+        : GetCategoryNames(SelectedEntry.CategoryIds).ToList();
+
     public string EmptyListMessage => HasEntries
         ? "Aucun résultat pour cette recherche."
         : "Aucun mot pour l’instant. Clique sur « Ajouter un mot » pour commencer.";
@@ -91,6 +98,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _selectedEntry, value))
             {
                 OnPropertyChanged(nameof(HasSelectedEntry));
+                OnPropertyChanged(nameof(SelectedEntryCategoryNames));
                 OnPropertyChanged(nameof(EmptyDetailMessage));
             }
         }
@@ -128,6 +136,27 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SaveEntries();
     }
 
+    public void ReplaceCategories(IEnumerable<VocabularyCategory> categories)
+    {
+        Categories.Clear();
+
+        foreach (var category in categories.OrderBy(category => category.Name))
+        {
+            Categories.Add(category);
+        }
+
+        var categoryIds = Categories.Select(category => category.Id).ToHashSet();
+
+        foreach (var entry in Entries)
+        {
+            entry.CategoryIds.RemoveAll(categoryId => !categoryIds.Contains(categoryId));
+        }
+
+        OnPropertyChanged(nameof(SelectedEntryCategoryNames));
+        RefreshFilteredEntries();
+        SaveEntries();
+    }
+
     public void DeleteEntry(VocabularyEntry entry)
     {
         var index = FindEntryIndex(entry.Id);
@@ -146,11 +175,37 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SaveEntries();
     }
 
-    private static IReadOnlyList<VocabularyEntry> CreateSampleEntries()
+    private static VocabularyDatabase CreateSampleDatabase()
     {
-        return
-        [
-            new VocabularyEntry
+        var durationCategory = new VocabularyCategory
+        {
+            Name = "Durée"
+        };
+        var literatureCategory = new VocabularyCategory
+        {
+            Name = "Littérature"
+        };
+        var characterCategory = new VocabularyCategory
+        {
+            Name = "Caractère"
+        };
+        var philosophyCategory = new VocabularyCategory
+        {
+            Name = "Philosophie"
+        };
+
+        return new VocabularyDatabase
+        {
+            Categories =
+            [
+                durationCategory,
+                literatureCategory,
+                characterCategory,
+                philosophyCategory
+            ],
+            Entries =
+            [
+                new VocabularyEntry
             {
                 Word = "Éphémère",
                 Definition = "Qui ne dure qu'un temps très court.",
@@ -161,10 +216,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 },
                 Notes = "À rapprocher de fugace, qui insiste sur la rapidité.",
                 Source = "Le Petit Prince — Antoine de Saint-Exupéry",
-                Categories = { "Durée", "Littérature" },
+                CategoryIds = { durationCategory.Id, literatureCategory.Id },
                 Tags = { "adjectif" }
             },
-            new VocabularyEntry
+                new VocabularyEntry
             {
                 Word = "Perspicace",
                 Definition = "Qui comprend rapidement et avec justesse.",
@@ -174,10 +229,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     "Son observation perspicace révéla un détail ignoré de tous."
                 },
                 Source = "Lecture personnelle",
-                Categories = { "Caractère" },
+                CategoryIds = { characterCategory.Id },
                 Tags = { "adjectif" }
             },
-            new VocabularyEntry
+                new VocabularyEntry
             {
                 Word = "Liminal",
                 Definition = "Qui se situe à la limite d'un seuil ou entre deux états.",
@@ -188,15 +243,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 },
                 Notes = "Terme fréquent en anthropologie et en critique littéraire.",
                 Source = "Essai sur les espaces de transition",
-                Categories = { "Philosophie", "Littérature" },
+                CategoryIds = { philosophyCategory.Id, literatureCategory.Id },
                 Tags = { "adjectif", "concept" }
             }
-        ];
+            ]
+        };
     }
 
     private void SaveEntries()
     {
-        _repository.SaveEntries(Entries);
+        _repository.SaveDatabase(new VocabularyDatabase
+        {
+            Entries = Entries.ToList(),
+            Categories = Categories.ToList()
+        });
     }
 
     private void OnEntriesChanged()
@@ -261,8 +321,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SearchFieldMatches(entry.Source, normalizedQuery) ||
             SearchFieldsMatch(entry.Synonyms, normalizedQuery) ||
             SearchFieldsMatch(entry.ExampleSentences, normalizedQuery) ||
-            SearchFieldsMatch(entry.Categories, normalizedQuery) ||
+            SearchFieldsMatch(GetCategoryNames(entry.CategoryIds), normalizedQuery) ||
             SearchFieldsMatch(entry.Tags, normalizedQuery);
+    }
+
+    private IEnumerable<string> GetCategoryNames(IEnumerable<Guid> categoryIds)
+    {
+        var categoriesById = Categories.ToDictionary(category => category.Id);
+
+        foreach (var categoryId in categoryIds)
+        {
+            if (categoriesById.TryGetValue(categoryId, out var category))
+            {
+                yield return category.Name;
+            }
+        }
     }
 
     private static bool SearchFieldsMatch(IEnumerable<string> values, string normalizedQuery)

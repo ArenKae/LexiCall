@@ -8,6 +8,7 @@ public sealed class VocabularyRepository
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
+        PropertyNameCaseInsensitive = true,
         WriteIndented = true
     };
 
@@ -22,24 +23,32 @@ public sealed class VocabularyRepository
 
     public bool DataFileExists => File.Exists(_filePath);
 
-    public IReadOnlyList<VocabularyEntry> LoadEntries()
+    public VocabularyDatabase LoadDatabase()
     {
         if (!File.Exists(_filePath))
         {
-            return [];
+            return new VocabularyDatabase();
         }
 
         var json = File.ReadAllText(_filePath);
 
         if (string.IsNullOrWhiteSpace(json))
         {
-            return [];
+            return new VocabularyDatabase();
         }
 
-        return JsonSerializer.Deserialize<List<VocabularyEntry>>(json, JsonOptions) ?? [];
+        using var document = JsonDocument.Parse(json);
+
+        return document.RootElement.ValueKind switch
+        {
+            JsonValueKind.Array => MigrateLegacyDatabase(json),
+            JsonValueKind.Object => SanitizeDatabase(
+                JsonSerializer.Deserialize<VocabularyDatabase>(json, JsonOptions) ?? new VocabularyDatabase()),
+            _ => new VocabularyDatabase()
+        };
     }
 
-    public void SaveEntries(IEnumerable<VocabularyEntry> entries)
+    public void SaveDatabase(VocabularyDatabase database)
     {
         var directory = Path.GetDirectoryName(_filePath);
 
@@ -48,8 +57,74 @@ public sealed class VocabularyRepository
             Directory.CreateDirectory(directory);
         }
 
-        var json = JsonSerializer.Serialize(entries, JsonOptions);
+        var json = JsonSerializer.Serialize(database, JsonOptions);
         File.WriteAllText(_filePath, json);
+    }
+
+    private static VocabularyDatabase MigrateLegacyDatabase(string json)
+    {
+        var legacyEntries = JsonSerializer.Deserialize<List<LegacyVocabularyEntry>>(json, JsonOptions) ?? [];
+        var categoriesByName = new Dictionary<string, VocabularyCategory>(StringComparer.OrdinalIgnoreCase);
+        var entries = new List<VocabularyEntry>();
+
+        foreach (var legacyEntry in legacyEntries)
+        {
+            var categoryIds = new List<Guid>();
+
+            foreach (var categoryName in legacyEntry.Categories.Select(category => category.Trim()))
+            {
+                if (string.IsNullOrWhiteSpace(categoryName))
+                {
+                    continue;
+                }
+
+                if (!categoriesByName.TryGetValue(categoryName, out var category))
+                {
+                    category = new VocabularyCategory
+                    {
+                        Name = categoryName
+                    };
+                    categoriesByName[categoryName] = category;
+                }
+
+                categoryIds.Add(category.Id);
+            }
+
+            entries.Add(new VocabularyEntry
+            {
+                Id = legacyEntry.Id == Guid.Empty ? Guid.NewGuid() : legacyEntry.Id,
+                Word = legacyEntry.Word,
+                Definition = legacyEntry.Definition,
+                Synonyms = legacyEntry.Synonyms,
+                ExampleSentences = legacyEntry.ExampleSentences,
+                Notes = legacyEntry.Notes,
+                Source = legacyEntry.Source,
+                CategoryIds = categoryIds.Distinct().ToList(),
+                Tags = legacyEntry.Tags,
+                CreatedAt = legacyEntry.CreatedAt,
+                UpdatedAt = legacyEntry.UpdatedAt
+            });
+        }
+
+        return SanitizeDatabase(new VocabularyDatabase
+        {
+            Entries = entries,
+            Categories = categoriesByName.Values.ToList()
+        });
+    }
+
+    private static VocabularyDatabase SanitizeDatabase(VocabularyDatabase database)
+    {
+        var categoryIds = database.Categories
+            .Select(category => category.Id)
+            .ToHashSet();
+
+        foreach (var entry in database.Entries)
+        {
+            entry.CategoryIds.RemoveAll(categoryId => !categoryIds.Contains(categoryId));
+        }
+
+        return database;
     }
 
     private static string GetDefaultFilePath()
@@ -63,5 +138,30 @@ public sealed class VocabularyRepository
         }
 
         return Path.Combine(localApplicationData, "LexiCall", "vocabulary.json");
+    }
+
+    private sealed class LegacyVocabularyEntry
+    {
+        public Guid Id { get; init; } = Guid.NewGuid();
+
+        public string Word { get; init; } = string.Empty;
+
+        public string Definition { get; init; } = string.Empty;
+
+        public List<string> Synonyms { get; init; } = [];
+
+        public List<string> ExampleSentences { get; init; } = [];
+
+        public string Notes { get; init; } = string.Empty;
+
+        public string Source { get; init; } = string.Empty;
+
+        public List<string> Categories { get; init; } = [];
+
+        public List<string> Tags { get; init; } = [];
+
+        public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.Now;
+
+        public DateTimeOffset UpdatedAt { get; init; } = DateTimeOffset.Now;
     }
 }

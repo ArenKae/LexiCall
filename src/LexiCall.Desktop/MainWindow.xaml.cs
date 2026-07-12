@@ -13,16 +13,38 @@ public partial class MainWindow : Window
 
     private void AddEntryButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new EntryEditorWindow
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var dialog = new EntryEditorWindow(availableCategories: viewModel.Categories)
         {
             Owner = this
         };
 
         if (dialog.ShowDialog() == true &&
-            dialog.SavedEntry is not null &&
-            DataContext is MainWindowViewModel viewModel)
+            dialog.SavedEntry is not null)
         {
             viewModel.AddEntry(dialog.SavedEntry);
+        }
+    }
+
+    private void ManageCategoriesButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var dialog = new CategoriesWindow(viewModel.Categories, viewModel.Entries)
+        {
+            Owner = this
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            viewModel.ReplaceCategories(dialog.SavedCategories);
         }
     }
 
@@ -34,7 +56,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dialog = new EntryEditorWindow(viewModel.SelectedEntry)
+        var dialog = new EntryEditorWindow(viewModel.SelectedEntry, viewModel.Categories)
         {
             Owner = this
         };

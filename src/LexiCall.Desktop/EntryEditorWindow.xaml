@@ -111,11 +111,48 @@
                                Grid.Column="2"
                                Text="Catégories"
                                FontWeight="SemiBold" />
-                    <TextBox Grid.Row="5"
-                             Grid.Column="2"
-                             Margin="0,6,0,14"
-                             Padding="10,7"
-                             Text="{Binding CategoriesText, UpdateSourceTrigger=PropertyChanged}" />
+                    <Grid Grid.Row="5"
+                          Grid.Column="2"
+                          Margin="0,6,0,14">
+                        <ListBox ItemsSource="{Binding CategorySelections}"
+                                 Height="88"
+                                 Padding="6"
+                                 BorderBrush="#DDDDE5"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.Style>
+                                <Style TargetType="ListBox">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasAvailableCategories}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ListBox.Style>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <CheckBox Content="{Binding Name}"
+                                              IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock Text="Aucune catégorie disponible. Tu peux en créer depuis la fenêtre principale."
+                                   TextWrapping="Wrap"
+                                   Foreground="#666676"
+                                   VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasAvailableCategories}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
 
                     <TextBlock Grid.Row="6"
                                Grid.Column="0"
@@ -152,7 +189,7 @@
         </Border>
 
         <DockPanel Grid.Row="2">
-            <TextBlock Text="Sépare les synonymes, catégories et tags par des virgules."
+            <TextBlock Text="Les catégories sont optionnelles. Sépare les synonymes et tags par des virgules."
                        VerticalAlignment="Center"
                        Foreground="#666676" />
 

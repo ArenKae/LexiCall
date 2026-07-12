@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
 using LexiCall.Desktop.Commands;
 using LexiCall.Desktop.Models;
@@ -15,14 +16,21 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     private string _exampleSentencesText = string.Empty;
     private string _notes = string.Empty;
     private string _source = string.Empty;
-    private string _categoriesText = string.Empty;
     private string _tagsText = string.Empty;
     private string _errorMessage = string.Empty;
 
-    public EntryEditorWindowViewModel(VocabularyEntry? existingEntry = null)
+    public EntryEditorWindowViewModel(
+        VocabularyEntry? existingEntry = null,
+        IEnumerable<VocabularyCategory>? availableCategories = null)
     {
         _existingEntry = existingEntry;
         SaveEntryCommand = new RelayCommand(SaveEntry);
+        CategorySelections = new ObservableCollection<CategorySelectionViewModel>(
+            (availableCategories ?? [])
+            .OrderBy(category => category.Name)
+            .Select(category => new CategorySelectionViewModel(
+                category,
+                existingEntry?.CategoryIds.Contains(category.Id) == true)));
 
         if (existingEntry is not null)
         {
@@ -32,7 +40,6 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             ExampleSentencesText = TextListParser.FormatLineSeparatedText(existingEntry.ExampleSentences);
             Notes = existingEntry.Notes;
             Source = existingEntry.Source;
-            CategoriesText = TextListParser.FormatCommaSeparatedText(existingEntry.Categories);
             TagsText = TextListParser.FormatCommaSeparatedText(existingEntry.Tags);
         }
     }
@@ -42,6 +49,10 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     public event EventHandler? EntrySaved;
 
     public RelayCommand SaveEntryCommand { get; }
+
+    public ObservableCollection<CategorySelectionViewModel> CategorySelections { get; }
+
+    public bool HasAvailableCategories => CategorySelections.Count > 0;
 
     public VocabularyEntry? SavedEntry { get; private set; }
 
@@ -107,12 +118,6 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         set => SetProperty(ref _source, value);
     }
 
-    public string CategoriesText
-    {
-        get => _categoriesText;
-        set => SetProperty(ref _categoriesText, value);
-    }
-
     public string TagsText
     {
         get => _tagsText;
@@ -152,7 +157,10 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             ExampleSentences = TextListParser.ParseLineSeparatedText(ExampleSentencesText),
             Notes = Notes.Trim(),
             Source = Source.Trim(),
-            Categories = TextListParser.ParseCommaSeparatedText(CategoriesText),
+            CategoryIds = CategorySelections
+                .Where(category => category.IsSelected)
+                .Select(category => category.CategoryId)
+                .ToList(),
             Tags = TextListParser.ParseCommaSeparatedText(TagsText),
             CreatedAt = _existingEntry?.CreatedAt ?? now,
             UpdatedAt = now
