@@ -1,9 +1,4 @@
-<!--
-    Thème clair. Palette dérivée de l'icône de l'application :
-    fond crème/parchemin, marine profond pour le texte, bleu ruban pour l'accent.
-    Les clés doivent rester identiques à Colors.Dark.xaml : le ThemeService
-    remplace ce dictionnaire à chaud, les DynamicResource font le reste.
--->
+<!-- Thème clair : mêmes clés de brush que Colors.Dark.xaml, valeurs claires. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 

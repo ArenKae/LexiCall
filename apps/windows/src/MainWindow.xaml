@@ -12,11 +12,8 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!--
-        Fenêtre principale organisée autour des catégories :
-        arbre de navigation à gauche (avec CRUD contextuel), liste filtrée par
-        catégorie + recherche au centre, détail du mot sélectionné à droite.
-    -->
+    <!-- Fenêtre principale : arbre de catégories à gauche (CRUD contextuel),
+         liste filtrée par catégorie + recherche au centre, détail à droite. -->
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -182,8 +179,7 @@
                                             </Style>
                                         </Grid.Style>
 
-                                        <!-- Icône (emoji) : repère visuel qui aide à mémoriser la
-                                             catégorie d'un coup d'œil, en complément de la couleur. -->
+                                        <!-- Icône (emoji) : repère visuel complémentaire à la couleur. -->
                                         <TextBlock Grid.Column="0"
                                                    Text="{Binding DisplayIcon}"
                                                    FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
@@ -280,10 +276,8 @@
                             <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                                 <Setter Property="Padding" Value="9,6,40,6" />
                                 <Style.Triggers>
-                                    <!-- Espace réservé à la loupe seulement à l'état "au repos"
-                                         (vide et non focus) : dès le clic dans le champ, même
-                                         avant toute saisie, le texte doit pouvoir démarrer au
-                                         ras du bord, sans laisser un grand vide devant le curseur. -->
+                                    <!-- Espace réservé à la loupe seulement au repos (vide, non focus) :
+                                         dès le clic, le texte démarre au ras du bord. -->
                                     <MultiDataTrigger>
                                         <MultiDataTrigger.Conditions>
                                             <Condition Binding="{Binding SearchQuery}" Value="" />
@@ -296,10 +290,8 @@
                         </TextBox.Style>
                     </TextBox>
 
-                    <!-- Loupe façon placeholder : purement décorative, ne capte pas le
-                         clic, et ne s'affiche qu'à l'état "au repos" (vide et non focus),
-                         comme un texte de substitution qui s'efface dès qu'on interagit
-                         avec le champ. -->
+                    <!-- Loupe façon placeholder : décorative (IsHitTestVisible=False),
+                         visible seulement au repos (vide, non focus). -->
                     <Canvas Width="14" Height="14"
                             Margin="15,0,0,0"
                             HorizontalAlignment="Left"
@@ -589,15 +581,11 @@
 
                                         <Separator Margin="0,16,0,20" />
 
-                                        <!-- Métadonnées à gauche, image alignée en haut à droite si présente
-                                             (largeur pleine si pas d'image, la colonne image étant Auto et
-                                             se réduisant à 0 quand elle est Collapsed). Sous le seuil de
-                                             WidthBreakpointConverter (typiquement fenêtre maximisée sur un
-                                             écran portrait), les deux Style.Triggers ci-dessous rebasculent
-                                             l'image en 2e ligne pleine largeur plutôt que côte à côte — les
-                                             attachées Grid.Row/Column/ColumnSpan doivent donc rester définies
-                                             par le Style (pas en attribut direct sur l'élément), sans quoi la
-                                             valeur locale primerait toujours sur le Trigger. -->
+                                        <!-- Métadonnées à gauche, image en haut à droite (colonne Auto,
+                                             repliée à 0 si absente). Sous le seuil de WidthBreakpointConverter,
+                                             les Style.Triggers replacent l'image en 2e ligne pleine largeur —
+                                             Grid.Row/Column doivent donc rester définis via Style, pas en
+                                             attribut direct, sinon la valeur locale primerait sur le Trigger. -->
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />

@@ -1,7 +1,6 @@
 // Aide à la navigation dans la hiérarchie des catégories (ParentId).
-// Les données pouvant être éditées à la main dans le JSON, on tolère les
-// parents manquants (traités comme racines) et les cycles (les nœuds d'un
-// cycle sont rattachés à la racine plutôt que perdus).
+// Le JSON pouvant être édité à la main, on tolère parents manquants
+// (traités comme racines) et cycles (rattachés à la racine).
 using LexiCall.Desktop.Models;
 
 namespace LexiCall.Desktop.Utilities;
@@ -9,8 +8,7 @@ namespace LexiCall.Desktop.Utilities;
 public static class CategoryHierarchy
 {
     // Parcours en profondeur : racines triées par nom, puis enfants récursivement.
-    // Le Depth permet aux listes plates (cases à cocher, ComboBox parent)
-    // d'indenter sans construire un vrai arbre.
+    // Le Depth retourné permet aux listes plates d'indenter sans arbre réel.
     public static IReadOnlyList<(VocabularyCategory Category, int Depth)> Flatten(
         IReadOnlyCollection<VocabularyCategory> categories)
     {
@@ -41,8 +39,8 @@ public static class CategoryHierarchy
             Visit(root, 0);
         }
 
-        // Catégories jamais atteintes depuis une racine : elles font partie d'un
-        // cycle de parenté. On les remonte à la racine pour rester visibles.
+        // Catégories jamais atteintes depuis une racine : cycle de parenté,
+        // on les remonte à la racine pour rester visibles.
         foreach (var category in categories.OrderBy(category => category.Name, StringComparer.CurrentCultureIgnoreCase))
         {
             Visit(category, 0);

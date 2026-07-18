@@ -1,6 +1,6 @@
-// Code-behind de la fenêtre Options : réutilise le MainWindowViewModel comme
-// DataContext plutôt qu'un ViewModel dédié, car ThemeToggleText/ToggleTheme et
-// DataFilePath y vivent déjà et sont les seuls réglages exposés pour l'instant.
+// Code-behind de la fenêtre Options : réutilise MainWindowViewModel comme
+// DataContext (pas de ViewModel dédié) puisque ThemeToggleText/DataFilePath y
+// vivent déjà.
 using System.Diagnostics;
 using System.IO;
 using System.Windows;

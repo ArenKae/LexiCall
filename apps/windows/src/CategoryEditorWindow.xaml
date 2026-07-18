@@ -8,12 +8,8 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!--
-        Formulaire modal d'ajout/modification d'une catégorie.
-        Le renommage rapide se fait directement dans l'arbre de la fenêtre
-        principale ; cette fenêtre sert à la création et aux changements de
-        parent ou de description.
-    -->
+    <!-- Formulaire modal d'ajout/modification d'une catégorie (le renommage
+         rapide se fait directement dans l'arbre de la fenêtre principale). -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

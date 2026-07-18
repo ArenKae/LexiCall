@@ -57,9 +57,6 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <!-- Mot + Définition empilés à gauche ; Catégories occupe la même
-                         hauteur totale à droite (Grid.RowSpan) et beaucoup plus haute
-                         qu'avant, pour voir un maximum de catégories d'un coup. -->
                     <TextBlock Grid.Row="0"
                                Grid.Column="0"
                                Text="Mot *"

@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="clr-namespace:LexiCall.Desktop.Converters"
              StartupUri="MainWindow.xaml">
-
+    <!-- Déclaration de l'application : dictionnaires de thème et converters partagés. -->
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>

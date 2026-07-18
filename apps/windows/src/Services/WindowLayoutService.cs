@@ -1,8 +1,6 @@
-// Persiste la taille/position de la fenêtre principale et la largeur de ses deux
-// colonnes redimensionnables (catégories, liste des mots) dans settings.json.
-// La 3e colonne (détail, "*") n'est volontairement pas sauvegardée : elle est
-// censée rester élastique et se déduit des deux autres largeurs et de celle de
-// la fenêtre.
+// Persiste taille/position de la fenêtre principale et largeur des deux colonnes
+// redimensionnables (catégories, liste des mots) dans settings.json. La 3e
+// colonne (détail) reste élastique et n'est volontairement pas sauvegardée.
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -37,14 +35,10 @@ public static class WindowLayoutService
         var width = settings.WindowWidth.Value;
         var height = settings.WindowHeight.Value;
 
-        // Les apps WPF ciblant .NET Core 3.0+ sont per-monitor DPI aware par
-        // défaut : avant la création du HWND, WPF n'a aucun moniteur auquel
-        // rattacher la fenêtre pour choisir l'échelle DPI à appliquer à
-        // Window.Left/Top (des unités logiques, pas des pixels), et se rabat sur
-        // le moniteur *sous le curseur* — d'où une position qui varie selon la
-        // souris au lancement plutôt que d'être stable. On attend donc que le
-        // HWND existe (SourceInitialized) puis on positionne en pixels physiques
-        // via l'API Win32 directement, sans passer par Window.Left/Top/Width/Height.
+        // Avant la création du HWND, WPF ne peut pas résoudre le DPI cible et se
+        // rabat sur le moniteur sous le curseur (position instable au lancement).
+        // On attend donc SourceInitialized puis on positionne en pixels physiques
+        // via Win32, plutôt que Window.Left/Top/Width/Height.
         window.WindowStartupLocation = WindowStartupLocation.Manual;
         window.SourceInitialized += (_, _) =>
         {
@@ -63,10 +57,9 @@ public static class WindowLayoutService
         var settings = SettingsStore.Load();
         var handle = new WindowInteropHelper(window).Handle;
 
-        // GetWindowPlacement().NormalPosition donne la géométrie "restaurée" en
-        // pixels physiques, même si la fenêtre est actuellement maximisée/réduite
-        // — contrairement à Window.Left/Top/Width/Height, qui restent en unités
-        // logiques dépendantes du DPI du moniteur courant.
+        // NormalPosition donne la géométrie "restaurée" en pixels physiques même
+        // si la fenêtre est maximisée/réduite, contrairement à Window.Left/Top/
+        // Width/Height qui restent en unités logiques dépendantes du DPI courant.
         if (handle != IntPtr.Zero && TryGetNormalBounds(handle, out var bounds))
         {
             settings.WindowLeft = bounds.Left;
@@ -80,10 +73,8 @@ public static class WindowLayoutService
         SettingsStore.Save(settings);
     }
 
-    // Écran déconnecté (ou résolution changée) depuis la dernière session : on
-    // ignore la position sauvegardée plutôt que de faire apparaître la fenêtre
-    // hors de vue. GetSystemMetrics(SM_*VIRTUALSCREEN) est en pixels physiques,
-    // comme les coordonnées manipulées ci-dessus.
+    // Ignore la position sauvegardée si l'écran a été déconnecté ou la résolution
+    // changée, pour éviter que la fenêtre apparaisse hors de vue.
     private static bool IsOnScreen(double left, double top, double width, double height)
     {
         const double margin = 50;

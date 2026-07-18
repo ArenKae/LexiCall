@@ -259,11 +259,8 @@
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
     </Style>
 
-    <!--
-        TreeViewItem entièrement retemplé : la sélection et le survol utilisent
-        les couleurs du thème (le template par défaut impose les couleurs système),
-        et IsExpanded/IsSelected sont synchronisés avec le ViewModel du nœud.
-    -->
+    <!-- TreeViewItem retemplé pour utiliser les couleurs du thème (au lieu des
+         couleurs système) ; IsExpanded/IsSelected liés au ViewModel du nœud. -->
     <Style TargetType="TreeViewItem">
         <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
         <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
@@ -293,8 +290,8 @@
                             </Grid>
                         </Border>
 
-                        <!-- Séparateur sous les catégories racines : posé hors de HeaderBorder pour
-                             qu'il n'agrandisse pas la zone sur laquelle la flèche Expander se centre. -->
+                        <!-- Séparateur sous les catégories racines, hors de HeaderBorder pour ne
+                             pas agrandir la zone de centrage de la flèche Expander. -->
                         <Border>
                             <Border.Style>
                                 <Style TargetType="Border">
@@ -551,10 +548,7 @@
         </Setter>
     </Style>
 
-    <!--
-        Barres de défilement fines et arrondies, aux couleurs du thème :
-        pas de flèches, juste une piste transparente et un pouce discret.
-    -->
+    <!-- Barres de défilement fines : pas de flèches, piste transparente, pouce discret. -->
     <Style x:Key="ScrollBarPageButtonStyle" TargetType="RepeatButton">
         <Setter Property="IsTabStop" Value="False" />
         <Setter Property="Focusable" Value="False" />

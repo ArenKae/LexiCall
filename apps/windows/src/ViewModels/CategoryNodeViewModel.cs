@@ -1,7 +1,6 @@
-// Nœud de l'arbre latéral des catégories. Enveloppe soit une vraie catégorie,
-// soit un nœud virtuel ("Toutes les entrées", "Sans catégorie") qui sert
-// uniquement de filtre. La sélection remonte au MainWindowViewModel via un
-// callback : le ViewModel ne référence jamais le TreeView directement.
+// Nœud de l'arbre latéral des catégories : une vraie catégorie ou un nœud
+// virtuel filtre ("Toutes les entrées", "Sans catégorie"). La sélection
+// remonte au MainWindowViewModel via callback, jamais via le TreeView.
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -101,10 +100,8 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
         set => SetProperty(ref _isExpanded, value);
     }
 
-    // Le dépli/repli est décidé uniquement par le clic (MainWindow.xaml.cs,
-    // CategoryNode_MouseLeftButtonDown) : la sélection ne force plus IsExpanded,
-    // sinon elle écraserait un repli volontaire d'un nœud qu'on reclique alors
-    // qu'il n'était pas encore sélectionné.
+    // Dépli/repli décidé uniquement par le clic (MainWindow.xaml.cs) ; la
+    // sélection ne force pas IsExpanded, pour ne pas écraser un repli volontaire.
     public bool IsSelected
     {
         get => _isSelected;

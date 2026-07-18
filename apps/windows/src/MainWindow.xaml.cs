@@ -1,7 +1,6 @@
-// Code-behind de la fenêtre principale.
-// Il reste volontairement mince : il ouvre les fenêtres modales, traduit les
-// interactions de l'arbre (menu contextuel, renommage inline) en appels au
-// MainWindowViewModel, et affiche les confirmations/erreurs en MessageBox.
+// Code-behind de la fenêtre principale : ouvre les fenêtres modales, relaie les
+// interactions de l'arbre de catégories au MainWindowViewModel, et affiche les
+// confirmations/erreurs en MessageBox.
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -23,9 +22,8 @@ public partial class MainWindow : Window
         WindowLayoutService.Apply(this, CategoryColumn, EntryListColumn);
         Closing += MainWindow_Closing;
 
-        // Attaché au TreeView (et non au contenu du DataTemplate) pour que la zone
-        // cliquable du reveal/hide corresponde exactement au halo de sélection du
-        // TreeViewItem.
+        // Attaché au TreeView (pas au DataTemplate) pour que la zone cliquable
+        // corresponde au halo de sélection du TreeViewItem.
         CategoryTreeView.AddHandler(
             PreviewMouseLeftButtonDownEvent,
             new MouseButtonEventHandler(CategoryNode_MouseLeftButtonDown),
@@ -54,9 +52,7 @@ public partial class MainWindow : Window
 
     private void AddEntryButton_Click(object sender, RoutedEventArgs e)
     {
-        // Pré-coche la catégorie active dans l'arbre : si l'utilisateur navigue
-        // dans une catégorie puis ajoute un mot, il l'ajoute très probablement à
-        // celle-ci.
+        // Pré-sélectionne la catégorie active de l'arbre : ajout probable dans le contexte courant.
         var dialog = new EntryEditorWindow(
             availableCategories: ViewModel.Categories,
             initialCategoryId: ViewModel.SelectedCategoryNode?.Category?.Id)
@@ -98,8 +94,6 @@ public partial class MainWindow : Window
         }
 
         var selectedEntry = ViewModel.SelectedEntry;
-        // Suppression confirmée : elle modifie ensuite immédiatement le JSON local
-        // via le ViewModel.
         var confirmed = ConfirmationDialog.Show(
             this,
             $"Supprimer « {selectedEntry.Word} » ?",
@@ -111,9 +105,8 @@ public partial class MainWindow : Window
         }
     }
 
-    // L'élément cliqué porte l'entrée en DataContext (DataTemplate de la colonne
-    // Détails) : on redécode le base64 plutôt que de réutiliser le Source du
-    // contrôle Image, pour ne pas dépendre de l'ordre binding/évènement.
+    // Redécode le base64 plutôt que de réutiliser le Source de l'Image, pour ne
+    // pas dépendre de l'ordre binding/évènement.
     private void DetailImage_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: Models.VocabularyEntry entry })
@@ -131,9 +124,7 @@ public partial class MainWindow : Window
         new ImagePreviewWindow(this, image).ShowDialog();
     }
 
-    // Le chip porte la catégorie en DataContext (converters.CategoryNamesConverter
-    // et SelectedEntryCategories exposent désormais des VocabularyCategory, pas
-    // de simples noms, pour permettre ce clic).
+    // Le chip porte la catégorie (VocabularyCategory) en DataContext.
     private void CategoryChip_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (sender is FrameworkElement { DataContext: Models.VocabularyCategory category })
@@ -238,18 +229,9 @@ public partial class MainWindow : Window
         }
     }
 
-    // Prend en charge sélection + dépli nous-mêmes et marque l'évènement Handled,
-    // plutôt que de laisser TreeViewItem gérer le clic lui-même : son comportement
-    // natif bascule aussi IsExpanded sur un double-clic (basé sur ClickCount), ce
-    // qui entrait en conflit avec notre propre bascule lors de clics rapprochés
-    // (les deux bascules s'annulaient, donnant l'impression que le clic était
-    // ignoré). En gérant tout ici, chaque MouseLeftButtonDown produit exactement
-    // un dépli/repli, peu importe la vitesse des clics.
-    //
-    // On remonte depuis le point de clic jusqu'au TreeViewItem plutôt que de lire
-    // `sender` directement, pour que la zone cliquable corresponde exactement au
-    // halo de sélection (peint par le Border du ControlTemplate de TreeViewItem,
-    // plus grand que la seule Grid de contenu du DataTemplate).
+    // Gère nous-mêmes le clic (sélection + dépli) pour éviter un conflit avec le
+    // double-clic natif de TreeViewItem ; on remonte au TreeViewItem depuis le
+    // point de clic pour matcher le halo de sélection, plus large que la Grid.
     private void CategoryNode_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         var element = e.OriginalSource as DependencyObject;
@@ -294,10 +276,8 @@ public partial class MainWindow : Window
 
     // ─── Renommage inline ───
 
-    // Le TextBox reste Collapsed tant que IsEditing est faux ; son Loaded ne se
-    // déclenche donc qu'une fois, à la création du conteneur du nœud, bien avant
-    // le premier BeginEdit(). On réagit plutôt à chaque passage à Visible, en
-    // différant le focus après la passe de layout qui suit ce changement.
+    // Loaded ne se déclenche qu'une fois (à la création du conteneur), bien avant
+    // le premier BeginEdit() : on réagit donc à Visible à chaque édition.
     private void RenameTextBox_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (sender is not TextBox { DataContext: CategoryNodeViewModel { IsEditing: true } } textBox ||

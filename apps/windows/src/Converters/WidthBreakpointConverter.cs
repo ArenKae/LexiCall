@@ -1,9 +1,6 @@
-// Détecte le passage sous le seuil de largeur où la colonne Détails bascule
+// Détecte le passage sous le seuil de largeur où le panneau Détails bascule
 // d'une disposition côte à côte (métadonnées | image) vers une disposition
-// empilée (métadonnées pleine largeur, puis image en dessous) — typiquement
-// quand LexiCall est maximisé sur un écran en mode portrait. Utilisé via
-// DataTrigger sur l'ActualWidth du Grid conteneur, qui se met à jour en
-// direct pendant un redimensionnement de fenêtre.
+// empilée. Utilisé via DataTrigger sur l'ActualWidth du Grid conteneur.
 using System.Globalization;
 using System.Windows.Data;
 

@@ -1,16 +1,7 @@
 // Base d'icônes (emoji) proposées par IconPickerWindow, regroupées en
-// collections thématiques que l'utilisateur peut parcourir ou filtrer par
-// mot-clé. Les emoji sont rendus par Segoe UI Emoji (fournie avec Windows) :
-// pas de police ni de fichier d'assets à importer. Les collections reprennent
-// les grandes familles de catégories déjà utilisées dans le vocabulaire
-// (caractère, corps, nature, mer, habitat, vêtements, religion, société,
-// objets, temps, parole) ainsi que des domaines volontairement plus larges
-// (nourriture, transport, technologie, musique, sport, argent, fêtes) pour
-// couvrir un maximum de mots concrets.
-// Volontairement aucun emoji de visage (les « smileys » ronds et jaunes) :
-// on privilégie des objets, symboles et figures qui se distinguent visuellement
-// les uns des autres plutôt que des variations quasi identiques.
-// Mots-clés volontairement sans accents pour une recherche simple (Contains).
+// collections thématiques filtrables par mot-clé. Rendues via Segoe UI Emoji
+// (fournie avec Windows), pas d'assets à gérer. Mots-clés sans accents pour
+// une recherche simple par Contains.
 namespace LexiCall.Desktop.Utilities;
 
 public sealed record CategoryIconOption(string Glyph, string Keywords);

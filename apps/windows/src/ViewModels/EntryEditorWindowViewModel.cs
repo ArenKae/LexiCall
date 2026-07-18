@@ -32,11 +32,8 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         SaveEntryCommand = new RelayCommand(SaveEntry);
         RemoveImageCommand = new RelayCommand(RemoveImage);
 
-        // Les catégories sont optionnelles : aucune case cochée produit une entrée
-        // valide avec CategoryIds vide. L'ordre hiérarchique (parent puis enfants,
-        // avec Depth) permet à la liste de refléter l'arborescence par indentation.
-        // En ajout depuis une catégorie sélectionnée dans l'arbre, on pré-coche
-        // celle-ci (initialCategoryId n'a de sens qu'à la création, pas en édition).
+        // Catégories optionnelles (CategoryIds peut rester vide). En création,
+        // initialCategoryId pré-coche la catégorie choisie dans l'arbre.
         CategorySelections = new ObservableCollection<CategorySelectionViewModel>(
             CategoryHierarchy.Flatten((availableCategories ?? []).ToList())
             .Select(item => new CategorySelectionViewModel(
@@ -161,9 +158,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _errorMessage, value);
     }
 
-    // Appelé par le code-behind après sélection d'un fichier via OpenFileDialog :
-    // le redimensionnement/compression est délégué à ImageProcessor, qui ne
-    // dépend pas de WPF côté fenêtre.
+    // Redimensionnement/compression délégués à ImageProcessor (pas de dépendance WPF ici).
     public void SetImageFromFile(string filePath)
     {
         if (ImageProcessor.TryEncodeImage(filePath, out var base64Image, out var error))
@@ -187,8 +182,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         var word = Word.Trim();
         var definition = Definition.Trim();
 
-        // Validation minimale pour rester productif : seules les données
-        // nécessaires à l'existence d'une entrée sont obligatoires.
+        // Seuls le mot et la définition sont obligatoires.
         if (string.IsNullOrWhiteSpace(word))
         {
             ErrorMessage = "Le mot est obligatoire.";
@@ -204,8 +198,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         var now = DateTimeOffset.Now;
         SavedEntry = new VocabularyEntry
         {
-            // En édition, on conserve l'identité et la date de création.
-            // En ajout, on génère un nouvel Id.
+            // Id/CreatedAt conservés en édition, générés en création.
             Id = _existingEntry?.Id ?? Guid.NewGuid(),
             Word = word,
             Definition = definition,

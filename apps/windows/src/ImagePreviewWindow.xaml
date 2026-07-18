@@ -10,12 +10,9 @@
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI"
         KeyDown="Window_KeyDown">
-    <!--
-        Aperçu agrandi de l'image d'une entrée, ouvert au clic depuis la colonne
-        Détails. MaxWidth/MaxHeight de l'Image sont fixés en code-behind (fraction
-        de la zone de travail de l'écran) pour ne jamais déborder même sur les
-        images stockées à la résolution maximale (1024 px).
-    -->
+    <!-- Aperçu agrandi de l'image d'une entrée (ouvert au clic depuis la colonne
+         Détails). MaxWidth/MaxHeight sont fixés en code-behind en fraction de la
+         zone de travail, pour ne jamais déborder l'écran. -->
     <StackPanel Margin="24">
         <Image x:Name="PreviewImage"
                Stretch="Uniform"

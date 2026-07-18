@@ -1,8 +1,6 @@
-// ViewModel du formulaire d'ajout/modification d'une catégorie.
-// Même pattern que EntryEditorWindowViewModel : validation locale, puis
-// événement CategorySaved avec le résultat dans SavedCategory. Le sélecteur
-// de parent exclut la catégorie éditée et ses descendantes pour empêcher
-// la création d'un cycle.
+// ViewModel du formulaire d'ajout/modification d'une catégorie : validation
+// locale puis événement CategorySaved avec le résultat dans SavedCategory.
+// Le sélecteur de parent exclut la catégorie éditée et ses descendantes.
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;

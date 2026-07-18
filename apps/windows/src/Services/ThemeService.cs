@@ -1,6 +1,5 @@
-// Bascule clair/sombre : remplace le dictionnaire de couleurs fusionné dans
-// Application.Resources et persiste le choix dans settings.json (partagé avec
-// WindowLayoutService via SettingsStore). Les styles utilisent DynamicResource,
+// Bascule clair/sombre : remplace le dictionnaire de couleurs de l'app et
+// persiste le choix dans settings.json. Les styles utilisent DynamicResource,
 // donc le changement s'applique à chaud sans recharger les fenêtres.
 using System.Runtime.InteropServices;
 using System.Windows;

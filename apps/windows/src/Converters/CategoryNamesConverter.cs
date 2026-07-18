@@ -1,10 +1,7 @@
-// Convertit les CategoryIds d'une entrée en catégories affichables (chips de
-// la liste). MultiBinding : [0] = List<Guid> de l'entrée, [1] = collection des
-// catégories connues. On retourne les catégories elles-mêmes (pas juste leur
-// nom) pour que les chips puissent porter l'Id nécessaire au clic (sélection
-// de la catégorie dans le panneau de gauche). La liste filtrée étant
-// reconstruite à chaque mutation, les chips se rafraîchissent sans
-// notification supplémentaire.
+// Convertit les CategoryIds d'une entrée en catégories affichables (chips).
+// MultiBinding : [0] = List<Guid> de l'entrée, [1] = collection des catégories
+// connues. Retourne les catégories elles-mêmes (pas juste leur nom) pour que
+// les chips portent l'Id nécessaire au clic (sélection dans le panneau gauche).
 using System.Globalization;
 using System.Windows.Data;
 using LexiCall.Desktop.Models;

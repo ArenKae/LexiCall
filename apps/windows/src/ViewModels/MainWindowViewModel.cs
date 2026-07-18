@@ -1,7 +1,6 @@
-// ViewModel principal de l'application.
-// Il expose les données bindées par MainWindow.xaml : l'arbre des catégories
-// (navigation principale), la liste filtrée par catégorie + recherche, la
-// sélection courante et les opérations CRUD sur les entrées et les catégories.
+// ViewModel principal : expose à MainWindow.xaml l'arbre des catégories,
+// la liste d'entrées filtrée (catégorie + recherche) et les opérations CRUD
+// sur les entrées et les catégories.
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
@@ -48,8 +47,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public ObservableCollection<VocabularyCategory> Categories { get; }
 
-    // La liste affichée par l'UI. On garde Entries comme source complète, puis on
-    // reconstruit FilteredEntries à chaque recherche ou modification importante.
+    // Liste affichée par l'UI, reconstruite à partir d'Entries à chaque recherche ou mutation.
     public ObservableCollection<VocabularyEntry> FilteredEntries { get; }
 
     // Arbre latéral : nœuds virtuels ("Toutes", "Sans catégorie") puis les
@@ -86,9 +84,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public CategoryNodeViewModel? SelectedCategoryNode => _selectedCategoryNode;
 
-    // Nom de la catégorie sélectionnée (dernier niveau seulement : avec des
-    // noms de catégories longs, afficher tout le chemin ne tenait pas dans la
-    // largeur disponible). Le chemin complet reste accessible en infobulle.
+    // Dernier niveau seulement ; le chemin complet est exposé via SelectedCategoryTooltip.
     public string SelectedCategoryLabel => _selectedCategoryNode?.DisplayName ?? "Toutes les entrées";
 
     // Null quand le chemin complet n'apporterait rien (nœud virtuel ou racine).
@@ -96,10 +92,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ? GetCategoryPath(category)
         : null;
 
-    // Catégories de l'entrée sélectionnée, dans l'ordre de CategoryIds : les
-    // objets complets (pas juste leur nom) pour que les chips du détail
-    // puissent porter l'Id nécessaire au clic (sélection dans le panneau de
-    // gauche, cf. SelectCategory).
+    // Objets complets (pas juste le nom) : les chips du détail ont besoin de
+    // l'Id pour le clic (cf. SelectCategory).
     public IReadOnlyList<VocabularyCategory> SelectedEntryCategories => SelectedEntry is null
         ? []
         : GetCategories(SelectedEntry.CategoryIds).ToList();
@@ -165,9 +159,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Entries.Insert(0, entry);
         OnEntriesChanged();
 
-        // On réinitialise la recherche pour que le mot ajouté soit toujours visible ;
-        // la catégorie sélectionnée est en revanche préservée par RebuildCategoryTree
-        // (le formulaire d'ajout la pré-coche déjà pour le nouveau mot).
+        // Recherche réinitialisée pour que le mot ajouté reste visible ; la
+        // catégorie sélectionnée, elle, est préservée par RebuildCategoryTree.
         _searchQuery = string.Empty;
         OnPropertyChanged(nameof(SearchQuery));
 
@@ -221,8 +214,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     // Retourne un message d'erreur, ou null si l'opération a réussi.
     public string? SaveCategory(VocabularyCategory category)
     {
-        // Garde-fou anti-cycle : la fenêtre d'édition exclut déjà les descendants
-        // du sélecteur de parent, mais une incohérence ne doit jamais être persistée.
+        // Garde-fou anti-cycle : l'éditeur exclut déjà les descendants du sélecteur
+        // de parent, mais on revérifie avant de persister.
         if (category.ParentId is Guid parentId &&
             (parentId == category.Id ||
              CategoryHierarchy.GetDescendantIds(Categories, category.Id).Contains(parentId)))
@@ -321,8 +314,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        // Le TreeView désélectionne déjà l'ancien nœud via le binding, mais le
-        // ViewModel doit rester cohérent même sans vue attachée.
+        // Le ViewModel doit rester cohérent même sans vue attachée.
         var previousNode = _selectedCategoryNode;
         _selectedCategoryNode = node;
         previousNode?.IsSelected = false;
@@ -332,9 +324,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RefreshFilteredEntries();
     }
 
-    // Appelé quand l'utilisateur clique un chip de catégorie (liste ou détail) :
-    // sélectionne cette catégorie dans le panneau de gauche, comme si elle avait
-    // été cliquée directement dans l'arbre.
+    // Clic sur un chip de catégorie : sélectionne la même catégorie dans l'arbre de gauche.
     public void SelectCategory(Guid categoryId)
     {
         var node = CollectNodes(CategoryTree)
@@ -353,9 +343,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         node.IsSelected = true;
     }
 
-    // Remonte la chaîne des nœuds parents dans l'arbre affiché (pas seulement
-    // la hiérarchie de catégories) pour que le nœud ciblé soit visible une fois
-    // déplié.
+    // Remonte les parents dans l'arbre affiché (pas juste la hiérarchie de
+    // catégories) pour pouvoir déplier jusqu'au nœud ciblé.
     private IEnumerable<CategoryNodeViewModel> GetAncestors(CategoryNodeViewModel node)
     {
         var ancestorIds = new List<Guid>();
@@ -373,8 +362,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void RebuildCategoryTree()
     {
-        // L'arbre est reconstruit à chaque mutation (les compteurs et le tri
-        // changent). On préserve l'état d'expansion et la sélection courante.
+        // Reconstruit à chaque mutation ; on préserve l'expansion et la sélection courante.
         var expandedIds = CollectNodes(CategoryTree)
             .Where(node => node.Category is not null && node.IsExpanded)
             .Select(node => node.Category!.Id)
@@ -405,8 +393,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             if (depth == 0)
             {
-                // Chaque racine reçoit sa propre couleur ; ses descendantes
-                // héritent de la même, pour signaler visuellement leur famille.
+                // Chaque racine reçoit sa propre couleur, héritée par ses descendantes.
                 node.ColorIndex = rootColorCounter++;
                 CategoryTree.Add(node);
             }
@@ -454,8 +441,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         nodeToSelect.IsSelected = true;
     }
 
-    // Compte les entrées du sous-arbre (catégorie + descendantes) et retourne
-    // l'ensemble des Ids couverts pour le calcul du parent.
+    // Compte les entrées du sous-arbre et retourne les Ids couverts, utilisés par le parent.
     private HashSet<Guid> ComputeEntryCounts(CategoryNodeViewModel node)
     {
         var subtreeIds = new HashSet<Guid> { node.Category!.Id };
@@ -594,8 +580,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void RefreshFilteredEntries()
     {
-        // ObservableCollection notifie WPF des ajouts/retraits. C'est pour cela
-        // que la ListBox se met à jour automatiquement après le filtrage.
         var selectedEntryId = SelectedEntry?.Id;
         _activeCategoryFilterIds = BuildCategoryFilterIds();
 
@@ -724,8 +708,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private static string NormalizeForSearch(string value)
     {
-        // Supprime les accents avant comparaison : "ephemere" peut retrouver
-        // "Éphémère". Utile pour une application centrée sur le français.
+        // Supprime les accents avant comparaison ("ephemere" retrouve "Éphémère").
         var normalized = value.Normalize(NormalizationForm.FormD);
         var builder = new StringBuilder(normalized.Length);
 

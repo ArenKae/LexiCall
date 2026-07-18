@@ -27,14 +27,22 @@ Fonctionnalités disponibles :
 - filtrage par catégorie combinable avec la recherche texte ; fil d'ariane
   compact (dernier niveau affiché, chemin complet en infobulle) ;
 - liste centrale volontairement compacte (mot, chips de catégories, source)
-  pour voir un maximum d'entrées sans défiler ;
+  pour voir un maximum d'entrées sans défiler ; cliquer un chip de catégorie
+  (liste ou détail) sélectionne cette catégorie dans l'arbre ;
+- icône (emoji) par catégorie, choisie dans un catalogue thématique filtrable
+  par mot-clé ;
+- image par entrée (upload, redimensionnement/compression automatiques,
+  aperçu agrandi au clic), stockée en base64 dans `vocabulary.json` ;
 - assignation optionnelle de plusieurs catégories à une entrée, via un
   formulaire où le bloc catégories est mis en avant (grande hauteur, en haut) ;
 - entrées autorisées sans catégorie ;
 - recherche locale sur mots, définitions, notes, source, exemples, tags et catégories ;
 - recherche tolérante aux accents ;
-- thème clair/sombre (palette dérivée de l’icône), bascule à chaud et
-  préférence persistée ;
+- fenêtre « Options » (thème clair/sombre, accès au dossier de données) ;
+  position/taille de la fenêtre et largeur des colonnes mémorisées entre les
+  sessions ;
+- confirmations de suppression via une boîte de dialogue stylée (thème
+  clair/sombre cohérent, plus de MessageBox système) ;
 - sauvegarde et rechargement depuis un fichier JSON local ;
 - migration automatique de l’ancien format JSON si nécessaire.
 
@@ -50,12 +58,14 @@ Une entrée de vocabulaire contient :
 - source ;
 - tags ;
 - zéro, une ou plusieurs catégories ;
+- image optionnelle (JPEG encodé en base64) ;
 - dates de création et modification.
 
 Une catégorie contient :
 
 - nom ;
 - description optionnelle ;
+- icône optionnelle (emoji) ;
 - identifiant stable ;
 - parent optionnel (sous-catégorie) ;
 - dates de création et modification.
@@ -74,7 +84,8 @@ Les données sont sauvegardées dans un seul fichier JSON :
 %LOCALAPPDATA%\LexiCall\vocabulary.json
 ```
 
-La préférence de thème est stockée à côté, dans `settings.json` (fichier
+La préférence de thème, ainsi que la position/taille de la fenêtre et la
+largeur des colonnes, sont stockées à côté, dans `settings.json` (fichier
 distinct des données : perdre l’un n’affecte pas l’autre).
 
 Le fichier contient un document racine :
@@ -199,10 +210,11 @@ mutation déclenche une sauvegarde complète immédiate du fichier JSON.
 Objectif : application Windows utilisable sans serveur.
 
 - CRUD entrées ;
-- CRUD catégories, sous-catégories comprises ;
+- CRUD catégories, sous-catégories comprises, avec icône (emoji) ;
 - navigation et filtrage par arbre de catégories ;
 - recherche locale ;
-- thème clair/sombre persisté ;
+- thème clair/sombre persisté ; disposition de la fenêtre (taille, position,
+  colonnes) mémorisée ;
 - persistance JSON ;
 - illustration des mots par image (upload, redimensionnement/compression,
   stockage encodé en base64 directement dans `vocabulary.json` — pas de

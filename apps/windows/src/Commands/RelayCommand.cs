@@ -1,6 +1,5 @@
-// Petite implémentation réutilisable de ICommand.
-// Elle permet de connecter un bouton XAML à une méthode du ViewModel sans écrire
-// de logique métier directement dans le code-behind de la fenêtre.
+// Implémentation générique de ICommand, pour connecter un bouton XAML
+// à une méthode du ViewModel sans logique dans le code-behind.
 using System.Windows.Input;
 
 namespace LexiCall.Desktop.Commands;

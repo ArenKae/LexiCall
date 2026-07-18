@@ -1,10 +1,7 @@
-// Attribue une couleur distincte à chaque catégorie racine, à partir de son
-// ColorIndex (0-based, partagé avec ses descendantes). L'incrément par angle
-// d'or (137.508°) garantit des teintes bien séparées visuellement quel que
-// soit le nombre de catégories, sans avoir à connaître ce nombre à l'avance.
-// Teinte fixe (indépendante du thème clair/sombre) : à saturation et
-// luminosité modérées, elle reste lisible en pastille pleine sur les deux
-// fonds, ce qui évite d'avoir à recalculer la couleur au changement de thème.
+// Attribue une couleur distincte à chaque catégorie racine à partir de son
+// ColorIndex. Incrément par angle d'or (137.508°) pour des teintes bien
+// séparées quel que soit le nombre de catégories. Teinte fixe, indépendante
+// du thème clair/sombre : pas de recalcul au changement de thème.
 using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;

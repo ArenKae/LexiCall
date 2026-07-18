@@ -9,10 +9,8 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!--
-        Confirmation Oui/Non aux couleurs du thème : remplace MessageBox, qui est
-        une boîte de dialogue Win32 native et ne peut pas être reskinée en XAML.
-    -->
+    <!-- Confirmation Oui/Non aux couleurs du thème : remplace MessageBox, une
+         boîte Win32 native non reskinable en XAML. -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

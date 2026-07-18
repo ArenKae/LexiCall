@@ -10,12 +10,8 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!--
-        Fenêtre d'options, ouverte depuis le bouton en forme de rouage de la
-        fenêtre principale. Ne contient pour l'instant que le basculement de
-        thème ; destinée à accueillir d'autres réglages au fil des phases
-        suivantes.
-    -->
+    <!-- Fenêtre d'options (ouverte depuis le bouton rouage de la fenêtre principale) :
+         bascule de thème et accès au dossier de données. -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

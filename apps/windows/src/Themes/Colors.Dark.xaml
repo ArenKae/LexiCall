@@ -1,8 +1,4 @@
-<!--
-    Thème sombre. Le fond n'est pas du noir pur : les surfaces gardent un écart
-    de luminosité suffisant entre elles pour que les séparations restent
-    visibles sur les écrans OLED, complété par des bordures explicites.
--->
+<!-- Thème sombre : mêmes clés de brush que Colors.Light.xaml, valeurs sombres. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 

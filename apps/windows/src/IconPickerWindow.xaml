@@ -9,12 +9,9 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!--
-        Sélecteur d'icône : collections thématiques (CategoryIconCatalog)
-        qu'on parcourt en défilant, ou qu'on filtre par mot-clé. Cliquer une
-        icône la sélectionne immédiatement et referme la fenêtre (pas de
-        bouton Valider séparé).
-    -->
+    <!-- Sélecteur d'icône : collections thématiques (CategoryIconCatalog) filtrables
+         par mot-clé. Cliquer une icône la sélectionne immédiatement (pas de bouton
+         Valider séparé). -->
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
