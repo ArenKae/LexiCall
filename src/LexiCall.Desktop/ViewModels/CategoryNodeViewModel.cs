@@ -99,6 +99,11 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _isSelected, value) && value)
             {
+                if (Children.Count > 0)
+                {
+                    IsExpanded = true;
+                }
+
                 _onSelected(this);
             }
         }

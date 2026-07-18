@@ -5,6 +5,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using LexiCall.Desktop.Services;
 using LexiCall.Desktop.ViewModels;
 
@@ -24,6 +25,12 @@ public partial class MainWindow : Window
     private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.ToggleTheme();
+    }
+
+    private void ClearSearchButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SearchQuery = string.Empty;
+        SearchTextBox.Focus();
     }
 
     // ─── Entrées ───
@@ -71,14 +78,12 @@ public partial class MainWindow : Window
         var selectedEntry = ViewModel.SelectedEntry;
         // Suppression confirmée : elle modifie ensuite immédiatement le JSON local
         // via le ViewModel.
-        var result = MessageBox.Show(
+        var confirmed = ConfirmationDialog.Show(
             this,
             $"Supprimer « {selectedEntry.Word} » ?",
-            "Confirmer la suppression",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
+            "Confirmer la suppression");
 
-        if (result == MessageBoxResult.Yes)
+        if (confirmed)
         {
             ViewModel.DeleteEntry(selectedEntry);
         }
@@ -123,14 +128,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        var confirmation = MessageBox.Show(
+        var confirmed = ConfirmationDialog.Show(
             this,
             $"Supprimer la catégorie « {node.Category.Name} » ?",
-            "Confirmer la suppression",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
+            "Confirmer la suppression");
 
-        if (confirmation != MessageBoxResult.Yes)
+        if (!confirmed)
         {
             return;
         }
@@ -181,6 +184,21 @@ public partial class MainWindow : Window
         }
     }
 
+    // Reclic sur un nœud déjà sélectionné : referme ce qu'un premier clic vient
+    // d'ouvrir (voir CategoryNodeViewModel.IsSelected). Le clic initial est laissé
+    // au TreeViewItem lui-même, qui gère la sélection.
+    private void CategoryNode_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: CategoryNodeViewModel { IsEditing: false, Children.Count: > 0 } node } ||
+            !node.IsSelected)
+        {
+            return;
+        }
+
+        node.IsExpanded = !node.IsExpanded;
+        e.Handled = true;
+    }
+
     private void CategoryTreeView_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.F2 &&
@@ -193,13 +211,23 @@ public partial class MainWindow : Window
 
     // ─── Renommage inline ───
 
-    private void RenameTextBox_Loaded(object sender, RoutedEventArgs e)
+    // Le TextBox reste Collapsed tant que IsEditing est faux ; son Loaded ne se
+    // déclenche donc qu'une fois, à la création du conteneur du nœud, bien avant
+    // le premier BeginEdit(). On réagit plutôt à chaque passage à Visible, en
+    // différant le focus après la passe de layout qui suit ce changement.
+    private void RenameTextBox_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (sender is TextBox { DataContext: CategoryNodeViewModel { IsEditing: true } } textBox)
+        if (sender is not TextBox { DataContext: CategoryNodeViewModel { IsEditing: true } } textBox ||
+            textBox.Visibility != Visibility.Visible)
+        {
+            return;
+        }
+
+        textBox.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
         {
             textBox.Focus();
             textBox.SelectAll();
-        }
+        }));
     }
 
     private void RenameTextBox_KeyDown(object sender, KeyEventArgs e)

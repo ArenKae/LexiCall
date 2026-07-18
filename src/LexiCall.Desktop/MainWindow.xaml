@@ -40,10 +40,10 @@
             </StackPanel>
 
             <StackPanel>
-                <TextBlock Text="Mon vocabulaire"
+                <TextBlock Text="LexiCall"
                            FontSize="26"
                            FontWeight="SemiBold" />
-                <TextBlock Text="Organise et retrouve tes mots par catégorie."
+                <TextBlock Text="Organisation et recherche de vocabulaire par catégorie."
                            Margin="0,2,0,0"
                            Foreground="{DynamicResource Brush.Text.Secondary}" />
             </StackPanel>
@@ -107,7 +107,8 @@
                                                       ItemsSource="{Binding Children}">
                                 <StackPanel>
                                     <Grid ToolTip="{Binding DescriptionToolTip}"
-                                          ContextMenuOpening="CategoryNode_ContextMenuOpening">
+                                          ContextMenuOpening="CategoryNode_ContextMenuOpening"
+                                          MouseLeftButtonDown="CategoryNode_MouseLeftButtonDown">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="4" />
                                             <ColumnDefinition Width="*" />
@@ -123,7 +124,6 @@
                                                           Click="RenameCategoryMenuItem_Click" />
                                                 <MenuItem Header="Modifier…"
                                                           Click="EditCategoryMenuItem_Click" />
-                                                <Separator />
                                                 <MenuItem Header="Supprimer"
                                                           Click="DeleteCategoryMenuItem_Click" />
                                             </ContextMenu>
@@ -195,7 +195,7 @@
                                                  Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}"
                                                  Padding="4,1"
                                                  Margin="2,-2,4,-2"
-                                                 Loaded="RenameTextBox_Loaded"
+                                                 IsVisibleChanged="RenameTextBox_IsVisibleChanged"
                                                  KeyDown="RenameTextBox_KeyDown"
                                                  LostFocus="RenameTextBox_LostFocus">
                                             <TextBox.Style>
@@ -261,9 +261,85 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <TextBox Grid.Row="0"
-                         Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
-                         ToolTip="Recherche dans les mots, définitions, notes, exemples, catégories et tags." />
+                <Grid Grid.Row="0">
+                    <TextBox x:Name="SearchTextBox"
+                             Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Recherche dans les mots, définitions, notes, exemples, catégories et tags.">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                <Setter Property="Padding" Value="36,6,40,6" />
+                                <Style.Triggers>
+                                    <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                        <Setter Property="Padding" Value="9,6,40,6" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+
+                    <!-- Loupe discrète : purement décorative, ne capte pas le clic, et
+                         cède la place au curseur pendant que le champ a le focus. -->
+                    <Canvas Width="14" Height="14"
+                            Margin="15,0,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Opacity="0.55"
+                            IsHitTestVisible="False">
+                        <Canvas.Style>
+                            <Style TargetType="Canvas">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsKeyboardFocusWithin, ElementName=SearchTextBox}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Canvas.Style>
+                        <Ellipse Canvas.Left="0" Canvas.Top="0"
+                                 Width="9" Height="9"
+                                 Stroke="{DynamicResource Brush.Text.Secondary}"
+                                 StrokeThickness="1.4" />
+                        <Line X1="8" Y1="8" X2="13" Y2="13"
+                              Stroke="{DynamicResource Brush.Text.Secondary}"
+                              StrokeThickness="1.4"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round" />
+                    </Canvas>
+
+                    <!-- Croix d'effacement : visible seulement si la recherche n'est pas vide. -->
+                    <Button HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Width="18" Height="18"
+                            Margin="0,0,15,0"
+                            Padding="0"
+                            Focusable="False"
+                            Click="ClearSearchButton_Click"
+                            ToolTip="Effacer la recherche">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource GhostButtonStyle}">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SearchQuery}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <Canvas Width="8" Height="8"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                            <Line X1="0" Y1="0" X2="8" Y2="8"
+                                  Stroke="{DynamicResource Brush.Text.Secondary}"
+                                  StrokeThickness="1.4"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round" />
+                            <Line X1="8" Y1="0" X2="0" Y2="8"
+                                  Stroke="{DynamicResource Brush.Text.Secondary}"
+                                  StrokeThickness="1.4"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round" />
+                        </Canvas>
+                    </Button>
+                </Grid>
 
                 <Grid Grid.Row="1" Margin="4,8,4,8">
                     <Grid.ColumnDefinitions>
