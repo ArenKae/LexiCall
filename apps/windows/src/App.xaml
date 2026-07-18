@@ -17,6 +17,7 @@
             <converters:CategoryNamesConverter x:Key="CategoryNamesConverter" />
             <converters:DepthToIndentConverter x:Key="DepthToIndentConverter" />
             <converters:CategoryColorConverter x:Key="CategoryColorConverter" />
+            <converters:Base64ImageConverter x:Key="Base64ImageConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

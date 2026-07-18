@@ -53,6 +53,8 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <!-- Mot + Définition empilés à gauche ; Catégories occupe la même
@@ -185,9 +187,53 @@
                     <TextBlock Grid.Row="8"
                                Grid.Column="0"
                                Grid.ColumnSpan="3"
+                               Text="Image"
+                               FontWeight="SemiBold" />
+                    <DockPanel Grid.Row="9"
+                               Grid.Column="0"
+                               Grid.ColumnSpan="3"
+                               Margin="0,6,0,14">
+                        <Border DockPanel.Dock="Left"
+                                Width="96"
+                                Height="96"
+                                Margin="0,0,16,0"
+                                BorderBrush="{DynamicResource Brush.Border.Strong}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Background="{DynamicResource Brush.Input.Background}"
+                                ClipToBounds="True">
+                            <Image Source="{Binding ImageBase64, Converter={StaticResource Base64ImageConverter}}"
+                                   Stretch="Uniform" />
+                        </Border>
+
+                        <StackPanel Orientation="Horizontal"
+                                    VerticalAlignment="Center">
+                            <Button Content="Choisir une image..."
+                                    Width="150"
+                                    Margin="0,0,10,0"
+                                    Click="SelectImageButton_Click" />
+                            <Button Content="Retirer l'image"
+                                    Width="120"
+                                    Command="{Binding RemoveImageCommand}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasImage}" Value="False">
+                                                <Setter Property="IsEnabled" Value="False" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </StackPanel>
+                    </DockPanel>
+
+                    <TextBlock Grid.Row="10"
+                               Grid.Column="0"
+                               Grid.ColumnSpan="3"
                                Text="Notes personnelles"
                                FontWeight="SemiBold" />
-                    <TextBox Grid.Row="9"
+                    <TextBox Grid.Row="11"
                              Grid.Column="0"
                              Grid.ColumnSpan="3"
                              Margin="0,6,0,0"
@@ -198,7 +244,7 @@
                              VerticalContentAlignment="Top"
                              Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" />
 
-                    <TextBlock Grid.Row="10"
+                    <TextBlock Grid.Row="12"
                                Grid.ColumnSpan="3"
                                Text="{Binding ErrorMessage}"
                                Margin="0,14,0,0"

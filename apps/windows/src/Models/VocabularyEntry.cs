@@ -23,6 +23,10 @@ public sealed class VocabularyEntry
 
     public List<string> Tags { get; init; } = [];
 
+    // Image encodée en JPEG puis en base64 (déjà redimensionnée/compressée à
+    // l'upload) ; chaîne vide si l'entrée n'a pas d'image.
+    public string ImageBase64 { get; set; } = string.Empty;
+
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.Now;
 
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;

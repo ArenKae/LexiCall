@@ -69,7 +69,7 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
     public string DisplayIcon => Kind switch
     {
         CategoryNodeKind.AllEntries => "📚",
-        CategoryNodeKind.Uncategorized => "🗂️",
+        CategoryNodeKind.Uncategorized => "🏷️",
         _ => string.IsNullOrEmpty(Category!.IconGlyph) ? "🏷️" : Category.IconGlyph
     };
 

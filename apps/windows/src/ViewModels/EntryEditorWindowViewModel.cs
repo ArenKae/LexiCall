@@ -20,6 +20,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     private string _notes = string.Empty;
     private string _source = string.Empty;
     private string _tagsText = string.Empty;
+    private string _imageBase64 = string.Empty;
     private string _errorMessage = string.Empty;
 
     public EntryEditorWindowViewModel(
@@ -28,6 +29,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     {
         _existingEntry = existingEntry;
         SaveEntryCommand = new RelayCommand(SaveEntry);
+        RemoveImageCommand = new RelayCommand(RemoveImage);
 
         // Les catégories sont optionnelles : aucune case cochée produit une entrée
         // valide avec CategoryIds vide. L'ordre hiérarchique (parent puis enfants,
@@ -48,6 +50,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             Notes = existingEntry.Notes;
             Source = existingEntry.Source;
             TagsText = TextListParser.FormatCommaSeparatedText(existingEntry.Tags);
+            _imageBase64 = existingEntry.ImageBase64;
         }
     }
 
@@ -56,6 +59,8 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     public event EventHandler? EntrySaved;
 
     public RelayCommand SaveEntryCommand { get; }
+
+    public RelayCommand RemoveImageCommand { get; }
 
     public ObservableCollection<CategorySelectionViewModel> CategorySelections { get; }
 
@@ -131,10 +136,45 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         set => SetProperty(ref _tagsText, value);
     }
 
+    public string ImageBase64
+    {
+        get => _imageBase64;
+        private set
+        {
+            if (SetProperty(ref _imageBase64, value))
+            {
+                OnPropertyChanged(nameof(HasImage));
+            }
+        }
+    }
+
+    public bool HasImage => !string.IsNullOrEmpty(ImageBase64);
+
     public string ErrorMessage
     {
         get => _errorMessage;
         private set => SetProperty(ref _errorMessage, value);
+    }
+
+    // Appelé par le code-behind après sélection d'un fichier via OpenFileDialog :
+    // le redimensionnement/compression est délégué à ImageProcessor, qui ne
+    // dépend pas de WPF côté fenêtre.
+    public void SetImageFromFile(string filePath)
+    {
+        if (ImageProcessor.TryEncodeImage(filePath, out var base64Image, out var error))
+        {
+            ImageBase64 = base64Image;
+            ClearError();
+        }
+        else
+        {
+            ErrorMessage = error;
+        }
+    }
+
+    private void RemoveImage()
+    {
+        ImageBase64 = string.Empty;
     }
 
     private void SaveEntry()
@@ -173,6 +213,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
                 .Select(category => category.CategoryId)
                 .ToList(),
             Tags = TextListParser.ParseCommaSeparatedText(TagsText),
+            ImageBase64 = ImageBase64,
             CreatedAt = _existingEntry?.CreatedAt ?? now,
             UpdatedAt = now
         };
@@ -199,7 +240,10 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         }
 
         field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        OnPropertyChanged(propertyName);
         return true;
     }
+
+    private void OnPropertyChanged(string? propertyName) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }

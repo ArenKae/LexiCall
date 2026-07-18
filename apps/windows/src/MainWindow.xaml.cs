@@ -99,6 +99,26 @@ public partial class MainWindow : Window
         }
     }
 
+    // L'élément cliqué porte l'entrée en DataContext (DataTemplate de la colonne
+    // Détails) : on redécode le base64 plutôt que de réutiliser le Source du
+    // contrôle Image, pour ne pas dépendre de l'ordre binding/évènement.
+    private void DetailImage_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: Models.VocabularyEntry entry })
+        {
+            return;
+        }
+
+        var image = Converters.Base64ImageConverter.ToBitmapImage(entry.ImageBase64);
+
+        if (image is null)
+        {
+            return;
+        }
+
+        new ImagePreviewWindow(this, image).ShowDialog();
+    }
+
     // ─── Catégories ───
 
     private void AddRootCategoryButton_Click(object sender, RoutedEventArgs e)

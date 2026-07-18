@@ -203,12 +203,13 @@ Objectif : application Windows utilisable sans serveur.
 - navigation et filtrage par arbre de catégories ;
 - recherche locale ;
 - thème clair/sombre persisté ;
-- persistance JSON.
+- persistance JSON ;
+- illustration des mots par image (upload, redimensionnement/compression,
+  stockage encodé en base64 directement dans `vocabulary.json` — pas de
+  fichiers séparés à gérer/lier).
 
 Prochaines améliorations probables :
 
-- illustration des mots par image (upload, stockage encodé en base64
-  directement dans `vocabulary.json` — pas de fichiers séparés à gérer/lier) ;
 - import/export ;
 - raccourcis clavier (au-delà de F2) ;
 

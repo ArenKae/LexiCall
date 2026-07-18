@@ -550,57 +550,94 @@
 
                                         <Separator Margin="0,16,0,20" />
 
-                                        <TextBlock Text="Synonymes"
-                                                   FontWeight="SemiBold" />
-                                        <ItemsControl ItemsSource="{Binding Synonyms}"
-                                                      Margin="0,8,0,0">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <WrapPanel />
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Border Margin="0,0,8,8"
-                                                            Padding="9,4"
-                                                            Background="{DynamicResource Brush.Chip.Neutral.Background}"
-                                                            CornerRadius="12">
-                                                        <TextBlock Text="{Binding}"
-                                                                   Foreground="{DynamicResource Brush.Chip.Neutral.Foreground}" />
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                                        <!-- Métadonnées à gauche (largeur pleine si pas d'image, la colonne
+                                             image étant Auto et se réduisant à 0 quand elle est Collapsed) ;
+                                             image alignée en haut à droite si présente. -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
 
-                                        <TextBlock Text="Exemples"
-                                                   Margin="0,16,0,0"
-                                                   FontWeight="SemiBold" />
-                                        <ItemsControl ItemsSource="{Binding ExampleSentences}"
-                                                      Margin="0,8,0,0">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <TextBlock Text="{Binding}"
-                                                               Margin="0,0,0,8"
-                                                               FontStyle="Italic"
-                                                               TextWrapping="Wrap" />
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Synonymes"
+                                                           FontWeight="SemiBold" />
+                                                <ItemsControl ItemsSource="{Binding Synonyms}"
+                                                              Margin="0,8,0,0">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Margin="0,0,8,8"
+                                                                    Padding="9,4"
+                                                                    Background="{DynamicResource Brush.Chip.Neutral.Background}"
+                                                                    CornerRadius="12">
+                                                                <TextBlock Text="{Binding}"
+                                                                           Foreground="{DynamicResource Brush.Chip.Neutral.Foreground}" />
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
 
-                                        <TextBlock Text="Notes personnelles"
-                                                   Margin="0,16,0,0"
-                                                   FontWeight="SemiBold" />
-                                        <TextBlock Text="{Binding Notes}"
-                                                   Margin="0,8,0,0"
-                                                   TextWrapping="Wrap" />
+                                                <TextBlock Text="Exemples"
+                                                           Margin="0,16,0,0"
+                                                           FontWeight="SemiBold" />
+                                                <ItemsControl ItemsSource="{Binding ExampleSentences}"
+                                                              Margin="0,8,0,0">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="{Binding}"
+                                                                       Margin="0,0,0,8"
+                                                                       FontStyle="Italic"
+                                                                       TextWrapping="Wrap" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
 
-                                        <TextBlock Text="Source"
-                                                   Margin="0,16,0,0"
-                                                   FontWeight="SemiBold" />
-                                        <TextBlock Text="{Binding Source}"
-                                                   Margin="0,8,0,0"
-                                                   TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource Brush.Text.Secondary}" />
+                                                <TextBlock Text="Notes personnelles"
+                                                           Margin="0,16,0,0"
+                                                           FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding Notes}"
+                                                           Margin="0,8,0,0"
+                                                           TextWrapping="Wrap" />
+
+                                                <TextBlock Text="Source"
+                                                           Margin="0,16,0,0"
+                                                           FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding Source}"
+                                                           Margin="0,8,0,0"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource Brush.Text.Secondary}" />
+                                            </StackPanel>
+
+                                            <Border Grid.Column="1"
+                                                    MaxWidth="260"
+                                                    MaxHeight="220"
+                                                    Margin="20,0,8,0"
+                                                    VerticalAlignment="Top"
+                                                    CornerRadius="8"
+                                                    ClipToBounds="True"
+                                                    Cursor="Hand"
+                                                    MouseLeftButtonUp="DetailImage_MouseLeftButtonUp">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding ImageBase64}" Value="">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <Image Source="{Binding ImageBase64, Converter={StaticResource Base64ImageConverter}}"
+                                                       MaxWidth="260"
+                                                       MaxHeight="220"
+                                                       Stretch="Uniform" />
+                                            </Border>
+                                        </Grid>
                                     </StackPanel>
                                 </DataTemplate>
                             </ContentControl.ContentTemplate>
