@@ -3,11 +3,16 @@ set shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 default:
     just --list
 
-run:
-    dotnet run --project src/LexiCall.Desktop
+# --- apps/windows (.NET / WPF) ---
 
-build:
-    dotnet build
+run-app-windows:
+    just --justfile apps/windows/justfile --working-directory apps/windows run
 
-clean:
-    dotnet clean
+build-app-windows:
+    just --justfile apps/windows/justfile --working-directory apps/windows build
+
+clean-app-windows:
+    just --justfile apps/windows/justfile --working-directory apps/windows clean
+
+test-app-windows:
+    just --justfile apps/windows/justfile --working-directory apps/windows test

@@ -1,0 +1,16 @@
+set shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+
+default:
+    just --list
+
+run:
+    dotnet run --project src/LexiCall.Desktop.csproj
+
+build:
+    dotnet build LexiCall.sln
+
+clean:
+    dotnet clean LexiCall.sln
+
+test:
+    dotnet test LexiCall.sln

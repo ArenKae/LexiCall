@@ -114,25 +114,50 @@ dotnet --version
 
 ## Lancer le projet
 
-Depuis la racine du dépôt :
+`apps/windows/` est autonome : son `.sln` et son `global.json` (version de SDK
+épinglée) y vivent directement. La résolution du SDK par `dotnet` remonte
+l'arborescence depuis le **répertoire courant** — place-toi dans le dossier
+pour que l'épinglage soit respecté (lancer depuis la racine avec juste
+`--project` ne suffit pas) :
 
 ```powershell
+cd apps/windows
 dotnet restore
-dotnet build
-dotnet run --project src/LexiCall.Desktop
+dotnet build LexiCall.sln
+dotnet run --project src/LexiCall.Desktop.csproj
 ```
 
-Si `just` est installé :
+Si `just` est installé, le `justfile` racine fait ce déplacement pour toi
+(voir aussi `apps/windows/justfile`, utilisable directement une fois dans
+le dossier) :
 
 ```powershell
-just run
+just run-app-windows
+just build-app-windows
 ```
 
-## Structure du projet
+## Structure du dépôt
+
+LexiCall est un monorepo : un dossier par surface applicative. Seul
+`apps/windows` contient du code aujourd'hui ; `apps/android` et `api` sont des
+dossiers réservés (un simple README chacun) pour les phases à venir.
 
 ```text
-src/
-└── LexiCall.Desktop/
+apps/
+├── windows/   application desktop WPF (Phase 1, actuelle — détail ci-dessous)
+└── android/   application mobile React Native/Expo (Phase 3, à venir)
+api/           backend FastAPI + MongoDB (Phase 2, à venir)
+```
+
+## Structure de `apps/windows/`
+
+```text
+apps/windows/
+├── LexiCall.sln          Solution .NET (autonome, propre à cette app)
+├── global.json           Version de SDK .NET épinglée
+├── justfile              Commandes locales (run, build, clean, test)
+└── src/
+    ├── LexiCall.Desktop.csproj
     ├── Models/               Modèles métier : entrée, catégorie, base JSON
     ├── ViewModels/           État et logique de présentation MVVM
     ├── Services/             Persistance locale JSON, gestion du thème
@@ -186,8 +211,6 @@ Prochaines améliorations probables :
   directement dans `vocabulary.json` — pas de fichiers séparés à gérer/lier) ;
 - import/export ;
 - raccourcis clavier (au-delà de F2) ;
-- tests unitaires sur repository, recherche, hiérarchie et validation ;
-- mode révision/apprentissage (parcours des mots par catégorie).
 
 ### Phase 2 — Backend partagé
 
