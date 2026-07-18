@@ -27,16 +27,14 @@
             <StackPanel DockPanel.Dock="Right"
                         Orientation="Horizontal"
                         VerticalAlignment="Center">
-                <Button Content="{Binding ThemeToggleText}"
-                        Style="{StaticResource GhostButtonStyle}"
-                        Margin="0,0,12,0"
-                        Click="ThemeToggleButton_Click"
-                        ToolTip="Bascule entre le thème clair et le thème sombre." />
-                <Button Content="Ajouter un mot"
-                        Style="{StaticResource AccentButtonStyle}"
-                        Padding="18,9"
-                        Click="AddEntryButton_Click"
-                        ToolTip="Ouvre le formulaire d'ajout." />
+                <Button Style="{StaticResource GhostButtonStyle}"
+                        Padding="9,7"
+                        Click="OptionsButton_Click"
+                        ToolTip="Options">
+                    <TextBlock Text="&#xE713;"
+                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                               FontSize="15" />
+                </Button>
             </StackPanel>
 
             <StackPanel>
@@ -359,17 +357,33 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0"
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0"
                                Text="{Binding SelectedCategoryLabel}"
                                ToolTip="{Binding SelectedCategoryTooltip}"
                                FontWeight="SemiBold"
                                FontSize="13"
                                TextTrimming="CharacterEllipsis" />
-                    <TextBlock Grid.Column="1"
+                    <TextBlock Grid.Row="1" Grid.Column="0"
                                Text="{Binding SearchStatusText}"
-                               Margin="8,0,0,0"
+                               Margin="0,2,0,0"
                                Foreground="{DynamicResource Brush.Text.Secondary}"
                                FontSize="12" />
+                    <Button Grid.Row="0" Grid.RowSpan="2" Grid.Column="1"
+                            Content="＋"
+                            FontSize="18"
+                            FontWeight="Bold"
+                            Style="{StaticResource SoftAccentButtonStyle}"
+                            Padding="0"
+                            Width="32"
+                            Height="32"
+                            VerticalAlignment="Center"
+                            Margin="8,0,0,0"
+                            Click="AddEntryButton_Click"
+                            ToolTip="Ajouter un mot." />
                 </Grid>
 
                 <Border Grid.Row="2"
@@ -550,16 +564,38 @@
 
                                         <Separator Margin="0,16,0,20" />
 
-                                        <!-- Métadonnées à gauche (largeur pleine si pas d'image, la colonne
-                                             image étant Auto et se réduisant à 0 quand elle est Collapsed) ;
-                                             image alignée en haut à droite si présente. -->
+                                        <!-- Métadonnées à gauche, image alignée en haut à droite si présente
+                                             (largeur pleine si pas d'image, la colonne image étant Auto et
+                                             se réduisant à 0 quand elle est Collapsed). Sous le seuil de
+                                             WidthBreakpointConverter (typiquement fenêtre maximisée sur un
+                                             écran portrait), les deux Style.Triggers ci-dessous rebasculent
+                                             l'image en 2e ligne pleine largeur plutôt que côte à côte — les
+                                             attachées Grid.Row/Column/ColumnSpan doivent donc rester définies
+                                             par le Style (pas en attribut direct sur l'élément), sans quoi la
+                                             valeur locale primerait toujours sur le Trigger. -->
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
 
-                                            <StackPanel Grid.Column="0">
+                                            <StackPanel Grid.Row="0"
+                                                        Grid.Column="0">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Grid.ColumnSpan" Value="1" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}, Converter={StaticResource WidthBreakpointConverter}}"
+                                                                         Value="True">
+                                                                <Setter Property="Grid.ColumnSpan" Value="2" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </StackPanel.Style>
                                                 <TextBlock Text="Synonymes"
                                                            FontWeight="SemiBold" />
                                                 <ItemsControl ItemsSource="{Binding Synonyms}"
@@ -613,21 +649,31 @@
                                                            Foreground="{DynamicResource Brush.Text.Secondary}" />
                                             </StackPanel>
 
-                                            <Border Grid.Column="1"
-                                                    MaxWidth="260"
+                                            <Border MaxWidth="260"
                                                     MaxHeight="220"
-                                                    Margin="20,0,8,0"
                                                     VerticalAlignment="Top"
+                                                    HorizontalAlignment="Left"
                                                     CornerRadius="8"
                                                     ClipToBounds="True"
                                                     Cursor="Hand"
                                                     MouseLeftButtonUp="DetailImage_MouseLeftButtonUp">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
+                                                        <Setter Property="Grid.Row" Value="0" />
+                                                        <Setter Property="Grid.Column" Value="1" />
+                                                        <Setter Property="Grid.ColumnSpan" Value="1" />
+                                                        <Setter Property="Margin" Value="20,0,8,0" />
                                                         <Setter Property="Visibility" Value="Visible" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding ImageBase64}" Value="">
                                                                 <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}, Converter={StaticResource WidthBreakpointConverter}}"
+                                                                         Value="True">
+                                                                <Setter Property="Grid.Row" Value="1" />
+                                                                <Setter Property="Grid.Column" Value="0" />
+                                                                <Setter Property="Grid.ColumnSpan" Value="2" />
+                                                                <Setter Property="Margin" Value="0,16,8,0" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>

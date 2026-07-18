@@ -14,9 +14,10 @@ public partial class EntryEditorWindow : Window
 
     public EntryEditorWindow(
         VocabularyEntry? existingEntry = null,
-        IEnumerable<VocabularyCategory>? availableCategories = null)
+        IEnumerable<VocabularyCategory>? availableCategories = null,
+        Guid? initialCategoryId = null)
     {
-        _viewModel = new EntryEditorWindowViewModel(existingEntry, availableCategories);
+        _viewModel = new EntryEditorWindowViewModel(existingEntry, availableCategories, initialCategoryId);
 
         InitializeComponent();
         DataContext = _viewModel;

@@ -32,9 +32,9 @@ public partial class MainWindow : Window
 
     private MainWindowViewModel ViewModel => (MainWindowViewModel)DataContext;
 
-    private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
+    private void OptionsButton_Click(object sender, RoutedEventArgs e)
     {
-        ViewModel.ToggleTheme();
+        new OptionsWindow(ViewModel) { Owner = this }.ShowDialog();
     }
 
     private void ClearSearchButton_Click(object sender, RoutedEventArgs e)
@@ -47,7 +47,12 @@ public partial class MainWindow : Window
 
     private void AddEntryButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new EntryEditorWindow(availableCategories: ViewModel.Categories)
+        // Pré-coche la catégorie active dans l'arbre : si l'utilisateur navigue
+        // dans une catégorie puis ajoute un mot, il l'ajoute très probablement à
+        // celle-ci.
+        var dialog = new EntryEditorWindow(
+            availableCategories: ViewModel.Categories,
+            initialCategoryId: ViewModel.SelectedCategoryNode?.Category?.Id)
         {
             Owner = this
         };

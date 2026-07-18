@@ -25,7 +25,8 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 
     public EntryEditorWindowViewModel(
         VocabularyEntry? existingEntry = null,
-        IEnumerable<VocabularyCategory>? availableCategories = null)
+        IEnumerable<VocabularyCategory>? availableCategories = null,
+        Guid? initialCategoryId = null)
     {
         _existingEntry = existingEntry;
         SaveEntryCommand = new RelayCommand(SaveEntry);
@@ -34,11 +35,15 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         // Les catégories sont optionnelles : aucune case cochée produit une entrée
         // valide avec CategoryIds vide. L'ordre hiérarchique (parent puis enfants,
         // avec Depth) permet à la liste de refléter l'arborescence par indentation.
+        // En ajout depuis une catégorie sélectionnée dans l'arbre, on pré-coche
+        // celle-ci (initialCategoryId n'a de sens qu'à la création, pas en édition).
         CategorySelections = new ObservableCollection<CategorySelectionViewModel>(
             CategoryHierarchy.Flatten((availableCategories ?? []).ToList())
             .Select(item => new CategorySelectionViewModel(
                 item.Category,
-                existingEntry?.CategoryIds.Contains(item.Category.Id) == true,
+                existingEntry is not null
+                    ? existingEntry.CategoryIds.Contains(item.Category.Id)
+                    : item.Category.Id == initialCategoryId,
                 item.Depth)));
 
         if (existingEntry is not null)

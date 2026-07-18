@@ -20,6 +20,11 @@
     <SolidColorBrush x:Key="Brush.Accent.Hover" Color="#74A1DF" />
     <SolidColorBrush x:Key="Brush.Accent.Pressed" Color="#4A7BC2" />
 
+    <SolidColorBrush x:Key="Brush.Accent.Soft" Color="#82A0CC" />
+    <SolidColorBrush x:Key="Brush.Accent.Soft.Hover" Color="#93B0D8" />
+    <SolidColorBrush x:Key="Brush.Accent.Soft.Pressed" Color="#6F8DB8" />
+    <SolidColorBrush x:Key="Brush.Text.OnAccentSoft" Color="#0B1220" />
+
     <SolidColorBrush x:Key="Brush.Danger" Color="#E5695F" />
 
     <SolidColorBrush x:Key="Brush.Chip.Neutral.Background" Color="#232B39" />

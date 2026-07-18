@@ -161,10 +161,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Entries.Insert(0, entry);
         OnEntriesChanged();
 
-        // On réinitialise les filtres pour que le mot ajouté soit toujours visible.
+        // On réinitialise la recherche pour que le mot ajouté soit toujours visible ;
+        // la catégorie sélectionnée est en revanche préservée par RebuildCategoryTree
+        // (le formulaire d'ajout la pré-coche déjà pour le nouveau mot).
         _searchQuery = string.Empty;
         OnPropertyChanged(nameof(SearchQuery));
-        _selectedCategoryNode = null;
 
         RebuildCategoryTree();
         RefreshFilteredEntries();
