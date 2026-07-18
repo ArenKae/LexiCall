@@ -20,6 +20,8 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = new MainWindowViewModel();
         ThemeService.RegisterWindow(this);
+        WindowLayoutService.Apply(this, CategoryColumn, EntryListColumn);
+        Closing += MainWindow_Closing;
 
         // Attaché au TreeView (et non au contenu du DataTemplate) pour que la zone
         // cliquable du reveal/hide corresponde exactement au halo de sélection du
@@ -28,6 +30,11 @@ public partial class MainWindow : Window
             PreviewMouseLeftButtonDownEvent,
             new MouseButtonEventHandler(CategoryNode_MouseLeftButtonDown),
             handledEventsToo: true);
+    }
+
+    private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        WindowLayoutService.Save(this, CategoryColumn, EntryListColumn);
     }
 
     private MainWindowViewModel ViewModel => (MainWindowViewModel)DataContext;

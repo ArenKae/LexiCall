@@ -1,10 +1,8 @@
 // Bascule clair/sombre : remplace le dictionnaire de couleurs fusionné dans
-// Application.Resources et persiste le choix dans un petit fichier settings.json
-// à côté de vocabulary.json. Les styles utilisent DynamicResource, donc le
-// changement s'applique à chaud sans recharger les fenêtres.
-using System.IO;
+// Application.Resources et persiste le choix dans settings.json (partagé avec
+// WindowLayoutService via SettingsStore). Les styles utilisent DynamicResource,
+// donc le changement s'applique à chaud sans recharger les fenêtres.
 using System.Runtime.InteropServices;
-using System.Text.Json;
 using System.Windows;
 using System.Windows.Interop;
 
@@ -18,11 +16,6 @@ public enum AppTheme
 
 public static class ThemeService
 {
-    private static readonly string SettingsFilePath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "LexiCall",
-        "settings.json");
-
     public static AppTheme CurrentTheme { get; private set; } = AppTheme.Light;
 
     public static void Initialize()
@@ -74,39 +67,18 @@ public static class ThemeService
 
     private static AppTheme LoadSavedTheme()
     {
-        try
-        {
-            if (!File.Exists(SettingsFilePath))
-            {
-                return AppTheme.Light;
-            }
+        var settings = SettingsStore.Load();
 
-            var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(SettingsFilePath));
-
-            return string.Equals(settings?.Theme, nameof(AppTheme.Dark), StringComparison.OrdinalIgnoreCase)
-                ? AppTheme.Dark
-                : AppTheme.Light;
-        }
-        catch (Exception exception) when (exception is IOException or JsonException)
-        {
-            // Un fichier de préférences corrompu ne doit jamais empêcher le démarrage.
-            return AppTheme.Light;
-        }
+        return string.Equals(settings.Theme, nameof(AppTheme.Dark), StringComparison.OrdinalIgnoreCase)
+            ? AppTheme.Dark
+            : AppTheme.Light;
     }
 
     private static void SaveTheme(AppTheme theme)
     {
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(SettingsFilePath)!);
-            File.WriteAllText(
-                SettingsFilePath,
-                JsonSerializer.Serialize(new AppSettings { Theme = theme.ToString() }));
-        }
-        catch (IOException)
-        {
-            // Préférence non sauvegardée : sans gravité, le thème reste actif pour la session.
-        }
+        var settings = SettingsStore.Load();
+        settings.Theme = theme.ToString();
+        SettingsStore.Save(settings);
     }
 
     private static void ApplyTitleBar(Window window)
@@ -126,9 +98,4 @@ public static class ThemeService
 
     [DllImport("dwmapi.dll", PreserveSig = true)]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
-
-    private sealed class AppSettings
-    {
-        public string Theme { get; set; } = nameof(AppTheme.Light);
-    }
 }
