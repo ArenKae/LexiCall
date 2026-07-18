@@ -96,9 +96,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ? GetCategoryPath(category)
         : null;
 
-    public IReadOnlyList<string> SelectedEntryCategoryNames => SelectedEntry is null
+    // Catégories de l'entrée sélectionnée, dans l'ordre de CategoryIds : les
+    // objets complets (pas juste leur nom) pour que les chips du détail
+    // puissent porter l'Id nécessaire au clic (sélection dans le panneau de
+    // gauche, cf. SelectCategory).
+    public IReadOnlyList<VocabularyCategory> SelectedEntryCategories => SelectedEntry is null
         ? []
-        : GetCategoryNames(SelectedEntry.CategoryIds).ToList();
+        : GetCategories(SelectedEntry.CategoryIds).ToList();
 
     public string EmptyListMessage
     {
@@ -138,7 +142,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _selectedEntry, value))
             {
                 OnPropertyChanged(nameof(HasSelectedEntry));
-                OnPropertyChanged(nameof(SelectedEntryCategoryNames));
+                OnPropertyChanged(nameof(SelectedEntryCategories));
                 OnPropertyChanged(nameof(EmptyDetailMessage));
             }
         }
@@ -304,7 +308,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void OnCategoriesChanged()
     {
         RebuildCategoryTree();
-        OnPropertyChanged(nameof(SelectedEntryCategoryNames));
+        OnPropertyChanged(nameof(SelectedEntryCategories));
         RefreshFilteredEntries();
         SaveDatabase();
     }
@@ -326,6 +330,45 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedCategoryLabel));
         OnPropertyChanged(nameof(SelectedCategoryTooltip));
         RefreshFilteredEntries();
+    }
+
+    // Appelé quand l'utilisateur clique un chip de catégorie (liste ou détail) :
+    // sélectionne cette catégorie dans le panneau de gauche, comme si elle avait
+    // été cliquée directement dans l'arbre.
+    public void SelectCategory(Guid categoryId)
+    {
+        var node = CollectNodes(CategoryTree)
+            .FirstOrDefault(candidate => candidate.Category?.Id == categoryId);
+
+        if (node is null)
+        {
+            return;
+        }
+
+        foreach (var ancestor in GetAncestors(node))
+        {
+            ancestor.IsExpanded = true;
+        }
+
+        node.IsSelected = true;
+    }
+
+    // Remonte la chaîne des nœuds parents dans l'arbre affiché (pas seulement
+    // la hiérarchie de catégories) pour que le nœud ciblé soit visible une fois
+    // déplié.
+    private IEnumerable<CategoryNodeViewModel> GetAncestors(CategoryNodeViewModel node)
+    {
+        var ancestorIds = new List<Guid>();
+        var current = node.Category;
+        var categoriesById = Categories.ToDictionary(category => category.Id);
+
+        while (current?.ParentId is Guid parentId && categoriesById.TryGetValue(parentId, out var parent))
+        {
+            ancestorIds.Add(parent.Id);
+            current = parent;
+        }
+
+        return CollectNodes(CategoryTree).Where(candidate => candidate.Category is not null && ancestorIds.Contains(candidate.Category.Id));
     }
 
     private void RebuildCategoryTree()
@@ -572,13 +615,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(EmptyListMessage));
         OnPropertyChanged(nameof(EmptyDetailMessage));
 
-        if (selectedEntryId is not null &&
-            FilteredEntries.Any(entry => entry.Id == selectedEntryId))
-        {
-            return;
-        }
+        var stillVisible = selectedEntryId is null
+            ? null
+            : FilteredEntries.FirstOrDefault(entry => entry.Id == selectedEntryId);
 
-        SelectedEntry = FilteredEntries.FirstOrDefault();
+        SelectedEntry = stillVisible ?? FilteredEntries.FirstOrDefault();
     }
 
     // Ensemble des Ids couverts par le nœud sélectionné (catégorie + descendantes),
@@ -653,6 +694,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (categoriesById.TryGetValue(categoryId, out var category))
             {
                 yield return category.Name;
+            }
+        }
+    }
+
+    private IEnumerable<VocabularyCategory> GetCategories(IEnumerable<Guid> categoryIds)
+    {
+        var categoriesById = Categories.ToDictionary(category => category.Id);
+
+        foreach (var categoryId in categoryIds)
+        {
+            if (categoriesById.TryGetValue(categoryId, out var category))
+            {
+                yield return category;
             }
         }
     }

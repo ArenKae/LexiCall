@@ -1,7 +1,10 @@
-// Convertit les CategoryIds d'une entrée en noms affichables (chips de la
-// liste). MultiBinding : [0] = List<Guid> de l'entrée, [1] = collection des
-// catégories connues. La liste filtrée étant reconstruite à chaque mutation,
-// les chips se rafraîchissent sans notification supplémentaire.
+// Convertit les CategoryIds d'une entrée en catégories affichables (chips de
+// la liste). MultiBinding : [0] = List<Guid> de l'entrée, [1] = collection des
+// catégories connues. On retourne les catégories elles-mêmes (pas juste leur
+// nom) pour que les chips puissent porter l'Id nécessaire au clic (sélection
+// de la catégorie dans le panneau de gauche). La liste filtrée étant
+// reconstruite à chaque mutation, les chips se rafraîchissent sans
+// notification supplémentaire.
 using System.Globalization;
 using System.Windows.Data;
 using LexiCall.Desktop.Models;
@@ -14,14 +17,14 @@ public sealed class CategoryNamesConverter : IMultiValueConverter
     {
         if (values is not [IEnumerable<Guid> categoryIds, IEnumerable<VocabularyCategory> categories])
         {
-            return Array.Empty<string>();
+            return Array.Empty<VocabularyCategory>();
         }
 
-        var namesById = categories.ToDictionary(category => category.Id, category => category.Name);
+        var categoriesById = categories.ToDictionary(category => category.Id);
 
         return categoryIds
-            .Where(namesById.ContainsKey)
-            .Select(categoryId => namesById[categoryId])
+            .Where(categoriesById.ContainsKey)
+            .Select(categoryId => categoriesById[categoryId])
             .ToList();
     }
 

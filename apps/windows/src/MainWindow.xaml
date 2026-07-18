@@ -437,11 +437,16 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
+                                                    <!-- Cliquable : sélectionne cette catégorie dans le
+                                                         panneau de gauche (Cursor="Hand" signale l'action). -->
                                                     <Border Margin="0,0,4,2"
                                                             Padding="6,1"
                                                             Background="{DynamicResource Brush.Chip.Accent.Background}"
-                                                            CornerRadius="8">
-                                                        <TextBlock Text="{Binding}"
+                                                            CornerRadius="8"
+                                                            Cursor="Hand"
+                                                            ToolTip="Filtrer par cette catégorie"
+                                                            MouseLeftButtonUp="CategoryChip_MouseLeftButtonUp">
+                                                        <TextBlock Text="{Binding Name}"
                                                                    FontSize="10"
                                                                    Foreground="{DynamicResource Brush.Chip.Accent.Foreground}" />
                                                     </Border>
@@ -557,7 +562,7 @@
                                                    TextWrapping="Wrap" />
 
                                         <!-- Les catégories en tête : c'est l'axe d'organisation principal. -->
-                                        <ItemsControl ItemsSource="{Binding DataContext.SelectedEntryCategoryNames, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        <ItemsControl ItemsSource="{Binding DataContext.SelectedEntryCategories, RelativeSource={RelativeSource AncestorType=Window}}"
                                                       Margin="0,14,0,0">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
@@ -566,11 +571,16 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
+                                                    <!-- Cliquable : sélectionne cette catégorie dans le
+                                                         panneau de gauche (Cursor="Hand" signale l'action). -->
                                                     <Border Margin="0,0,8,8"
                                                             Padding="10,4"
                                                             Background="{DynamicResource Brush.Chip.Accent.Background}"
-                                                            CornerRadius="12">
-                                                        <TextBlock Text="{Binding}"
+                                                            CornerRadius="12"
+                                                            Cursor="Hand"
+                                                            ToolTip="Filtrer par cette catégorie"
+                                                            MouseLeftButtonUp="CategoryChip_MouseLeftButtonUp">
+                                                        <TextBlock Text="{Binding Name}"
                                                                    Foreground="{DynamicResource Brush.Chip.Accent.Foreground}" />
                                                     </Border>
                                                 </DataTemplate>

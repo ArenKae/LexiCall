@@ -131,6 +131,18 @@ public partial class MainWindow : Window
         new ImagePreviewWindow(this, image).ShowDialog();
     }
 
+    // Le chip porte la catégorie en DataContext (converters.CategoryNamesConverter
+    // et SelectedEntryCategories exposent désormais des VocabularyCategory, pas
+    // de simples noms, pour permettre ce clic).
+    private void CategoryChip_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: Models.VocabularyCategory category })
+        {
+            ViewModel.SelectCategory(category.Id);
+            e.Handled = true;
+        }
+    }
+
     // ─── Catégories ───
 
     private void AddRootCategoryButton_Click(object sender, RoutedEventArgs e)
