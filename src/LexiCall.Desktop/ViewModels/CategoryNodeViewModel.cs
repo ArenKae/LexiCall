@@ -101,6 +101,10 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
         set => SetProperty(ref _isExpanded, value);
     }
 
+    // Le dépli/repli est décidé uniquement par le clic (MainWindow.xaml.cs,
+    // CategoryNode_MouseLeftButtonDown) : la sélection ne force plus IsExpanded,
+    // sinon elle écraserait un repli volontaire d'un nœud qu'on reclique alors
+    // qu'il n'était pas encore sélectionné.
     public bool IsSelected
     {
         get => _isSelected;
@@ -108,11 +112,6 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _isSelected, value) && value)
             {
-                if (Children.Count > 0)
-                {
-                    IsExpanded = true;
-                }
-
                 _onSelected(this);
             }
         }

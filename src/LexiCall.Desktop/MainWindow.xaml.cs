@@ -23,12 +23,7 @@ public partial class MainWindow : Window
 
         // Attaché au TreeView (et non au contenu du DataTemplate) pour que la zone
         // cliquable du reveal/hide corresponde exactement au halo de sélection du
-        // TreeViewItem. On utilise l'évènement Preview (tunneling) plutôt que la
-        // version bouillonnante : il atteint ce gestionnaire AVANT que TreeViewItem
-        // ne traite la sélection, ce qui permet de lire IsSelected tel qu'il était
-        // avant ce clic (un premier clic sélectionne déjà + déplie tout seul, voir
-        // CategoryNodeViewModel.IsSelected ; ce gestionnaire ne doit agir que sur un
-        // reclic sur un nœud déjà sélectionné, sous peine d'annuler ce dépli).
+        // TreeViewItem.
         CategoryTreeView.AddHandler(
             PreviewMouseLeftButtonDownEvent,
             new MouseButtonEventHandler(CategoryNode_MouseLeftButtonDown),
@@ -199,12 +194,13 @@ public partial class MainWindow : Window
         }
     }
 
-    // Reclic sur un nœud déjà sélectionné : referme ce qu'un premier clic vient
-    // d'ouvrir (voir CategoryNodeViewModel.IsSelected, qui déplie tout seul dès la
-    // sélection). Comme ce gestionnaire tourne en Preview, IsSelected reflète encore
-    // l'état d'avant ce clic : un premier clic sur un nœud non sélectionné le laisse
-    // passer sans y toucher, pour que la sélection puis l'auto-dépli du ViewModel
-    // s'exécutent normalement.
+    // Prend en charge sélection + dépli nous-mêmes et marque l'évènement Handled,
+    // plutôt que de laisser TreeViewItem gérer le clic lui-même : son comportement
+    // natif bascule aussi IsExpanded sur un double-clic (basé sur ClickCount), ce
+    // qui entrait en conflit avec notre propre bascule lors de clics rapprochés
+    // (les deux bascules s'annulaient, donnant l'impression que le clic était
+    // ignoré). En gérant tout ici, chaque MouseLeftButtonDown produit exactement
+    // un dépli/repli, peu importe la vitesse des clics.
     //
     // On remonte depuis le point de clic jusqu'au TreeViewItem plutôt que de lire
     // `sender` directement, pour que la zone cliquable corresponde exactement au
@@ -223,10 +219,15 @@ public partial class MainWindow : Window
 
             if (element is TreeViewItem treeViewItem)
             {
-                if (treeViewItem.DataContext is CategoryNodeViewModel { IsEditing: false, Children.Count: > 0 } node &&
-                    node.IsSelected)
+                if (treeViewItem.DataContext is CategoryNodeViewModel { IsEditing: false } node)
                 {
-                    node.IsExpanded = !node.IsExpanded;
+                    if (node.Children.Count > 0)
+                    {
+                        node.IsExpanded = !node.IsExpanded;
+                    }
+
+                    node.IsSelected = true;
+                    treeViewItem.Focus();
                     e.Handled = true;
                 }
 
