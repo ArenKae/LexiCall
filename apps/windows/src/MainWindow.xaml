@@ -278,18 +278,28 @@
                              ToolTip="Recherche dans les mots, définitions, notes, exemples, catégories et tags.">
                         <TextBox.Style>
                             <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                                <Setter Property="Padding" Value="36,6,40,6" />
+                                <Setter Property="Padding" Value="9,6,40,6" />
                                 <Style.Triggers>
-                                    <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                        <Setter Property="Padding" Value="9,6,40,6" />
-                                    </Trigger>
+                                    <!-- Espace réservé à la loupe seulement à l'état "au repos"
+                                         (vide et non focus) : dès le clic dans le champ, même
+                                         avant toute saisie, le texte doit pouvoir démarrer au
+                                         ras du bord, sans laisser un grand vide devant le curseur. -->
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding SearchQuery}" Value="" />
+                                            <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsKeyboardFocusWithin}" Value="False" />
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Padding" Value="36,6,40,6" />
+                                    </MultiDataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </TextBox.Style>
                     </TextBox>
 
-                    <!-- Loupe discrète : purement décorative, ne capte pas le clic, et
-                         cède la place au curseur pendant que le champ a le focus. -->
+                    <!-- Loupe façon placeholder : purement décorative, ne capte pas le
+                         clic, et ne s'affiche qu'à l'état "au repos" (vide et non focus),
+                         comme un texte de substitution qui s'efface dès qu'on interagit
+                         avec le champ. -->
                     <Canvas Width="14" Height="14"
                             Margin="15,0,0,0"
                             HorizontalAlignment="Left"
@@ -298,10 +308,15 @@
                             IsHitTestVisible="False">
                         <Canvas.Style>
                             <Style TargetType="Canvas">
+                                <Setter Property="Visibility" Value="Collapsed" />
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsKeyboardFocusWithin, ElementName=SearchTextBox}" Value="True">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding SearchQuery}" Value="" />
+                                            <Condition Binding="{Binding IsKeyboardFocusWithin, ElementName=SearchTextBox}" Value="False" />
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </MultiDataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </Canvas.Style>
