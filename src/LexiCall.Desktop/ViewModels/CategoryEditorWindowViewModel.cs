@@ -25,6 +25,7 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
     private readonly VocabularyCategory? _existingCategory;
     private string _name = string.Empty;
     private string _description = string.Empty;
+    private string _iconGlyph = string.Empty;
     private string _errorMessage = string.Empty;
     private CategoryParentOption _selectedParentOption;
 
@@ -47,6 +48,7 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
         {
             Name = existingCategory.Name;
             Description = existingCategory.Description;
+            IconGlyph = existingCategory.IconGlyph;
         }
     }
 
@@ -91,6 +93,25 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
         get => _description;
         set => SetProperty(ref _description, value);
     }
+
+    public string IconGlyph
+    {
+        get => _iconGlyph;
+        set
+        {
+            if (SetProperty(ref _iconGlyph, value))
+            {
+                OnPropertyChanged(nameof(HasIcon));
+                OnPropertyChanged(nameof(IconDisplayGlyph));
+            }
+        }
+    }
+
+    public bool HasIcon => !string.IsNullOrEmpty(IconGlyph);
+
+    // Repère neutre tant qu'aucune icône n'a été choisie, pour que le bouton
+    // du sélecteur ne soit jamais vide.
+    public string IconDisplayGlyph => HasIcon ? IconGlyph : "🏷️";
 
     public CategoryParentOption SelectedParentOption
     {
@@ -169,6 +190,7 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
             Name = name,
             ParentId = parentId,
             Description = Description.Trim(),
+            IconGlyph = IconGlyph,
             CreatedAt = _existingCategory?.CreatedAt ?? DateTimeOffset.Now,
             UpdatedAt = DateTimeOffset.Now
         };

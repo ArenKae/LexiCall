@@ -13,6 +13,10 @@ public sealed class VocabularyCategory
 
     public string Description { get; set; } = string.Empty;
 
+    // Emoji choisi via IconPickerWindow. Vide = aucune icône (un repère par
+    // défaut est affiché à la place, voir CategoryNodeViewModel.DisplayIcon).
+    public string IconGlyph { get; set; } = string.Empty;
+
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.Now;
 
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;

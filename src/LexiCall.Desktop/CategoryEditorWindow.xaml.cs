@@ -31,4 +31,22 @@ public partial class CategoryEditorWindow : Window
     }
 
     public VocabularyCategory? SavedCategory => _viewModel.SavedCategory;
+
+    private void ChooseIconButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new IconPickerWindow(_viewModel.IconGlyph)
+        {
+            Owner = this
+        };
+
+        if (dialog.ShowDialog() == true && dialog.SelectedGlyph is not null)
+        {
+            _viewModel.IconGlyph = dialog.SelectedGlyph;
+        }
+    }
+
+    private void ClearIconButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.IconGlyph = string.Empty;
+    }
 }

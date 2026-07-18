@@ -250,6 +250,7 @@
                                 </Grid.ColumnDefinitions>
                                 <ToggleButton x:Name="Expander"
                                               Style="{StaticResource TreeExpanderStyle}"
+                                              Margin="-4,0,0,0"
                                               IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" />
                                 <ContentPresenter Grid.Column="1"
                                                   ContentSource="Header"
@@ -257,6 +258,25 @@
                                                   VerticalAlignment="Center" />
                             </Grid>
                         </Border>
+
+                        <!-- Séparateur sous les catégories racines : posé hors de HeaderBorder pour
+                             qu'il n'agrandisse pas la zone sur laquelle la flèche Expander se centre. -->
+                        <Border>
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="BorderThickness" Value="0" />
+                                    <Setter Property="Margin" Value="0" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Depth}" Value="0">
+                                            <Setter Property="BorderThickness" Value="0,0,0,2" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Strong}" />
+                                            <Setter Property="Margin" Value="0,4,0,4" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                        </Border>
+
                         <ItemsPresenter x:Name="ItemsHost"
                                         Margin="16,1,0,0" />
                     </StackPanel>

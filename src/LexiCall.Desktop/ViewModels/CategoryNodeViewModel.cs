@@ -64,6 +64,15 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
         _ => Category!.Name
     };
 
+    // Icône affichée devant le nom : emoji choisi pour la catégorie, ou un
+    // repère par défaut (nœuds virtuels, ou catégorie sans icône).
+    public string DisplayIcon => Kind switch
+    {
+        CategoryNodeKind.AllEntries => "📚",
+        CategoryNodeKind.Uncategorized => "🗂️",
+        _ => string.IsNullOrEmpty(Category!.IconGlyph) ? "🏷️" : Category.IconGlyph
+    };
+
     // Null quand vide pour que WPF n'affiche pas d'infobulle.
     public string? DescriptionToolTip =>
         string.IsNullOrWhiteSpace(Category?.Description) ? null : Category.Description;

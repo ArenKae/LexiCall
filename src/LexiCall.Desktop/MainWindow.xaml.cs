@@ -4,7 +4,9 @@
 // MainWindowViewModel, et affiche les confirmations/erreurs en MessageBox.
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using LexiCall.Desktop.Services;
 using LexiCall.Desktop.ViewModels;
@@ -18,6 +20,19 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = new MainWindowViewModel();
         ThemeService.RegisterWindow(this);
+
+        // Attaché au TreeView (et non au contenu du DataTemplate) pour que la zone
+        // cliquable du reveal/hide corresponde exactement au halo de sélection du
+        // TreeViewItem. On utilise l'évènement Preview (tunneling) plutôt que la
+        // version bouillonnante : il atteint ce gestionnaire AVANT que TreeViewItem
+        // ne traite la sélection, ce qui permet de lire IsSelected tel qu'il était
+        // avant ce clic (un premier clic sélectionne déjà + déplie tout seul, voir
+        // CategoryNodeViewModel.IsSelected ; ce gestionnaire ne doit agir que sur un
+        // reclic sur un nœud déjà sélectionné, sous peine d'annuler ce dépli).
+        CategoryTreeView.AddHandler(
+            PreviewMouseLeftButtonDownEvent,
+            new MouseButtonEventHandler(CategoryNode_MouseLeftButtonDown),
+            handledEventsToo: true);
     }
 
     private MainWindowViewModel ViewModel => (MainWindowViewModel)DataContext;
@@ -185,18 +200,41 @@ public partial class MainWindow : Window
     }
 
     // Reclic sur un nœud déjà sélectionné : referme ce qu'un premier clic vient
-    // d'ouvrir (voir CategoryNodeViewModel.IsSelected). Le clic initial est laissé
-    // au TreeViewItem lui-même, qui gère la sélection.
+    // d'ouvrir (voir CategoryNodeViewModel.IsSelected, qui déplie tout seul dès la
+    // sélection). Comme ce gestionnaire tourne en Preview, IsSelected reflète encore
+    // l'état d'avant ce clic : un premier clic sur un nœud non sélectionné le laisse
+    // passer sans y toucher, pour que la sélection puis l'auto-dépli du ViewModel
+    // s'exécutent normalement.
+    //
+    // On remonte depuis le point de clic jusqu'au TreeViewItem plutôt que de lire
+    // `sender` directement, pour que la zone cliquable corresponde exactement au
+    // halo de sélection (peint par le Border du ControlTemplate de TreeViewItem,
+    // plus grand que la seule Grid de contenu du DataTemplate).
     private void CategoryNode_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: CategoryNodeViewModel { IsEditing: false, Children.Count: > 0 } node } ||
-            !node.IsSelected)
+        var element = e.OriginalSource as DependencyObject;
+        while (element is not null)
         {
-            return;
-        }
+            if (element is ToggleButton)
+            {
+                // La flèche d'expansion gère déjà elle-même l'ouverture/fermeture.
+                return;
+            }
 
-        node.IsExpanded = !node.IsExpanded;
-        e.Handled = true;
+            if (element is TreeViewItem treeViewItem)
+            {
+                if (treeViewItem.DataContext is CategoryNodeViewModel { IsEditing: false, Children.Count: > 0 } node &&
+                    node.IsSelected)
+                {
+                    node.IsExpanded = !node.IsExpanded;
+                    e.Handled = true;
+                }
+
+                return;
+            }
+
+            element = VisualTreeHelper.GetParent(element);
+        }
     }
 
     private void CategoryTreeView_KeyDown(object sender, KeyEventArgs e)
