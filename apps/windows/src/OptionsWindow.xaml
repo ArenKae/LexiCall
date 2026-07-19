@@ -18,6 +18,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0"
@@ -58,6 +59,48 @@
                 Margin="0,12,0,0"
                 Padding="16"
                 Style="{StaticResource CardBorderStyle}">
+            <StackPanel>
+                <TextBlock Text="Synchronisation API"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="URL et clé du serveur api/ pour la synchronisation best-effort en tâche de fond. Laisser l'URL vide désactive la synchronisation."
+                           Margin="0,4,0,10"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource Brush.Text.Secondary}" />
+
+                <TextBlock Text="URL de l'API" Margin="0,0,0,2" />
+                <TextBox x:Name="ApiBaseUrlTextBox"
+                         Margin="0,0,0,8" />
+
+                <TextBlock Text="Clé API" Margin="0,0,0,2" />
+                <TextBox x:Name="ApiKeyTextBox"
+                         Margin="0,0,0,8" />
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock x:Name="ApiConnectionStatusText"
+                               Grid.Column="0"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource Brush.Text.Secondary}" />
+
+                    <Button Grid.Column="1"
+                            Content="Tester la connexion"
+                            Style="{StaticResource GhostButtonStyle}"
+                            Margin="12,0,0,0"
+                            Click="TestApiConnectionButton_Click"
+                            ToolTip="Enregistre l'URL/la clé ci-dessus puis vérifie que l'API est joignable." />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="3"
+                Margin="0,12,0,0"
+                Padding="16"
+                Style="{StaticResource CardBorderStyle}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -83,7 +126,7 @@
             </Grid>
         </Border>
 
-        <StackPanel Grid.Row="3"
+        <StackPanel Grid.Row="4"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="0,22,0,0">

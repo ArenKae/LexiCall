@@ -1,7 +1,8 @@
 # CRUD endpoints for vocabulary entries.
 from fastapi import APIRouter, Depends, HTTPException, status
+from pymongo.errors import DuplicateKeyError
 
-from lexicall_api.models.entry import VocabularyEntry, VocabularyEntrySummary, VocabularyEntryWrite
+from lexicall_api.models.entry import VocabularyEntry, VocabularyEntryCreate, VocabularyEntrySummary, VocabularyEntryWrite
 from lexicall_api.repositories import categories_repo, entries_repo
 from lexicall_api.security import require_api_key
 
@@ -28,9 +29,12 @@ def get_entry(entry_id: str) -> dict:
 
 
 @router.post("", response_model=VocabularyEntry, status_code=status.HTTP_201_CREATED)
-def create_entry(payload: VocabularyEntryWrite) -> dict:
+def create_entry(payload: VocabularyEntryCreate) -> dict:
     _validate_category_ids(payload.category_ids)
-    return entries_repo.create_entry(payload.model_dump(by_alias=True))
+    try:
+        return entries_repo.create_entry(payload.model_dump(by_alias=True))
+    except DuplicateKeyError as error:
+        raise HTTPException(status_code=409, detail="An entry with this Id already exists.") from error
 
 
 @router.put("/{entry_id}", response_model=VocabularyEntry)

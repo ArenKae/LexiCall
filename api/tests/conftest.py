@@ -24,8 +24,13 @@ def clean_database():
 
 
 @pytest.fixture
-def client() -> TestClient:
-    return TestClient(app)
+def client():
+    # Must enter the TestClient as a context manager, not just instantiate it,
+    # otherwise FastAPI's lifespan never runs and ensure_indexes() never
+    # creates the unique Id index in the test database — duplicate-Id
+    # rejection would silently pass without ever being exercised.
+    with TestClient(app) as test_client:
+        yield test_client
 
 
 @pytest.fixture

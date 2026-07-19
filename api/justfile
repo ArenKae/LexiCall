@@ -5,8 +5,11 @@ install:
     python3 -m venv .venv
     .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 
-run:
-    .venv/bin/uvicorn lexicall_api.main:app --reload --app-dir src --env-file .env
+# HOST defaults to loopback-only; pass HOST=0.0.0.0 to bind to the LAN
+# (needed for a machine other than this one, e.g. the Windows host, to reach
+# the API during dev/testing).
+run HOST="127.0.0.1":
+    .venv/bin/uvicorn lexicall_api.main:app --reload --app-dir src --env-file .env --host {{HOST}}
 
 test:
     .venv/bin/pytest

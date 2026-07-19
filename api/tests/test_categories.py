@@ -26,6 +26,24 @@ def test_create_category_rejects_empty_name(client, auth_headers):
     assert response.status_code == 422
 
 
+def test_create_category_preserves_client_supplied_id(client, auth_headers):
+    client_id = "44444444-4444-4444-4444-444444444444"
+    payload = {"Name": "Avec id", "ParentId": None, "Description": "", "IconGlyph": "", "Id": client_id}
+    response = client.post("/categories", json=payload, headers=auth_headers)
+    assert response.status_code == 201
+    assert response.json()["Id"] == client_id
+
+
+def test_create_category_rejects_duplicate_id(client, auth_headers):
+    client_id = "55555555-5555-5555-5555-555555555555"
+    payload = {"Name": "Doublon", "ParentId": None, "Description": "", "IconGlyph": "", "Id": client_id}
+    first_response = client.post("/categories", json=payload, headers=auth_headers)
+    assert first_response.status_code == 201
+
+    second_response = client.post("/categories", json=payload, headers=auth_headers)
+    assert second_response.status_code == 409
+
+
 def test_update_category_rejects_cycle(client, auth_headers):
     parent = _create_category(client, auth_headers, "Parent")
     child = _create_category(client, auth_headers, "Enfant", parent_id=parent["Id"])

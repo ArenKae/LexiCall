@@ -22,8 +22,8 @@ test-app-windows:
 install-api:
     just --justfile api/justfile --working-directory api install
 
-run-api:
-    just --justfile api/justfile --working-directory api run
+run-api HOST="127.0.0.1":
+    just --justfile api/justfile --working-directory api run {{HOST}}
 
 lint-api:
     just --justfile api/justfile --working-directory api lint

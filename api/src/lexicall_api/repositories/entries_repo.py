@@ -29,7 +29,11 @@ def get_entry(entry_id: str) -> dict | None:
 
 
 def create_entry(data: dict) -> dict:
-    doc = {**data, "Id": str(uuid.uuid4()), "CreatedAt": _now_iso(), "UpdatedAt": _now_iso()}
+    # data may carry a client-supplied Id (e.g. an entry created offline by
+    # the desktop app, synced later) — preserve it so it doesn't diverge from
+    # the client's own copy; generate one only if none was supplied.
+    entry_id = data.get("Id") or str(uuid.uuid4())
+    doc = {**data, "Id": entry_id, "CreatedAt": _now_iso(), "UpdatedAt": _now_iso()}
     get_entries_collection().insert_one(doc)
     return strip_mongo_id(doc)
 

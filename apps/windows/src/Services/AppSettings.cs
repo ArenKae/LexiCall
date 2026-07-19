@@ -13,4 +13,10 @@ internal sealed class AppSettings
 
     public double? CategoryColumnWidth { get; set; }
     public double? EntryListColumnWidth { get; set; }
+
+    // Synchronisation best-effort vers api/ (voir VocabularyApiClient) : vide
+    // par défaut = synchronisation désactivée tant qu'aucun serveur n'est
+    // configuré. Stockées en clair, comme le reste de ce fichier.
+    public string? ApiBaseUrl { get; set; }
+    public string? ApiKey { get; set; }
 }

@@ -16,11 +16,32 @@ public partial class OptionsWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         ThemeService.RegisterWindow(this);
+
+        ApiBaseUrlTextBox.Text = viewModel.ApiBaseUrl;
+        ApiKeyTextBox.Text = viewModel.ApiKey;
     }
 
     private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
     {
         ((MainWindowViewModel)DataContext).ToggleTheme();
+    }
+
+    private async void TestApiConnectionButton_Click(object sender, RoutedEventArgs e)
+    {
+        var viewModel = (MainWindowViewModel)DataContext;
+        viewModel.UpdateApiSettings(ApiBaseUrlTextBox.Text.Trim(), ApiKeyTextBox.Text.Trim());
+
+        ApiConnectionStatusText.Text = "Test en cours…";
+
+        var status = await viewModel.TestApiConnectionAsync();
+
+        ApiConnectionStatusText.Text = status switch
+        {
+            ApiConnectionStatus.Ok => "Connecté.",
+            ApiConnectionStatus.InvalidApiKey => "Clé API invalide.",
+            ApiConnectionStatus.Unreachable => "API injoignable.",
+            _ => "Synchronisation désactivée (URL vide)."
+        };
     }
 
     private void OpenDataFolderButton_Click(object sender, RoutedEventArgs e)

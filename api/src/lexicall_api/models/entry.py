@@ -21,6 +21,14 @@ class VocabularyEntryWrite(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class VocabularyEntryCreate(VocabularyEntryWrite):
+    # Optional client-supplied Id, POST-only (never PUT — an update's target
+    # id is the URL path parameter, not the body). Lets an offline-created
+    # entry keep the same Id once it reaches the server, instead of getting
+    # a second, different server-generated one.
+    id: str | None = Field(default=None, alias="Id", min_length=1)
+
+
 class VocabularyEntrySummary(BaseModel):
     # Used for GET /entries (list): same fields as VocabularyEntry,
     # without ImageBase64 — avoids loading every image blob on a list.

@@ -16,6 +16,11 @@ class VocabularyCategoryWrite(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class VocabularyCategoryCreate(VocabularyCategoryWrite):
+    # Optional client-supplied Id, POST-only — see VocabularyEntryCreate.
+    id: str | None = Field(default=None, alias="Id", min_length=1)
+
+
 class VocabularyCategory(BaseModel):
     id: str = Field(alias="Id")
     name: str = Field(alias="Name")

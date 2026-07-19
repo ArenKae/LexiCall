@@ -1,7 +1,8 @@
 # CRUD endpoints for vocabulary categories.
 from fastapi import APIRouter, Depends, HTTPException, status
+from pymongo.errors import DuplicateKeyError
 
-from lexicall_api.models.category import VocabularyCategory, VocabularyCategoryWrite
+from lexicall_api.models.category import VocabularyCategory, VocabularyCategoryCreate, VocabularyCategoryWrite
 from lexicall_api.repositories import categories_repo, entries_repo
 from lexicall_api.security import require_api_key
 
@@ -31,9 +32,12 @@ def get_category(category_id: str) -> dict:
 
 
 @router.post("", response_model=VocabularyCategory, status_code=status.HTTP_201_CREATED)
-def create_category(payload: VocabularyCategoryWrite) -> dict:
-    _validate_parent(None, payload.parent_id)
-    return categories_repo.create_category(payload.model_dump(by_alias=True))
+def create_category(payload: VocabularyCategoryCreate) -> dict:
+    _validate_parent(payload.id, payload.parent_id)
+    try:
+        return categories_repo.create_category(payload.model_dump(by_alias=True))
+    except DuplicateKeyError as error:
+        raise HTTPException(status_code=409, detail="A category with this Id already exists.") from error
 
 
 @router.put("/{category_id}", response_model=VocabularyCategory)

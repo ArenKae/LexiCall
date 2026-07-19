@@ -52,7 +52,11 @@ def has_children(category_id: str) -> bool:
 
 
 def create_category(data: dict) -> dict:
-    doc = {**data, "Id": str(uuid.uuid4()), "CreatedAt": _now_iso(), "UpdatedAt": _now_iso()}
+    # data may carry a client-supplied Id (e.g. a category created offline by
+    # the desktop app, synced later) — preserve it so it doesn't diverge from
+    # the client's own copy; generate one only if none was supplied.
+    category_id = data.get("Id") or str(uuid.uuid4())
+    doc = {**data, "Id": category_id, "CreatedAt": _now_iso(), "UpdatedAt": _now_iso()}
     get_categories_collection().insert_one(doc)
     return strip_mongo_id(doc)
 

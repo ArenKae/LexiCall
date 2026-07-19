@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 using LexiCall.Desktop.Models;
 using LexiCall.Desktop.Services;
 using LexiCall.Desktop.Utilities;
@@ -15,13 +16,16 @@ namespace LexiCall.Desktop.ViewModels;
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private readonly VocabularyRepository _repository;
+    private VocabularyApiClient _apiClient;
+    private string? _apiBaseUrl;
+    private string? _apiKey;
     private string _searchQuery = string.Empty;
     private string _searchStatusText = string.Empty;
     private VocabularyEntry? _selectedEntry;
     private CategoryNodeViewModel? _selectedCategoryNode;
     private HashSet<Guid>? _activeCategoryFilterIds;
 
-    public MainWindowViewModel(VocabularyRepository? repository = null)
+    public MainWindowViewModel(VocabularyRepository? repository = null, VocabularyApiClient? apiClient = null)
     {
         _repository = repository ?? new VocabularyRepository();
 
@@ -41,6 +45,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             SaveDatabase();
         }
+
+        var settings = SettingsStore.Load();
+        _apiBaseUrl = settings.ApiBaseUrl;
+        _apiKey = settings.ApiKey;
+        _apiClient = apiClient ?? new VocabularyApiClient(_apiBaseUrl, _apiKey);
+
+        // Rattrapage en tâche de fond des mutations faites hors ligne, jamais
+        // encore poussées vers l'API — voir ResyncWithApiAsync. Non awaité
+        // volontairement : ne doit jamais retarder l'ouverture de la fenêtre.
+        _ = ResyncWithApiAsync();
     }
 
     public ObservableCollection<VocabularyEntry> Entries { get; }
@@ -146,12 +160,73 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ? "☀  Thème clair"
         : "🌙  Thème sombre";
 
+    public string ApiBaseUrl => _apiBaseUrl ?? string.Empty;
+
+    public string ApiKey => _apiKey ?? string.Empty;
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public void ToggleTheme()
     {
         ThemeService.Toggle();
         OnPropertyChanged(nameof(ThemeToggleText));
+    }
+
+    // Appelé par OptionsWindow : persiste (load-merge-save, comme le reste de
+    // settings.json) puis reconstruit le client HTTP avec les nouvelles valeurs.
+    public void UpdateApiSettings(string? apiBaseUrl, string? apiKey)
+    {
+        _apiBaseUrl = apiBaseUrl;
+        _apiKey = apiKey;
+
+        var settings = SettingsStore.Load();
+        settings.ApiBaseUrl = apiBaseUrl;
+        settings.ApiKey = apiKey;
+        SettingsStore.Save(settings);
+
+        _apiClient = new VocabularyApiClient(apiBaseUrl, apiKey);
+        OnPropertyChanged(nameof(ApiBaseUrl));
+        OnPropertyChanged(nameof(ApiKey));
+    }
+
+    public Task<ApiConnectionStatus> TestApiConnectionAsync() => _apiClient.TestConnectionAsync();
+
+    // Pousse tout l'état local vers l'API, une seule fois au démarrage — voir
+    // le constructeur. Rattrape les mutations faites pendant que l'API était
+    // injoignable (chaque mutation tente déjà un push best-effort au moment où
+    // elle se produit, cf. AddEntry/UpdateEntry/DeleteEntry/SaveCategory/
+    // RenameCategory/DeleteCategory ; ceci couvre les échecs de ces tentatives).
+    // Catégories poussées avant les entrées : l'API valide les CategoryIds
+    // d'une entrée contre les catégories déjà connues côté serveur.
+    private async Task ResyncWithApiAsync()
+    {
+        if (!_apiClient.IsConfigured)
+        {
+            return;
+        }
+
+        var status = await _apiClient.TestConnectionAsync().ConfigureAwait(false);
+
+        if (status != ApiConnectionStatus.Ok)
+        {
+            // API injoignable ou mal configurée : pas la peine de tenter des
+            // centaines d'upserts qui échoueraient tous à chaque démarrage.
+            return;
+        }
+
+        // Snapshot pris avant la boucle : Entries/Categories sont des
+        // ObservableCollection liées à l'UI, pas sûres à énumérer pendant que
+        // l'utilisateur les modifie (ce qui peut arriver, cette boucle tourne
+        // en tâche de fond sans bloquer l'UI).
+        foreach (var category in Categories.ToList())
+        {
+            await _apiClient.TryUpsertCategoryAsync(category).ConfigureAwait(false);
+        }
+
+        foreach (var entry in Entries.ToList())
+        {
+            await _apiClient.TryUpsertEntryAsync(entry).ConfigureAwait(false);
+        }
     }
 
     public void AddEntry(VocabularyEntry entry)
@@ -168,6 +243,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RefreshFilteredEntries();
         SelectedEntry = entry;
         SaveDatabase();
+
+        // Best-effort, jamais awaité : ne doit jamais ralentir l'UI, encore
+        // moins quand l'API est injoignable (cas courant pour l'instant).
+        _ = _apiClient.TryUpsertEntryAsync(entry);
     }
 
     public void UpdateEntry(VocabularyEntry updatedEntry)
@@ -189,6 +268,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         SaveDatabase();
+        _ = _apiClient.TryUpsertEntryAsync(updatedEntry);
     }
 
     public void DeleteEntry(VocabularyEntry entry)
@@ -208,6 +288,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ? null
             : FilteredEntries[Math.Min(index, FilteredEntries.Count - 1)];
         SaveDatabase();
+        _ = _apiClient.TryDeleteEntryAsync(entry.Id);
     }
 
     // Ajout ou remplacement d'une catégorie validée par CategoryEditorWindow.
@@ -235,6 +316,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         OnCategoriesChanged();
+        _ = _apiClient.TryUpsertCategoryAsync(category);
         return null;
     }
 
@@ -269,6 +351,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         category.Name = name;
         category.UpdatedAt = DateTimeOffset.Now;
         OnCategoriesChanged();
+        _ = _apiClient.TryUpsertCategoryAsync(category);
         return null;
     }
 
@@ -295,6 +378,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         Categories.RemoveAt(index);
         OnCategoriesChanged();
+        _ = _apiClient.TryDeleteCategoryAsync(categoryId);
         return null;
     }
 
