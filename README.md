@@ -9,7 +9,16 @@ claire pour rester maintenable par une seule personne.
 
 ## État actuel
 
-LexiCall est dans sa Phase 1 : application desktop locale, sans backend.
+LexiCall est utilisable en Phase 1 (application desktop locale, complète) et sa Phase 2
+(backend FastAPI + MongoDB) est désormais implémentée et câblée au client Windows : chaque
+mutation locale est poussée vers l'API en tâche de fond, best-effort, en plus de la
+sauvegarde JSON locale qui reste la seule source de vérité pour l'affichage. Le VPS OVH n'est
+pas encore provisionné — l'API tourne pour l'instant dans une VM Linux de développement sur
+le réseau local ; basculer vers le VPS sera une simple histoire de configuration (URL/clé
+dans Options), sans changement de code. Voir la Roadmap plus bas pour le détail de ce qui est
+fait et ce qui reste hors périmètre pour cette phase (lecture depuis l'API, résolution de
+conflits — pertinentes seulement à partir d'un deuxième écrivain, l'app Android de la Phase
+3).
 
 Fonctionnalités disponibles :
 
@@ -38,9 +47,13 @@ Fonctionnalités disponibles :
 - entrées autorisées sans catégorie ;
 - recherche locale sur mots, définitions, notes, source, exemples, tags et catégories ;
 - recherche tolérante aux accents ;
-- fenêtre « Options » (thème clair/sombre, accès au dossier de données) ;
-  position/taille de la fenêtre et largeur des colonnes mémorisées entre les
-  sessions ;
+- fenêtre « Options » (thème clair/sombre, accès au dossier de données, configuration de
+  la synchronisation API avec test de connexion) ; position/taille de la fenêtre et largeur
+  des colonnes mémorisées entre les sessions ;
+- synchronisation best-effort en tâche de fond vers l'API (Phase 2) : chaque ajout/
+  modification/suppression est poussé vers le serveur sans jamais bloquer l'interface, avec
+  rattrapage automatique au démarrage si l'API était injoignable entretemps ; le JSON local
+  reste la seule source de vérité affichée, la synchronisation est un miroir best-effort ;
 - confirmations de suppression via une boîte de dialogue stylée (thème
   clair/sombre cohérent, plus de MessageBox système) ;
 - sauvegarde et rechargement depuis un fichier JSON local ;
@@ -107,8 +120,8 @@ renommer une catégorie sans modifier toutes les entrées qui l’utilisent.
 | Application desktop | .NET 10, C#, WPF |
 | Architecture UI | MVVM simple |
 | Stockage Phase 1 | JSON local |
-| Backend futur | FastAPI |
-| Base de données future | MongoDB |
+| Backend (Phase 2) | FastAPI |
+| Base de données (Phase 2) | MongoDB |
 | Mobile futur | React Native, Expo |
 
 ## Prérequis
@@ -147,17 +160,29 @@ just run-app-windows
 just build-app-windows
 ```
 
+Pour l'API (`api/`, Python/FastAPI), voir `api/README.md` pour l'installation complète ;
+en résumé, depuis la racine :
+
+```bash
+just install-api
+just mongo-up-api
+just run-api                # HOST=127.0.0.1 par défaut (LAN : just run-api HOST=0.0.0.0)
+```
+
+L'app Windows n'utilise l'API que si `ApiBaseUrl`/`ApiKey` sont renseignés dans Options —
+sans configuration, elle fonctionne exactement comme en Phase 1 pure.
+
 ## Structure du dépôt
 
-LexiCall est un monorepo : un dossier par surface applicative. Seul
-`apps/windows` contient du code aujourd'hui ; `apps/android` et `api` sont des
-dossiers réservés (un simple README chacun) pour les phases à venir.
+LexiCall est un monorepo : un dossier par surface applicative. `apps/windows`
+et `api` contiennent du code aujourd'hui ; `apps/android` reste un dossier
+réservé (un simple README) pour la Phase 3, à venir.
 
 ```text
 apps/
 ├── windows/   application desktop WPF (Phase 1, actuelle — détail ci-dessous)
 └── android/   application mobile React Native/Expo (Phase 3, à venir)
-api/           backend FastAPI + MongoDB (Phase 2, à venir)
+api/           backend FastAPI + MongoDB (Phase 2, implémenté — voir api/README.md)
 ```
 
 ## Structure de `apps/windows/`
@@ -171,7 +196,7 @@ apps/windows/
     ├── LexiCall.Desktop.csproj
     ├── Models/               Modèles métier : entrée, catégorie, base JSON
     ├── ViewModels/           État et logique de présentation MVVM
-    ├── Services/             Persistance locale JSON, gestion du thème
+    ├── Services/             Persistance locale JSON, gestion du thème, client API (sync)
     ├── Commands/             Commandes WPF réutilisables
     ├── Converters/           Convertisseurs XAML (chips, indentation, couleur des catégories)
     ├── Utilities/            Helpers texte et hiérarchie de catégories
@@ -203,6 +228,12 @@ La gestion des catégories (création, renommage, reparentage, suppression) se
 fait directement dans le panneau latéral de la fenêtre principale ; toute
 mutation déclenche une sauvegarde complète immédiate du fichier JSON.
 
+Depuis la Phase 2, chaque mutation déclenche en plus un envoi best-effort vers l'API
+(`VocabularyApiClient`, en tâche de fond, jamais attendu) : le fichier JSON local reste
+l'unique source de vérité affichée par l'interface, l'API n'est qu'un miroir tenu à jour de
+façon best-effort — voir `.claude/CLAUDE.md` (section « Client sync ») pour le détail du
+modèle de synchronisation.
+
 ## Roadmap
 
 ### Phase 1 — Desktop local
@@ -227,11 +258,23 @@ Prochaines améliorations probables :
 
 ### Phase 2 — Backend partagé
 
-- FastAPI ;
-- MongoDB ;
-- API REST ;
-- hébergement léger sur VPS OVH ;
-- migration progressive du stockage local vers une source de vérité serveur.
+Fait :
+
+- API REST FastAPI + MongoDB (`api/`), authentification par clé API (`X-API-Key`) ;
+- migration ponctuelle des données existantes (`vocabulary.json` → MongoDB), idempotente ;
+- client Windows câblé : chaque mutation locale pousse une synchronisation best-effort vers
+  l'API en tâche de fond, avec rattrapage automatique au démarrage si l'API a été injoignable ;
+  configuration (URL, clé) depuis la fenêtre Options, avec test de connexion.
+
+Volontairement hors périmètre pour l'instant (voir `.claude/CLAUDE.md` pour le détail) :
+
+- bascule des lectures de l'UI vers l'API (le JSON local reste la source de vérité tant
+  qu'un vrai mécanisme de résolution de conflits n'existe pas) ;
+- résolution de conflits entre éditions concurrentes (pas encore nécessaire à un seul
+  écrivain) ;
+- hébergement sur le VPS OVH — non provisionné à ce stade, l'API tourne dans une VM Linux de
+  développement sur le réseau local ; bascule prévue comme un simple changement de
+  configuration, sans changement de code.
 
 ### Phase 3 — Android
 
