@@ -6,7 +6,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <!-- The project remains buildable until the final artwork is delivered. -->
     <ApplicationIcon Condition="Exists('Assets\Branding\AppIcon.ico')">Assets\Branding\AppIcon.ico</ApplicationIcon>
   </PropertyGroup>
 

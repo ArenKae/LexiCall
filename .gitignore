@@ -57,6 +57,7 @@ AGENTS.md
 *.key
 
 # Fichiers temporaires et système
+templates/
 *.log
 *.tmp
 *.bak
