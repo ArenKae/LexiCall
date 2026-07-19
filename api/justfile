@@ -1,0 +1,27 @@
+default:
+    just --list
+
+install:
+    python3 -m venv .venv
+    .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+
+run:
+    .venv/bin/uvicorn lexicall_api.main:app --reload --app-dir src --env-file .env
+
+test:
+    .venv/bin/pytest
+
+lint:
+    .venv/bin/ruff check src tests
+
+clean:
+    rm -rf .venv .pytest_cache
+
+migrate *ARGS:
+    PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.migrate_from_json {{ARGS}}
+
+mongo-up:
+    docker compose up -d mongo
+
+mongo-down:
+    docker compose down

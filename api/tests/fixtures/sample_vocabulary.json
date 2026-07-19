@@ -1,0 +1,93 @@
+{
+  "Entries": [
+    {
+      "Id": "11111111-1111-1111-1111-111111111111",
+      "Word": "Ubac",
+      "Definition": "Versant d'une vallée exposé au nord, à l'ombre",
+      "Synonyms": [],
+      "ExampleSentences": [],
+      "Notes": "",
+      "Source": "",
+      "CategoryIds": ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],
+      "Tags": [],
+      "ImageBase64": "",
+      "CreatedAt": "2026-01-01T10:00:00+00:00",
+      "UpdatedAt": "2026-01-01T10:00:00+00:00"
+    },
+    {
+      "Id": "22222222-2222-2222-2222-222222222222",
+      "Word": "Adret",
+      "Definition": "Versant d'une vallée exposé au sud, ensoleillé",
+      "Synonyms": [],
+      "ExampleSentences": [],
+      "Notes": "",
+      "Source": "",
+      "CategoryIds": ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"],
+      "Tags": [],
+      "ImageBase64": "",
+      "CreatedAt": "2026-01-01T10:00:00+00:00",
+      "UpdatedAt": "2026-01-01T10:00:00+00:00"
+    },
+    {
+      "Id": "33333333-3333-3333-3333-333333333333",
+      "Word": "",
+      "Definition": "Entrée invalide sans mot",
+      "Synonyms": [],
+      "ExampleSentences": [],
+      "Notes": "",
+      "Source": "",
+      "CategoryIds": [],
+      "Tags": [],
+      "ImageBase64": "",
+      "CreatedAt": "2026-01-01T10:00:00+00:00",
+      "UpdatedAt": "2026-01-01T10:00:00+00:00"
+    }
+  ],
+  "Categories": [
+    {
+      "Id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "Name": "Géographie",
+      "ParentId": null,
+      "Description": "",
+      "IconGlyph": "🗺️",
+      "CreatedAt": "2026-01-01T10:00:00+00:00",
+      "UpdatedAt": "2026-01-01T10:00:00+00:00"
+    },
+    {
+      "Id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      "Name": "Relief",
+      "ParentId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "Description": "",
+      "IconGlyph": "",
+      "CreatedAt": "2026-01-01T10:00:00+00:00",
+      "UpdatedAt": "2026-01-01T10:00:00+00:00"
+    },
+    {
+      "Id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      "Name": "Relief (doublon)",
+      "ParentId": null,
+      "Description": "",
+      "IconGlyph": "",
+      "CreatedAt": "2026-01-01T10:00:00+00:00",
+      "UpdatedAt": "2026-01-01T10:00:00+00:00"
+    },
+    {
+      "Id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+      "Name": "Cycle A",
+      "ParentId": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+      "Description": "",
+      "IconGlyph": "",
+      "CreatedAt": "2026-01-01T10:00:00+00:00",
+      "UpdatedAt": "2026-01-01T10:00:00+00:00"
+    },
+    {
+      "Id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+      "Name": "Cycle B",
+      "ParentId": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+      "Description": "",
+      "IconGlyph": "",
+      "CreatedAt": "2026-01-01T10:00:00+00:00",
+      "UpdatedAt": "2026-01-01T10:00:00+00:00"
+    }
+  ]
+}

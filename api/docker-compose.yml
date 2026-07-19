@@ -1,0 +1,12 @@
+# Local development compose: MongoDB only.
+# The API runs outside the container (uvicorn --reload) for reactive reloading.
+services:
+  mongo:
+    image: mongo:8.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

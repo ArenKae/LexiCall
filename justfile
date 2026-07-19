@@ -1,4 +1,4 @@
-set shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 
 default:
     just --list
@@ -16,3 +16,29 @@ clean-app-windows:
 
 test-app-windows:
     just --justfile apps/windows/justfile --working-directory apps/windows test
+
+# --- api (FastAPI / MongoDB) ---
+
+install-api:
+    just --justfile api/justfile --working-directory api install
+
+run-api:
+    just --justfile api/justfile --working-directory api run
+
+lint-api:
+    just --justfile api/justfile --working-directory api lint
+
+test-api:
+    just --justfile api/justfile --working-directory api test
+
+clean-api:
+    just --justfile api/justfile --working-directory api clean
+
+migrate-api *ARGS:
+    just --justfile api/justfile --working-directory api migrate {{ARGS}}
+
+mongo-up-api:
+    just --justfile api/justfile --working-directory api mongo-up
+
+mongo-down-api:
+    just --justfile api/justfile --working-directory api mongo-down
