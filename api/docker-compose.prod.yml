@@ -1,14 +1,12 @@
 # Production compose (VPS): API + MongoDB.
-# Mongo is never published on a host port, only reachable via the internal
-# Docker network between the two services. Public exposure of the API
-# (direct port + TLS reverse proxy, or VPN/tunnel): decision deferred, to be
-# settled once the VPS is provisioned.
 services:
   mongo:
     image: mongo:8.0
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:27017:27017"
     volumes:
       - mongo_data:/data/db
     restart: unless-stopped
