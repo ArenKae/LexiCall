@@ -5,9 +5,11 @@ install:
     python3 -m venv .venv
     .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 
-# HOST defaults to loopback-only; pass HOST=0.0.0.0 to bind to the LAN
-# (needed for a machine other than this one, e.g. the Windows host, to reach
-# the API during dev/testing).
+# HOST defaults to loopback-only; pass a positional arg to override, e.g.
+# `just run 0.0.0.0` to bind to the LAN (needed for a machine other than this
+# one, e.g. the Windows host, to reach the API during dev/testing). Note:
+# just recipe args are positional, not NAME=value like make — `just run
+# HOST=0.0.0.0` would pass the literal string "HOST=0.0.0.0" as the value.
 run HOST="127.0.0.1":
     .venv/bin/uvicorn lexicall_api.main:app --reload --app-dir src --env-file .env --host {{HOST}}
 

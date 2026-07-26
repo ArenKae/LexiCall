@@ -22,6 +22,7 @@ test-app-windows:
 install-api:
     just --justfile api/justfile --working-directory api install
 
+# Positional arg, not NAME=value: `just run-api 0.0.0.0` to bind to the LAN.
 run-api HOST="127.0.0.1":
     just --justfile api/justfile --working-directory api run {{HOST}}
 

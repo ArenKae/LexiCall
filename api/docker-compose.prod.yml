@@ -6,6 +6,9 @@
 services:
   mongo:
     image: mongo:8.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
     volumes:
       - mongo_data:/data/db
     restart: unless-stopped
@@ -14,7 +17,7 @@ services:
     build: .
     env_file: .env
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8001:8000"
     depends_on:
       - mongo
     restart: unless-stopped
