@@ -19,6 +19,8 @@ test-app-windows:
 
 # --- api (FastAPI / MongoDB) ---
 
+# Local dev tooling: venv, tests, lint, one-off migration script.
+
 install-api:
     just --justfile api/justfile --working-directory api install
 
@@ -38,11 +40,15 @@ clean-api:
 migrate-api *ARGS:
     just --justfile api/justfile --working-directory api migrate {{ARGS}}
 
+# Local dev stack (docker-compose.yml: Mongo only — the app itself runs via run-api).
+
 dev-mongo-up-api:
     just --justfile api/justfile --working-directory api dev-mongo-up
 
 dev-mongo-down-api:
     just --justfile api/justfile --working-directory api dev-mongo-down
+
+# Production stack (docker-compose.prod.yml).
 
 deploy-api:
     just --justfile api/justfile --working-directory api deploy
