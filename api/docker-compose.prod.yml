@@ -15,7 +15,10 @@ services:
 
   api:
     build: .
-    env_file: .env
+    environment:
+      API_KEY: ${API_KEY}
+      MONGO_URI: ${MONGO_URI}
+      MONGO_DB_NAME: ${MONGO_DB_NAME}
     ports:
       - "127.0.0.1:8001:8000"
     depends_on:
