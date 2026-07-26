@@ -13,8 +13,13 @@ ARCHIVE="$BACKUP_DIR/lexicall-$TIMESTAMP.archive.gz"
 mkdir -p "$BACKUP_DIR"
 
 cd "$SCRIPT_DIR"
+# Root credentials, not the per-project lexicall_app user: this instance is
+# meant to host other small projects too, and a full backup must cover every
+# database, not just lexicall's.
+ROOT_USER=$(grep -oP '(?<=^MONGO_ROOT_USER=).*' .env)
+ROOT_PASSWORD=$(grep -oP '(?<=^MONGO_ROOT_PASSWORD=).*' .env)
 docker compose -f docker-compose.prod.yml exec -T mongo \
-    mongodump --archive --gzip > "$ARCHIVE"
+    mongodump --archive --gzip --username "$ROOT_USER" --password "$ROOT_PASSWORD" --authenticationDatabase admin > "$ARCHIVE"
 
 find "$BACKUP_DIR" -name 'lexicall-*.archive.gz' -mtime "+$RETENTION_DAYS" -delete
 

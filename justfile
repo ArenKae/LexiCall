@@ -59,11 +59,6 @@ down-api:
 logs-api SERVICE="api":
     just --justfile api/justfile --working-directory api logs {{SERVICE}}
 
-ps-api:
-    just --justfile api/justfile --working-directory api ps
-
-health-api:
-    just --justfile api/justfile --working-directory api health
 
 backup-api:
     just --justfile api/justfile --working-directory api backup
