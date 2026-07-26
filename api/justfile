@@ -25,8 +25,41 @@ clean:
 migrate *ARGS:
     PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.migrate_from_json {{ARGS}}
 
-mongo-up:
+# --- dev (docker-compose.yml: Mongo only — the app itself runs via `just run`) ---
+
+dev-mongo-up:
     docker compose up -d mongo
 
-mongo-down:
+dev-mongo-down:
     docker compose down
+
+# --- prod (docker-compose.prod.yml: API + Mongo, run these on the VPS) ---
+
+# Build (if needed) and bring the full stack up. Safe to rerun after every
+# `git pull` — Compose only rebuilds/recreates services whose image or config
+# actually changed.
+deploy:
+    docker compose -f docker-compose.prod.yml up -d --build
+
+down:
+    docker compose -f docker-compose.prod.yml down
+
+logs SERVICE="api":
+    docker compose -f docker-compose.prod.yml logs -f {{SERVICE}}
+
+ps:
+    docker compose -f docker-compose.prod.yml ps
+
+health:
+    curl -sf http://127.0.0.1:8001/health
+
+backup:
+    ./deploy/backup.sh
+
+# Interactive mongosh shell, authenticated as root. Password is read straight
+# from .env — never typed or pasted into a masked prompt.
+mongo-shell:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ROOT_PWD=$(grep -oP '(?<=^MONGO_ROOT_PASSWORD=).*' .env)
+    docker compose -f docker-compose.prod.yml exec mongo mongosh "mongodb://lexicall_root:${ROOT_PWD}@localhost:27017/admin"

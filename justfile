@@ -38,8 +38,29 @@ clean-api:
 migrate-api *ARGS:
     just --justfile api/justfile --working-directory api migrate {{ARGS}}
 
-mongo-up-api:
-    just --justfile api/justfile --working-directory api mongo-up
+dev-mongo-up-api:
+    just --justfile api/justfile --working-directory api dev-mongo-up
 
-mongo-down-api:
-    just --justfile api/justfile --working-directory api mongo-down
+dev-mongo-down-api:
+    just --justfile api/justfile --working-directory api dev-mongo-down
+
+deploy-api:
+    just --justfile api/justfile --working-directory api deploy
+
+down-api:
+    just --justfile api/justfile --working-directory api down
+
+logs-api SERVICE="api":
+    just --justfile api/justfile --working-directory api logs {{SERVICE}}
+
+ps-api:
+    just --justfile api/justfile --working-directory api ps
+
+health-api:
+    just --justfile api/justfile --working-directory api health
+
+backup-api:
+    just --justfile api/justfile --working-directory api backup
+
+mongo-shell-api:
+    just --justfile api/justfile --working-directory api mongo-shell
