@@ -19,4 +19,10 @@ internal sealed class AppSettings
     // configuré. Stockées en clair, comme le reste de ce fichier.
     public string? ApiBaseUrl { get; set; }
     public string? ApiKey { get; set; }
+
+    // Couleurs de catégorie choisies manuellement (Id → "#RRGGBB"), voir
+    // CategoryColorStore. Purement une préférence de présentation locale à
+    // cette installation de l'app Windows : jamais écrite dans vocabulary.json
+    // ni synchronisée vers api/, contrairement au reste du modèle de catégorie.
+    public Dictionary<Guid, string> CategoryColors { get; set; } = new();
 }

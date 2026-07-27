@@ -4,8 +4,10 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Media;
 using LexiCall.Desktop.Commands;
 using LexiCall.Desktop.Models;
+using LexiCall.Desktop.Services;
 using LexiCall.Desktop.Utilities;
 
 namespace LexiCall.Desktop.ViewModels;
@@ -24,6 +26,7 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
     private string _name = string.Empty;
     private string _description = string.Empty;
     private string _iconGlyph = string.Empty;
+    private string? _colorHex;
     private string _errorMessage = string.Empty;
     private CategoryParentOption _selectedParentOption;
 
@@ -47,6 +50,7 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
             Name = existingCategory.Name;
             Description = existingCategory.Description;
             IconGlyph = existingCategory.IconGlyph;
+            ColorHex = CategoryColorStore.LoadAll().TryGetValue(existingCategory.Id, out var hex) ? hex : null;
         }
     }
 
@@ -59,6 +63,11 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<CategoryParentOption> ParentOptions { get; }
 
     public VocabularyCategory? SavedCategory { get; private set; }
+
+    // Couleur choisie au moment de l'enregistrement (null = automatique) :
+    // séparée de SavedCategory, car ce n'est pas un champ du modèle de
+    // catégorie — voir CategoryColorStore.
+    public string? SavedColorHex { get; private set; }
 
     public string WindowTitle => _existingCategory is null
         ? "Nouvelle catégorie"
@@ -110,6 +119,51 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
     // Repère neutre tant qu'aucune icône n'a été choisie, pour que le bouton
     // du sélecteur ne soit jamais vide.
     public string IconDisplayGlyph => HasIcon ? IconGlyph : "🏷️";
+
+    // Null = pas de couleur choisie manuellement (couleur automatique).
+    public string? ColorHex
+    {
+        get => _colorHex;
+        set
+        {
+            if (SetProperty(ref _colorHex, value))
+            {
+                OnPropertyChanged(nameof(HasCustomColor));
+                OnPropertyChanged(nameof(ColorPreviewBrush));
+            }
+        }
+    }
+
+    public bool HasCustomColor => !string.IsNullOrEmpty(ColorHex);
+
+    // Aperçu du bouton de sélection : la couleur choisie, ou la couleur
+    // automatique de la catégorie existante (calculée en ignorant son propre
+    // override, pour prévisualiser correctement un retour à "Automatique"),
+    // ou un repère neutre pour une catégorie pas encore créée — son index de
+    // couleur automatique n'existe qu'après le premier enregistrement.
+    public SolidColorBrush ColorPreviewBrush
+    {
+        get
+        {
+            if (HasCustomColor && CategoryColorResolver.TryParseHex(ColorHex!, out var chosenColor))
+            {
+                return new SolidColorBrush(chosenColor);
+            }
+
+            if (_existingCategory is null)
+            {
+                return new SolidColorBrush(Colors.Transparent);
+            }
+
+            var overridesExcludingSelf = CategoryColorStore.LoadAll()
+                .Where(pair => pair.Key != _existingCategory.Id)
+                .ToDictionary(pair => pair.Key, pair => pair.Value);
+            var colorIndexes = CategoryHierarchy.ComputeColorIndexes(_allCategories);
+
+            return new SolidColorBrush(
+                CategoryColorResolver.Resolve(_existingCategory, _allCategories, colorIndexes, overridesExcludingSelf));
+        }
+    }
 
     public CategoryParentOption SelectedParentOption
     {
@@ -192,6 +246,7 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
             CreatedAt = _existingCategory?.CreatedAt ?? DateTimeOffset.Now,
             UpdatedAt = DateTimeOffset.Now
         };
+        SavedColorHex = ColorHex;
 
         CategorySaved?.Invoke(this, EventArgs.Empty);
     }

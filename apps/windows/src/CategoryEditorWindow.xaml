@@ -77,6 +77,62 @@
                     </Button>
                 </Grid>
 
+                <TextBlock Text="Couleur"
+                           Margin="0,14,0,0"
+                           FontWeight="SemiBold" />
+                <StackPanel Orientation="Horizontal"
+                            Margin="0,6,0,0">
+                    <!-- Sélecteur de couleur : ouvre ColorPickerWindow, qui referme
+                         aussitôt qu'une couleur (ou "Automatique") est choisie. -->
+                    <Button Width="36" Height="36"
+                            Padding="0"
+                            Click="ChooseColorButton_Click"
+                            ToolTip="Choisir une couleur pour cette catégorie.">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border CornerRadius="18"
+                                        Background="{Binding ColorPreviewBrush}"
+                                        BorderThickness="2"
+                                        BorderBrush="{DynamicResource Brush.Border.Strong}" />
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <TextBlock Text="Automatique"
+                               Margin="10,0,0,0"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource Brush.Text.Secondary}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasCustomColor}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <Button Margin="10,0,0,0"
+                            Padding="10,0"
+                            Height="36"
+                            Click="ClearColorButton_Click"
+                            ToolTip="Revenir à la couleur automatique">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource GhostButtonStyle}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasCustomColor}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <TextBlock Text="Automatique" FontSize="12" />
+                    </Button>
+                </StackPanel>
+
                 <TextBlock Text="Catégorie parente"
                            Margin="0,14,0,0"
                            FontWeight="SemiBold" />

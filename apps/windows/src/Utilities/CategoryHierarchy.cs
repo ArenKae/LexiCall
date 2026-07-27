@@ -49,6 +49,36 @@ public static class CategoryHierarchy
         return result;
     }
 
+    // Attribue à chaque catégorie l'index de couleur de sa racine (0, 1, 2… dans
+    // l'ordre de Flatten) ; les descendantes héritent de l'index de leur racine.
+    // Sert de repli automatique à CategoryColorResolver quand aucune couleur
+    // n'a été choisie manuellement (voir CategoryColorStore).
+    public static IReadOnlyDictionary<Guid, int> ComputeColorIndexes(IReadOnlyCollection<VocabularyCategory> categories)
+    {
+        var colorIndexes = new Dictionary<Guid, int>();
+        var lastIndexByDepth = new List<int>();
+        var rootColorCounter = 0;
+
+        foreach (var (category, depth) in Flatten(categories))
+        {
+            var colorIndex = depth == 0 ? rootColorCounter++ : lastIndexByDepth[depth - 1];
+
+            if (lastIndexByDepth.Count > depth)
+            {
+                lastIndexByDepth[depth] = colorIndex;
+                lastIndexByDepth.RemoveRange(depth + 1, lastIndexByDepth.Count - depth - 1);
+            }
+            else
+            {
+                lastIndexByDepth.Add(colorIndex);
+            }
+
+            colorIndexes[category.Id] = colorIndex;
+        }
+
+        return colorIndexes;
+    }
+
     public static HashSet<Guid> GetDescendantIds(
         IReadOnlyCollection<VocabularyCategory> categories,
         Guid rootId)

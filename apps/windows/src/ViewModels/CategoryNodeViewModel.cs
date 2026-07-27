@@ -4,6 +4,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Media;
 using LexiCall.Desktop.Models;
 
 namespace LexiCall.Desktop.ViewModels;
@@ -19,7 +20,7 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
 {
     private readonly Action<CategoryNodeViewModel> _onSelected;
     private int _entryCount;
-    private int _colorIndex;
+    private SolidColorBrush _colorBrush = new(Colors.Transparent);
     private bool _isExpanded;
     private bool _isSelected;
     private bool _isEditing;
@@ -86,12 +87,12 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
     // l'épaisseur des séparateurs et l'opacité du repère de couleur.
     public int Depth { get; set; }
 
-    // Index de la catégorie racine dont ce nœud descend (partagé par toute la
-    // sous-arborescence) : sert de graine à CategoryColorConverter.
-    public int ColorIndex
+    // Couleur effective de la catégorie (choisie manuellement ou dérivée
+    // automatiquement de sa racine) : voir CategoryColorResolver.
+    public SolidColorBrush ColorBrush
     {
-        get => _colorIndex;
-        set => SetProperty(ref _colorIndex, value);
+        get => _colorBrush;
+        set => SetProperty(ref _colorBrush, value);
     }
 
     public bool IsExpanded

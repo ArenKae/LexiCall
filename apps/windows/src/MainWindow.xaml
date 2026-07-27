@@ -129,7 +129,7 @@
                                             Margin="-4,-1,-4,-1">
                                         <Border.Style>
                                             <Style TargetType="Border">
-                                                <Setter Property="Background" Value="{Binding ColorIndex, Converter={StaticResource CategoryColorConverter}}" />
+                                                <Setter Property="Background" Value="{Binding ColorBrush}" />
                                                 <Setter Property="Opacity" Value="0.14" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding Depth}" Value="0">
@@ -150,7 +150,7 @@
                                             Margin="0,1,4,1">
                                         <Border.Style>
                                             <Style TargetType="Border">
-                                                <Setter Property="Background" Value="{Binding ColorIndex, Converter={StaticResource CategoryColorConverter}}" />
+                                                <Setter Property="Background" Value="{Binding ColorBrush}" />
                                                 <Setter Property="Opacity" Value="0.5" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding Depth}" Value="0">
@@ -411,8 +411,8 @@
                                 <DataTemplate>
                                     <StackPanel>
                                         <TextBlock Text="{Binding Word}"
-                                                   FontSize="14"
-                                                   FontWeight="SemiBold" />
+                                                   FontSize="19"
+                                                   FontWeight="Bold" />
 
                                         <ItemsControl Margin="0,2,0,0">
                                             <ItemsControl.ItemsSource>
@@ -432,15 +432,22 @@
                                                     <!-- Cliquable : sélectionne cette catégorie dans le
                                                          panneau de gauche (Cursor="Hand" signale l'action). -->
                                                     <Border Margin="0,0,4,2"
-                                                            Padding="6,1"
-                                                            Background="{DynamicResource Brush.Chip.Accent.Background}"
+                                                            Padding="7,2"
                                                             CornerRadius="8"
                                                             Cursor="Hand"
                                                             ToolTip="Filtrer par cette catégorie"
                                                             MouseLeftButtonUp="CategoryChip_MouseLeftButtonUp">
+                                                        <Border.Background>
+                                                            <MultiBinding Converter="{StaticResource CategoryChipColorConverter}">
+                                                                <Binding Path="." />
+                                                                <Binding Path="DataContext.Categories"
+                                                                         RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                            </MultiBinding>
+                                                        </Border.Background>
                                                         <TextBlock Text="{Binding Name}"
-                                                                   FontSize="10"
-                                                                   Foreground="{DynamicResource Brush.Chip.Accent.Foreground}" />
+                                                                   FontSize="12"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource Brush.Text.Primary}" />
                                                     </Border>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
@@ -567,13 +574,20 @@
                                                          panneau de gauche (Cursor="Hand" signale l'action). -->
                                                     <Border Margin="0,0,8,8"
                                                             Padding="10,4"
-                                                            Background="{DynamicResource Brush.Chip.Accent.Background}"
                                                             CornerRadius="12"
                                                             Cursor="Hand"
                                                             ToolTip="Filtrer par cette catégorie"
                                                             MouseLeftButtonUp="CategoryChip_MouseLeftButtonUp">
+                                                        <Border.Background>
+                                                            <MultiBinding Converter="{StaticResource CategoryChipColorConverter}">
+                                                                <Binding Path="." />
+                                                                <Binding Path="DataContext.Categories"
+                                                                         RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                            </MultiBinding>
+                                                        </Border.Background>
                                                         <TextBlock Text="{Binding Name}"
-                                                                   Foreground="{DynamicResource Brush.Chip.Accent.Foreground}" />
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource Brush.Text.Primary}" />
                                                     </Border>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>

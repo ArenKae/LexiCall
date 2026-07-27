@@ -207,6 +207,10 @@ public partial class MainWindow : Window
             {
                 MessageBox.Show(this, error, "Enregistrement impossible", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
+            else
+            {
+                ViewModel.SetCategoryColor(dialog.SavedCategory.Id, dialog.SavedColorHex);
+            }
         }
     }
 

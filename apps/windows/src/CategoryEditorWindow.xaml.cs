@@ -32,6 +32,8 @@ public partial class CategoryEditorWindow : Window
 
     public VocabularyCategory? SavedCategory => _viewModel.SavedCategory;
 
+    public string? SavedColorHex => _viewModel.SavedColorHex;
+
     private void ChooseIconButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new IconPickerWindow(_viewModel.IconGlyph)
@@ -48,5 +50,23 @@ public partial class CategoryEditorWindow : Window
     private void ClearIconButton_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.IconGlyph = string.Empty;
+    }
+
+    private void ChooseColorButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new ColorPickerWindow(_viewModel.ColorHex)
+        {
+            Owner = this
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            _viewModel.ColorHex = dialog.SelectedColorHex;
+        }
+    }
+
+    private void ClearColorButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.ColorHex = null;
     }
 }

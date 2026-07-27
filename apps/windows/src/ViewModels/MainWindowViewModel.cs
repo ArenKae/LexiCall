@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Media;
 using LexiCall.Desktop.Models;
 using LexiCall.Desktop.Services;
 using LexiCall.Desktop.Utilities;
@@ -320,6 +321,24 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return null;
     }
 
+    // Couleur choisie manuellement pour une catégorie (ou null pour revenir à
+    // l'automatique) : appelé après un SaveCategory réussi depuis
+    // CategoryEditorWindow. Préférence locale à l'app Windows (CategoryColorStore),
+    // ne touche ni vocabulary.json ni api/.
+    public void SetCategoryColor(Guid categoryId, string? colorHex)
+    {
+        if (string.IsNullOrEmpty(colorHex))
+        {
+            CategoryColorStore.ClearColor(categoryId);
+        }
+        else
+        {
+            CategoryColorStore.SetColor(categoryId, colorHex);
+        }
+
+        OnCategoriesChanged();
+    }
+
     public string? RenameCategory(Guid categoryId, string newName)
     {
         var index = FindCategoryIndex(categoryId);
@@ -377,6 +396,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         Categories.RemoveAt(index);
+        CategoryColorStore.ClearColor(categoryId);
         OnCategoriesChanged();
         _ = _apiClient.TryDeleteCategoryAsync(categoryId);
         return null;
@@ -466,24 +486,24 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         // Flatten fournit un parcours en profondeur avec la profondeur de chaque
         // nœud : une pile suffit pour reconstituer l'imbrication.
+        var colorIndexes = CategoryHierarchy.ComputeColorIndexes(Categories);
+        var colorOverrides = CategoryColorStore.LoadAll();
         var nodeStack = new List<CategoryNodeViewModel>();
-        var rootColorCounter = 0;
 
         foreach (var (category, depth) in CategoryHierarchy.Flatten(Categories))
         {
             var node = CategoryNodeViewModel.CreateForCategory(category, OnCategoryNodeSelected);
             node.IsExpanded = expandedIds.Contains(category.Id);
             node.Depth = depth;
+            node.ColorBrush = new SolidColorBrush(
+                CategoryColorResolver.Resolve(category, Categories, colorIndexes, colorOverrides));
 
             if (depth == 0)
             {
-                // Chaque racine reçoit sa propre couleur, héritée par ses descendantes.
-                node.ColorIndex = rootColorCounter++;
                 CategoryTree.Add(node);
             }
             else
             {
-                node.ColorIndex = nodeStack[depth - 1].ColorIndex;
                 nodeStack[depth - 1].Children.Add(node);
             }
 
