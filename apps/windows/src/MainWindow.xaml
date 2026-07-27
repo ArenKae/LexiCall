@@ -178,10 +178,10 @@
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Setter Property="Background" Value="{Binding ColorBrush}" />
-                                                <Setter Property="Opacity" Value="0.14" />
+                                                <Setter Property="Opacity" Value="{DynamicResource Opacity.CategoryHalo}" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding Depth}" Value="0">
-                                                        <Setter Property="Opacity" Value="0.22" />
+                                                        <Setter Property="Opacity" Value="{DynamicResource Opacity.CategoryHalo.Root}" />
                                                     </DataTrigger>
                                                     <DataTrigger Binding="{Binding IsVirtual}" Value="True">
                                                         <Setter Property="Opacity" Value="0" />

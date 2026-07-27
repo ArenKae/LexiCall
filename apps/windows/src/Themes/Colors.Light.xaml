@@ -1,6 +1,7 @@
 <!-- Thème clair : mêmes clés de brush que Colors.Dark.xaml, valeurs claires. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
     <SolidColorBrush x:Key="Brush.Window.Background" Color="#F5EFE4" />
     <SolidColorBrush x:Key="Brush.Surface" Color="#FCFAF4" />
@@ -30,5 +31,12 @@
     <SolidColorBrush x:Key="Brush.Selection.Foreground" Color="#16213D" />
 
     <SolidColorBrush x:Key="Brush.Input.Background" Color="#FFFFFF" />
+
+    <!-- Opacité du halo de couleur de catégorie dans l'arbre (MainWindow.xaml) :
+         plus forte qu'en thème sombre, car le même mélange alpha se dilue
+         beaucoup plus vite sur un fond quasi blanc — sans ça, le halo devient
+         à peine visible alors que les pills de catégorie, elles, restent vives. -->
+    <sys:Double x:Key="Opacity.CategoryHalo">0.26</sys:Double>
+    <sys:Double x:Key="Opacity.CategoryHalo.Root">0.42</sys:Double>
 
 </ResourceDictionary>
