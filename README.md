@@ -10,15 +10,10 @@ claire pour rester maintenable par une seule personne.
 ## État actuel
 
 LexiCall est utilisable en Phase 1 (application desktop locale, complète) et sa Phase 2
-(backend FastAPI + MongoDB) est désormais implémentée et câblée au client Windows : chaque
-mutation locale est poussée vers l'API en tâche de fond, best-effort, en plus de la
-sauvegarde JSON locale qui reste la seule source de vérité pour l'affichage. Le VPS OVH n'est
-pas encore provisionné — l'API tourne pour l'instant dans une VM Linux de développement sur
-le réseau local ; basculer vers le VPS sera une simple histoire de configuration (URL/clé
-dans Options), sans changement de code. Voir la Roadmap plus bas pour le détail de ce qui est
-fait et ce qui reste hors périmètre pour cette phase (lecture depuis l'API, résolution de
-conflits — pertinentes seulement à partir d'un deuxième écrivain, l'app Android de la Phase
-3).
+(backend FastAPI + MongoDB) est désormais implémentée, déployée en production sur un VPS et câblée au client Windows : chaque mutation locale est poussée vers l'API en tâche de fond, best-effort, en plus de la sauvegarde JSON locale qui reste la seule source de vérité pour l'affichage. Voir la Roadmap
+plus bas pour le détail de ce qui est fait et ce qui reste hors périmètre pour cette phase
+(lecture depuis l'API, résolution de conflits — pertinentes seulement à partir d'un deuxième
+utilisateur, l'app Android de la Phase 3).
 
 Fonctionnalités disponibles :
 
@@ -165,8 +160,8 @@ en résumé, depuis la racine :
 
 ```bash
 just install-api
-just mongo-up-api
-just run-api                # HOST=127.0.0.1 par défaut (LAN : just run-api HOST=0.0.0.0)
+just dev-mongo-up-api
+just run-api                # HOST=127.0.0.1 par défaut (LAN : just run-api 0.0.0.0)
 ```
 
 L'app Windows n'utilise l'API que si `ApiBaseUrl`/`ApiKey` sont renseignés dans Options —
@@ -258,23 +253,21 @@ Prochaines améliorations probables :
 
 ### Phase 2 — Backend partagé
 
-Fait :
-
 - API REST FastAPI + MongoDB (`api/`), authentification par clé API (`X-API-Key`) ;
 - migration ponctuelle des données existantes (`vocabulary.json` → MongoDB), idempotente ;
 - client Windows câblé : chaque mutation locale pousse une synchronisation best-effort vers
   l'API en tâche de fond, avec rattrapage automatique au démarrage si l'API a été injoignable ;
-  configuration (URL, clé) depuis la fenêtre Options, avec test de connexion.
+  configuration (URL, clé) depuis la fenêtre Options, avec test de connexion ;
+- déploiement en production sur un VPS (Docker Compose, HTTPS via reverse proxy avec
+  certificat automatique) — détails d'infrastructure documentés séparément, dans un dépôt
+  privé distinct de celui-ci.
 
-Volontairement hors périmètre pour l'instant (voir `.claude/CLAUDE.md` pour le détail) :
+Volontairement hors périmètre pour l'instant :
 
 - bascule des lectures de l'UI vers l'API (le JSON local reste la source de vérité tant
   qu'un vrai mécanisme de résolution de conflits n'existe pas) ;
 - résolution de conflits entre éditions concurrentes (pas encore nécessaire à un seul
-  écrivain) ;
-- hébergement sur le VPS OVH — non provisionné à ce stade, l'API tourne dans une VM Linux de
-  développement sur le réseau local ; bascule prévue comme un simple changement de
-  configuration, sans changement de code.
+  utilisateur).
 
 ### Phase 3 — Android
 

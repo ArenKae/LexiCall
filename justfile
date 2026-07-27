@@ -28,12 +28,6 @@ install-api:
 run-api HOST="127.0.0.1":
     just --justfile api/justfile --working-directory api run {{HOST}}
 
-lint-api:
-    just --justfile api/justfile --working-directory api lint
-
-test-api:
-    just --justfile api/justfile --working-directory api test
-
 clean-api:
     just --justfile api/justfile --working-directory api clean
 
@@ -58,7 +52,6 @@ down-api:
 
 logs-api SERVICE="api":
     just --justfile api/justfile --working-directory api logs {{SERVICE}}
-
 
 backup-api:
     just --justfile api/justfile --working-directory api backup

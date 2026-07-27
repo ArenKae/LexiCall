@@ -13,12 +13,6 @@ install:
 run HOST="127.0.0.1":
     .venv/bin/uvicorn lexicall_api.main:app --reload --app-dir src --env-file .env --host {{HOST}}
 
-test:
-    .venv/bin/pytest
-
-lint:
-    .venv/bin/ruff check src tests
-
 clean:
     rm -rf .venv .pytest_cache
 
@@ -47,11 +41,6 @@ down:
 logs SERVICE="api":
     docker compose -f docker-compose.prod.yml logs -f {{SERVICE}}
 
-ps:
-    docker compose -f docker-compose.prod.yml ps
-
-health:
-    curl -sf http://127.0.0.1:8001/health
 
 backup:
     ./deploy/backup.sh
