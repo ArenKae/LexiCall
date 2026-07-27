@@ -96,7 +96,7 @@
                               x:Name="CategoryTreeView"
                               ItemsSource="{Binding CategoryTree}"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
-                              KeyDown="CategoryTreeView_KeyDown">
+                              PreviewKeyDown="CategoryTreeView_KeyDown">
                         <TreeView.ItemTemplate>
                             <HierarchicalDataTemplate DataType="{x:Type viewModels:CategoryNodeViewModel}"
                                                       ItemsSource="{Binding Children}">
@@ -109,15 +109,63 @@
                                     </Grid.ColumnDefinitions>
 
                                     <Grid.ContextMenu>
+                                        <!-- FontFamily sur chaque MenuItem : l'émoji préfixant le Header se
+                                             résout via Segoe UI Emoji/Symbol, le reste du texte retombe sur
+                                             Segoe UI comme partout ailleurs (résolution par caractère). -->
                                         <ContextMenu>
-                                            <MenuItem Header="Nouvelle sous-catégorie…"
+                                            <MenuItem Header="➕  Nouvelle sous-catégorie…"
+                                                      FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
                                                       Click="AddSubCategoryMenuItem_Click" />
-                                            <MenuItem Header="Renommer"
+                                            <Separator />
+                                            <!-- IsEnabled recalculé à l'ouverture (CanMoveUp/CanMoveDown), voir
+                                                 CategoryNode_ContextMenuOpening : désactivés en bout de groupe.
+                                                 Header composé à la main (au lieu d'un simple préfixe texte) :
+                                                 les flèches fines (↑/↓) restaient fines même en Bold — un triangle
+                                                 plein (▲/▼) donne un repère bien plus visible, avec sa propre
+                                                 taille et une colonne de largeur fixe alignée sur les autres icônes. -->
+                                            <MenuItem IsEnabled="{Binding CanMoveUp}"
+                                                      InputGestureText="Ctrl+Haut"
+                                                      Click="MoveCategoryUpMenuItem_Click">
+                                                <MenuItem.Header>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="▲"
+                                                                   FontSize="13"
+                                                                   Width="20"
+                                                                   TextAlignment="Center"
+                                                                   VerticalAlignment="Center" />
+                                                        <TextBlock Text="Monter"
+                                                                   Margin="6,0,0,0"
+                                                                   VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </MenuItem.Header>
+                                            </MenuItem>
+                                            <MenuItem IsEnabled="{Binding CanMoveDown}"
+                                                      InputGestureText="Ctrl+Bas"
+                                                      Click="MoveCategoryDownMenuItem_Click">
+                                                <MenuItem.Header>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="▼"
+                                                                   FontSize="13"
+                                                                   Width="20"
+                                                                   TextAlignment="Center"
+                                                                   VerticalAlignment="Center" />
+                                                        <TextBlock Text="Descendre"
+                                                                   Margin="6,0,0,0"
+                                                                   VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </MenuItem.Header>
+                                            </MenuItem>
+                                            <Separator />
+                                            <MenuItem Header="✏️  Renommer"
+                                                      FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
                                                       InputGestureText="F2"
                                                       Click="RenameCategoryMenuItem_Click" />
-                                            <MenuItem Header="Modifier…"
+                                            <MenuItem Header="⚙️  Modifier…"
+                                                      FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
                                                       Click="EditCategoryMenuItem_Click" />
-                                            <MenuItem Header="Supprimer"
+                                            <Separator />
+                                            <MenuItem Header="🗑️  Supprimer"
+                                                      FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
                                                       Click="DeleteCategoryMenuItem_Click" />
                                         </ContextMenu>
                                     </Grid.ContextMenu>
@@ -183,7 +231,7 @@
                                         <TextBlock Grid.Column="0"
                                                    Text="{Binding DisplayIcon}"
                                                    FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                                   FontSize="13"
+                                                   FontSize="16"
                                                    VerticalAlignment="Center">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">

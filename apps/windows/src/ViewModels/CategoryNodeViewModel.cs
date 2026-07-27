@@ -25,6 +25,8 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
     private bool _isSelected;
     private bool _isEditing;
     private string _editName = string.Empty;
+    private bool _canMoveUp;
+    private bool _canMoveDown;
 
     private CategoryNodeViewModel(
         CategoryNodeKind kind,
@@ -131,6 +133,20 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
     {
         EditName = DisplayName;
         IsEditing = true;
+    }
+
+    // Recalculés à l'ouverture du menu contextuel (MainWindow.xaml.cs), pour
+    // désactiver "Monter"/"Descendre" en bout de groupe de frères.
+    public bool CanMoveUp
+    {
+        get => _canMoveUp;
+        set => SetProperty(ref _canMoveUp, value);
+    }
+
+    public bool CanMoveDown
+    {
+        get => _canMoveDown;
+        set => SetProperty(ref _canMoveDown, value);
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)

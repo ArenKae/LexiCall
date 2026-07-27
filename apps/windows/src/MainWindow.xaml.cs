@@ -166,6 +166,22 @@ public partial class MainWindow : Window
         }
     }
 
+    private void MoveCategoryUpMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetNodeFromMenuItem(sender) is { Category: not null } node)
+        {
+            ViewModel.MoveCategoryUp(node.Category.Id);
+        }
+    }
+
+    private void MoveCategoryDownMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetNodeFromMenuItem(sender) is { Category: not null } node)
+        {
+            ViewModel.MoveCategoryDown(node.Category.Id);
+        }
+    }
+
     private void DeleteCategoryMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (GetNodeFromMenuItem(sender) is not { Category: not null } node)
@@ -223,14 +239,61 @@ public partial class MainWindow : Window
             : null;
     }
 
+    // Frères d'un nœud dans l'arbre déjà affiché (racines si Depth == 0, sinon
+    // Children de son parent) : utilisé pour activer/désactiver "Monter"/"Descendre".
+    private List<CategoryNodeViewModel> FindSiblingNodes(CategoryNodeViewModel node)
+    {
+        if (node.Depth == 0)
+        {
+            return ViewModel.CategoryTree.Skip(2).ToList();
+        }
+
+        var parent = FindParentNode(ViewModel.CategoryTree, node);
+        return parent is null ? [] : parent.Children.ToList();
+    }
+
+    private static CategoryNodeViewModel? FindParentNode(
+        IEnumerable<CategoryNodeViewModel> candidates,
+        CategoryNodeViewModel target)
+    {
+        foreach (var candidate in candidates)
+        {
+            if (candidate.Children.Contains(target))
+            {
+                return candidate;
+            }
+
+            if (FindParentNode(candidate.Children, target) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
     // Les nœuds virtuels ("Toutes les entrées", "Sans catégorie") ne sont pas
-    // des catégories : aucun menu contextuel pour eux.
+    // des catégories : aucun menu contextuel pour eux. Pour les autres, on
+    // recalcule ici CanMoveUp/CanMoveDown à partir de la position actuelle du
+    // nœud parmi ses frères dans l'arbre déjà affiché (déjà dans le bon ordre :
+    // pas besoin de relire CategoryOrderStore ici).
     private void CategoryNode_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
-        if (sender is FrameworkElement { DataContext: CategoryNodeViewModel { IsVirtual: true } })
+        if (sender is not FrameworkElement { DataContext: CategoryNodeViewModel node })
+        {
+            return;
+        }
+
+        if (node.IsVirtual)
         {
             e.Handled = true;
+            return;
         }
+
+        var siblings = FindSiblingNodes(node);
+        var index = siblings.IndexOf(node);
+        node.CanMoveUp = index > 0;
+        node.CanMoveDown = index >= 0 && index < siblings.Count - 1;
     }
 
     // Gère nous-mêmes le clic (sélection + dépli) pour éviter un conflit avec le
@@ -268,12 +331,35 @@ public partial class MainWindow : Window
         }
     }
 
+    // Câblé sur PreviewKeyDown (pas KeyDown) : la navigation clavier native du
+    // TreeView consomme déjà Haut/Bas dans sa propre gestion de KeyDown avant
+    // que l'évènement ne remonte jusqu'ici, donc Ctrl+Haut/Ctrl+Bas n'auraient
+    // jamais atteint un handler posé en aval (bulle). En tunneling, on les
+    // intercepte avant cette navigation native.
     private void CategoryTreeView_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.F2 &&
             ViewModel.SelectedCategoryNode is { IsVirtual: false } node)
         {
             node.BeginEdit();
+            e.Handled = true;
+            return;
+        }
+
+        if (Keyboard.Modifiers != ModifierKeys.Control ||
+            ViewModel.SelectedCategoryNode is not { IsVirtual: false, Category: not null } selectedNode)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Up)
+        {
+            ViewModel.MoveCategoryUp(selectedNode.Category.Id);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Down)
+        {
+            ViewModel.MoveCategoryDown(selectedNode.Category.Id);
             e.Handled = true;
         }
     }

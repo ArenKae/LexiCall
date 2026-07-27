@@ -200,7 +200,7 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
             new(id: null, "(Aucun — catégorie racine)")
         };
 
-        foreach (var (category, depth) in CategoryHierarchy.Flatten(_allCategories))
+        foreach (var (category, depth) in CategoryHierarchy.Flatten(_allCategories, CategoryOrderStore.LoadAll()))
         {
             if (!excludedIds.Contains(category.Id))
             {

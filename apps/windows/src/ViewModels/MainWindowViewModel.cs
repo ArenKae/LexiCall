@@ -397,9 +397,42 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         Categories.RemoveAt(index);
         CategoryColorStore.ClearColor(categoryId);
+        CategoryOrderStore.ClearOrder(categoryId);
         OnCategoriesChanged();
         _ = _apiClient.TryDeleteCategoryAsync(categoryId);
         return null;
+    }
+
+    // Déplace une catégorie parmi ses frères (même parent effectif) et fige
+    // l'ordre résultant du groupe entier dans CategoryOrderStore — préférence
+    // locale à l'app Windows, ne touche ni vocabulary.json ni api/.
+    public void MoveCategoryUp(Guid categoryId) => MoveCategory(categoryId, offset: -1);
+
+    public void MoveCategoryDown(Guid categoryId) => MoveCategory(categoryId, offset: 1);
+
+    private void MoveCategory(Guid categoryId, int offset)
+    {
+        var category = Categories.FirstOrDefault(c => c.Id == categoryId);
+
+        if (category is null)
+        {
+            return;
+        }
+
+        var siblings = CategoryHierarchy
+            .GetSiblingsInOrder(Categories, category, CategoryOrderStore.LoadAll())
+            .ToList();
+        var index = siblings.FindIndex(sibling => sibling.Id == categoryId);
+        var targetIndex = index + offset;
+
+        if (targetIndex < 0 || targetIndex >= siblings.Count)
+        {
+            return;
+        }
+
+        (siblings[index], siblings[targetIndex]) = (siblings[targetIndex], siblings[index]);
+        CategoryOrderStore.SetOrder(siblings.Select(sibling => sibling.Id));
+        RebuildCategoryTree();
     }
 
     private void OnCategoriesChanged()
@@ -486,11 +519,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         // Flatten fournit un parcours en profondeur avec la profondeur de chaque
         // nœud : une pile suffit pour reconstituer l'imbrication.
+        var categoryOrder = CategoryOrderStore.LoadAll();
         var colorIndexes = CategoryHierarchy.ComputeColorIndexes(Categories);
         var colorOverrides = CategoryColorStore.LoadAll();
         var nodeStack = new List<CategoryNodeViewModel>();
 
-        foreach (var (category, depth) in CategoryHierarchy.Flatten(Categories))
+        foreach (var (category, depth) in CategoryHierarchy.Flatten(Categories, categoryOrder))
         {
             var node = CategoryNodeViewModel.CreateForCategory(category, OnCategoryNodeSelected);
             node.IsExpanded = expandedIds.Contains(category.Id);

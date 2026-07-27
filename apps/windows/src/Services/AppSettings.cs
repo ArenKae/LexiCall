@@ -25,4 +25,9 @@ internal sealed class AppSettings
     // cette installation de l'app Windows : jamais écrite dans vocabulary.json
     // ni synchronisée vers api/, contrairement au reste du modèle de catégorie.
     public Dictionary<Guid, string> CategoryColors { get; set; } = new();
+
+    // Ordre d'affichage choisi manuellement (Id → rang, 0-based au sein d'un
+    // même groupe de frères), voir CategoryOrderStore. Même statut que
+    // CategoryColors : préférence locale, jamais dans vocabulary.json ni api/.
+    public Dictionary<Guid, int> CategoryOrder { get; set; } = new();
 }
