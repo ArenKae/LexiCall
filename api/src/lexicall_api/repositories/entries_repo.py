@@ -56,6 +56,19 @@ def count_entries_using_category(category_id: str) -> int:
     return get_entries_collection().count_documents({"CategoryIds": category_id})
 
 
+def list_entries_with_inline_image_field() -> list[dict]:
+    # Documents from before entry_images existed still carry ImageBase64,
+    # even as an empty string when the entry never had an image — the
+    # split-in-place migration must clear the field either way, read
+    # straight from Mongo rather than from a JSON export.
+    docs = get_entries_collection().find({"ImageBase64": {"$exists": True}}, {"Id": 1, "ImageBase64": 1})
+    return [strip_mongo_id(doc) for doc in docs]
+
+
+def clear_inline_image(entry_id: str) -> None:
+    get_entries_collection().update_one({"Id": entry_id}, {"$unset": {"ImageBase64": ""}})
+
+
 def upsert_entry(doc: dict) -> str:
     """Used by the migration: idempotent upsert by Id, preserves the
     document's original CreatedAt/UpdatedAt (no regeneration).
