@@ -8,18 +8,36 @@ truth. See the Roadmap in the [root README](../README.md).
 
 ```bash
 cp .env.example .env      # fill in API_KEY (see the comment in the file)
-just mongo-up-api          # MongoDB via docker compose (from the repo root)
+just dev-mongo-up-api      # MongoDB via docker compose (from the repo root)
 just install-api            # venv + dependencies
 just run-api                 # uvicorn --reload on localhost:8000
 ```
 
-From `api/` directly, the same recipes exist without the `-api` suffix
-(`just install`, `just run`, `just test`, `just lint`, `just mongo-up`, ...).
+From `api/` directly, the same recipes exist without the `-api` suffix (`just install`,
+`just run`, `just migrate`, `just dev-mongo-up`, `just dev-mongo-down`, ...). There's no
+`test`/`lint` recipe yet — run directly from `api/`:
+
+```bash
+PYTHONPATH=src .venv/bin/pytest -v
+```
 
 ## Authentication
 
 All routes except `/health` require an `X-API-Key` header matching the
 `API_KEY` value from `.env`.
+
+## Entry images
+
+Images are not stored inline on an entry: they live in a separate `entry_images` collection,
+one document per entry `Id`, accessed through dedicated binary endpoints (raw bytes, not
+JSON) — `GET`/`PUT`/`DELETE /entries/{id}/image`, `Content-Type` round-tripped from the `PUT`
+request to the `GET` response. This is deliberate: a Mongo projection that excludes a field
+only saves bandwidth to the client, not server-side cache pressure — WiredTiger still reads
+the whole document (image bytes included) off disk/cache for any scan, so keeping images
+inline made browsing the `entries` collection (e.g. in Compass) slower as it grew, regardless
+of projections on `list_entries()`. `PUT` is capped at `max_image_bytes` (2 MB by default,
+configurable via the `MAX_IMAGE_BYTES` env var); deleting an entry cascades to deleting its
+image, if any.
 
 ## Migrating existing data
 
@@ -32,6 +50,13 @@ Never point directly at the repo's `templates/vocabulary.json`: make a
 working copy before any attempt. The script is idempotent (upsert by the
 application field `Id`, never by Mongo's native `_id`) — rerunning with the
 same file duplicates nothing.
+
+Entries carrying an inline `ImageBase64` get it split out into the `entry_images` collection
+(see "Entry images" above) as they're upserted, and the field is `$unset` from the `entries`
+document — `--dry-run` won't show this: it returns before touching Mongo at all, so it only
+validates JSON sanitization (duplicate/cyclic categories, empty `Word`/`Definition`, orphaned
+`CategoryIds`), never the image split. To actually rehearse the image split before running
+against production, run the migration for real against a disposable/dev Mongo first.
 
 ## Deployment
 
