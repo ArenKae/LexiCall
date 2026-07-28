@@ -58,6 +58,22 @@ validates JSON sanitization (duplicate/cyclic categories, empty `Word`/`Definiti
 `CategoryIds`), never the image split. To actually rehearse the image split before running
 against production, run the migration for real against a disposable/dev Mongo first.
 
+### One-off: splitting inline images still in Mongo
+
+`migrate_from_json.py` only ever sees entries present in whichever `vocabulary.json` file it's
+given. Entries that only ever existed through live client sync (never captured in a single
+`vocabulary.json` snapshot) can still carry an inline `ImageBase64` field even after that
+migration has run. `split_images_in_place.py` covers that gap: it reads `entries` straight from
+Mongo — no JSON file involved — splits any inline image out to `entry_images`, and clears the
+field, including entries where it's just an empty string. Idempotent, safe to rerun. No `just`
+recipe wraps it yet (unlike `migrate-api`, it takes no `--input`):
+
+```bash
+cd api
+PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.split_images_in_place --dry-run
+PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.split_images_in_place
+```
+
 ## Deployment
 
 `Dockerfile`, `docker-compose.prod.yml` and `deploy/backup.sh` are ready for

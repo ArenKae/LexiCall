@@ -72,7 +72,6 @@ def test_delete_category_used_by_entry_returns_409(client, auth_headers):
         "Source": "",
         "CategoryIds": [category["Id"]],
         "Tags": [],
-        "ImageBase64": "",
     }
     client.post("/entries", json=entry_payload, headers=auth_headers)
 

@@ -13,9 +13,7 @@ def _now_iso() -> str:
 
 
 def list_entries() -> list[dict]:
-    # Projection without ImageBase64: avoids loading every image blob on a
-    # plain list.
-    docs = get_entries_collection().find({}, {"ImageBase64": 0})
+    docs = get_entries_collection().find({})
     return [strip_mongo_id(doc) for doc in docs]
 
 
