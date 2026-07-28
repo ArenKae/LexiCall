@@ -4,8 +4,10 @@
 // ce client ne fait que pousser une synchronisation en tâche de fond.
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using LexiCall.Desktop.Models;
 
 namespace LexiCall.Desktop.Services;
@@ -91,11 +93,56 @@ public sealed class VocabularyApiClient
         }
     }
 
-    public Task<bool> TryUpsertEntryAsync(VocabularyEntry entry) =>
-        TryUpsertAsync(entry.Id, "/entries", entry);
+    // L'image n'est plus envoyée dans le JSON de l'entrée (voir api/ :
+    // entry_images est une collection Mongo séparée, pour qu'un scan de
+    // `entries` ne charge plus jamais de blobs d'image) : on la retire du
+    // payload puis on la pousse à part via /entries/{id}/image.
+    public async Task<bool> TryUpsertEntryAsync(VocabularyEntry entry)
+    {
+        var payload = JsonSerializer.SerializeToNode(entry, JsonOptions)!.AsObject();
+        payload.Remove(nameof(VocabularyEntry.ImageBase64));
+
+        var entryOk = await TryUpsertAsync(entry.Id, "/entries", payload).ConfigureAwait(false);
+        if (!entryOk)
+        {
+            return false;
+        }
+
+        return await TryUpsertEntryImageAsync(entry.Id, entry.ImageBase64).ConfigureAwait(false);
+    }
 
     public Task<bool> TryDeleteEntryAsync(Guid id) =>
         TryDeleteAsync($"/entries/{id}");
+
+    // Chaîne vide = pas d'image : supprime la ressource côté serveur plutôt
+    // que d'envoyer un PUT vide. La suppression d'image en cascade sur
+    // suppression d'entrée est gérée côté serveur (DELETE /entries/{id}),
+    // aucun appel supplémentaire n'est nécessaire depuis TryDeleteEntryAsync.
+    private async Task<bool> TryUpsertEntryImageAsync(Guid entryId, string imageBase64)
+    {
+        if (_httpClient is null)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(imageBase64))
+        {
+            return await TryDeleteAsync($"/entries/{entryId}/image").ConfigureAwait(false);
+        }
+
+        try
+        {
+            var imageBytes = Convert.FromBase64String(imageBase64);
+            using var content = new ByteArrayContent(imageBytes);
+            content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+            using var response = await _httpClient.PutAsync($"/entries/{entryId}/image", content).ConfigureAwait(false);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or FormatException)
+        {
+            return false;
+        }
+    }
 
     public Task<bool> TryUpsertCategoryAsync(VocabularyCategory category) =>
         TryUpsertAsync(category.Id, "/categories", category);

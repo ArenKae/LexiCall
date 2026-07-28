@@ -61,8 +61,13 @@ def upsert_entry(doc: dict) -> str:
     document's original CreatedAt/UpdatedAt (no regeneration).
     $set rather than replace_one: only $set does a field-by-field comparison
     and reports modified_count=0 for content that's genuinely unchanged —
-    replace_one reports modified_count>0 even when writing identical content."""
-    result = get_entries_collection().update_one({"Id": doc["Id"]}, {"$set": doc}, upsert=True)
+    replace_one reports modified_count>0 even when writing identical content.
+    $unset ImageBase64: cleans up the legacy inline-image field left over on
+    documents migrated before images moved to entry_images_repo.py; a no-op
+    once a document no longer has it."""
+    result = get_entries_collection().update_one(
+        {"Id": doc["Id"]}, {"$set": doc, "$unset": {"ImageBase64": ""}}, upsert=True
+    )
     if result.upserted_id is not None:
         return "inserted"
     return "updated" if result.modified_count > 0 else "unchanged"

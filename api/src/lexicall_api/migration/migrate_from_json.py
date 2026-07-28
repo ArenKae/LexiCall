@@ -5,11 +5,12 @@
 # cyclic parents, orphaned CategoryIds): neutralizes and counts rather than
 # abandoning the whole import, like SanitizeDatabase on the desktop app side.
 import argparse
+import base64
 import json
 import sys
 from dataclasses import dataclass
 
-from lexicall_api.repositories import categories_repo, entries_repo
+from lexicall_api.repositories import categories_repo, entries_repo, entry_images_repo
 
 
 class ForceRequiredError(RuntimeError):
@@ -28,6 +29,7 @@ class MigrationSummary:
     entries_unchanged: int = 0
     entries_rejected_invalid: int = 0
     entries_sanitized_category_ids: int = 0
+    images_migrated: int = 0
 
     def render(self) -> str:
         return "\n".join(
@@ -43,6 +45,7 @@ class MigrationSummary:
                 f"{self.entries_unchanged} unchanged, "
                 f"{self.entries_rejected_invalid} rejected (empty Word/Definition), "
                 f"{self.entries_sanitized_category_ids} sanitized (orphaned CategoryIds removed)",
+                f"  Images: {self.images_migrated} migrated to entry_images",
             ]
         )
 
@@ -135,6 +138,7 @@ def run(input_path: str, dry_run: bool = False, force: bool = False) -> Migratio
             summary.categories_unchanged += 1
 
     for entry in entries:
+        image_b64 = entry.pop("ImageBase64", "")
         outcome = entries_repo.upsert_entry(entry)
         if outcome == "inserted":
             summary.entries_inserted += 1
@@ -142,6 +146,9 @@ def run(input_path: str, dry_run: bool = False, force: bool = False) -> Migratio
             summary.entries_updated += 1
         else:
             summary.entries_unchanged += 1
+        if image_b64:
+            entry_images_repo.upsert_image(entry["Id"], base64.b64decode(image_b64), "image/jpeg")
+            summary.images_migrated += 1
 
     return summary
 

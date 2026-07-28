@@ -16,6 +16,10 @@ def get_categories_collection() -> Collection:
     return _db["categories"]
 
 
+def get_entry_images_collection() -> Collection:
+    return _db["entry_images"]
+
+
 def ping() -> bool:
     try:
         _client.admin.command("ping")
@@ -30,6 +34,7 @@ def ensure_indexes() -> None:
     # and so two documents can never share the same Id.
     get_entries_collection().create_index("Id", unique=True)
     get_categories_collection().create_index("Id", unique=True)
+    get_entry_images_collection().create_index("Id", unique=True)
 
 
 def strip_mongo_id(doc: dict) -> dict:

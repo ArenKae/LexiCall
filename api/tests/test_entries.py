@@ -1,4 +1,6 @@
-# Entry CRUD: CategoryIds validation, projection without image on list.
+# Entry CRUD: CategoryIds validation. Image handling has its own dedicated
+# tests, see test_entry_images.py — images are a separate resource entirely
+# (entry_images collection), not a field on the entry itself.
 ENTRY_PAYLOAD = {
     "Word": "Ubac",
     "Definition": "Versant exposé au nord",
@@ -8,7 +10,6 @@ ENTRY_PAYLOAD = {
     "Source": "",
     "CategoryIds": [],
     "Tags": [],
-    "ImageBase64": "",
 }
 
 
@@ -21,23 +22,6 @@ def test_create_and_get_entry(client, auth_headers):
     get_response = client.get(f"/entries/{created['Id']}", headers=auth_headers)
     assert get_response.status_code == 200
     assert get_response.json()["Id"] == created["Id"]
-
-
-def test_list_entries_excludes_image(client, auth_headers):
-    payload = {**ENTRY_PAYLOAD, "ImageBase64": "abc123"}
-    client.post("/entries", json=payload, headers=auth_headers)
-
-    list_response = client.get("/entries", headers=auth_headers)
-    assert list_response.status_code == 200
-    assert "ImageBase64" not in list_response.json()[0]
-
-
-def test_get_entry_includes_image(client, auth_headers):
-    payload = {**ENTRY_PAYLOAD, "ImageBase64": "abc123"}
-    created = client.post("/entries", json=payload, headers=auth_headers).json()
-
-    get_response = client.get(f"/entries/{created['Id']}", headers=auth_headers)
-    assert get_response.json()["ImageBase64"] == "abc123"
 
 
 def test_create_entry_rejects_unknown_category(client, auth_headers):

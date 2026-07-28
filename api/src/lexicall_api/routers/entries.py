@@ -2,8 +2,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pymongo.errors import DuplicateKeyError
 
-from lexicall_api.models.entry import VocabularyEntry, VocabularyEntryCreate, VocabularyEntrySummary, VocabularyEntryWrite
-from lexicall_api.repositories import categories_repo, entries_repo
+from lexicall_api.models.entry import VocabularyEntryCreate, VocabularyEntrySummary, VocabularyEntryWrite
+from lexicall_api.repositories import categories_repo, entries_repo, entry_images_repo
 from lexicall_api.security import require_api_key
 
 router = APIRouter(prefix="/entries", tags=["entries"], dependencies=[Depends(require_api_key)])
@@ -20,7 +20,7 @@ def list_entries() -> list[dict]:
     return entries_repo.list_entries()
 
 
-@router.get("/{entry_id}", response_model=VocabularyEntry)
+@router.get("/{entry_id}", response_model=VocabularyEntrySummary)
 def get_entry(entry_id: str) -> dict:
     entry = entries_repo.get_entry(entry_id)
     if entry is None:
@@ -28,7 +28,7 @@ def get_entry(entry_id: str) -> dict:
     return entry
 
 
-@router.post("", response_model=VocabularyEntry, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=VocabularyEntrySummary, status_code=status.HTTP_201_CREATED)
 def create_entry(payload: VocabularyEntryCreate) -> dict:
     _validate_category_ids(payload.category_ids)
     try:
@@ -37,7 +37,7 @@ def create_entry(payload: VocabularyEntryCreate) -> dict:
         raise HTTPException(status_code=409, detail="An entry with this Id already exists.") from error
 
 
-@router.put("/{entry_id}", response_model=VocabularyEntry)
+@router.put("/{entry_id}", response_model=VocabularyEntrySummary)
 def update_entry(entry_id: str, payload: VocabularyEntryWrite) -> dict:
     _validate_category_ids(payload.category_ids)
     entry = entries_repo.update_entry(entry_id, payload.model_dump(by_alias=True))
@@ -50,3 +50,4 @@ def update_entry(entry_id: str, payload: VocabularyEntryWrite) -> dict:
 def delete_entry(entry_id: str) -> None:
     if not entries_repo.delete_entry(entry_id):
         raise HTTPException(status_code=404, detail="Entry not found.")
+    entry_images_repo.delete_image(entry_id)

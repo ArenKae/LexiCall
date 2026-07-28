@@ -16,7 +16,6 @@ class VocabularyEntryWrite(BaseModel):
     source: str = Field(default="", alias="Source")
     category_ids: list[str] = Field(default_factory=list, alias="CategoryIds")
     tags: list[str] = Field(default_factory=list, alias="Tags")
-    image_base64: str = Field(default="", alias="ImageBase64")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -30,8 +29,10 @@ class VocabularyEntryCreate(VocabularyEntryWrite):
 
 
 class VocabularyEntrySummary(BaseModel):
-    # Used for GET /entries (list): same fields as VocabularyEntry,
-    # without ImageBase64 — avoids loading every image blob on a list.
+    # Response model for both GET /entries (list) and GET /entries/{id}:
+    # images live in the separate entry_images collection (see
+    # entry_images_repo.py), never inline on the entry document, so there's
+    # no field distinction left between a list item and a single entry.
     id: str = Field(alias="Id")
     word: str = Field(alias="Word")
     definition: str = Field(alias="Definition")
@@ -45,7 +46,3 @@ class VocabularyEntrySummary(BaseModel):
     updated_at: datetime = Field(alias="UpdatedAt")
 
     model_config = ConfigDict(populate_by_name=True)
-
-
-class VocabularyEntry(VocabularyEntrySummary):
-    image_base64: str = Field(default="", alias="ImageBase64")

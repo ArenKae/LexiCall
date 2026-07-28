@@ -18,9 +18,11 @@ def clean_database():
     db = get_entries_collection().database
     db.drop_collection("entries")
     db.drop_collection("categories")
+    db.drop_collection("entry_images")
     yield
     db.drop_collection("entries")
     db.drop_collection("categories")
+    db.drop_collection("entry_images")
 
 
 @pytest.fixture

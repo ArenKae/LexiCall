@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.responses import Response
 
 from lexicall_api.database import ensure_indexes, ping
-from lexicall_api.routers import categories, entries
+from lexicall_api.routers import categories, entries, entry_images
 
 
 @asynccontextmanager
@@ -20,6 +20,7 @@ app = FastAPI(title="LexiCall API", lifespan=lifespan)
 
 app.include_router(entries.router)
 app.include_router(categories.router)
+app.include_router(entry_images.router)
 
 
 @app.get("/", tags=["health"])

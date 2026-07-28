@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from lexicall_api.migration.migrate_from_json import ForceRequiredError, run
-from lexicall_api.repositories import entries_repo
+from lexicall_api.repositories import entries_repo, entry_images_repo
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "sample_vocabulary.json"
 
@@ -24,10 +24,23 @@ def test_migration_sanitizes_and_reports_summary():
     assert summary.entries_sanitized_category_ids == 1
     assert summary.categories_inserted == 4
     assert summary.categories_duplicate_id_skipped == 1
+    assert summary.images_migrated == 1
     # Breaking a single link of the cccccccc <-> dddddddd cycle is enough to
     # resolve it: cccccccc loses its parent, dddddddd keeps its own (cccccccc,
     # now a root) — the resulting tree is valid without a second fix.
     assert summary.categories_broken_parent_fixed == 1
+
+
+def test_migration_splits_image_into_separate_collection():
+    run(str(FIXTURE_PATH))
+
+    entry = entries_repo.get_entry("11111111-1111-1111-1111-111111111111")
+    assert entry is not None
+    assert "ImageBase64" not in entry
+
+    image = entry_images_repo.get_image("11111111-1111-1111-1111-111111111111")
+    assert image is not None
+    assert image["ImageBytes"] == b"hello"
 
 
 def test_migration_is_idempotent():
@@ -52,7 +65,6 @@ def test_migration_requires_force_when_data_diverges():
             "Source": "",
             "CategoryIds": [],
             "Tags": [],
-            "ImageBase64": "",
         }
     )
 
