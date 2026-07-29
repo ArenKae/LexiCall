@@ -1,60 +1,75 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 
+# Root justfile for the monorepo: thin dispatcher to each sub-project's
+# justfile (apps/windows, api...). Recipes are suffixed per sub-project
+# (-app-windows, -api) to avoid name collisions once the other sub-projects
+# are in place.
+
 default:
     just --list
 
+# ---------------------------------
 # --- apps/windows (.NET / WPF) ---
+# ---------------------------------
 
-run-app-windows:
+# Run the desktop app in debug mode.
+run-win:
     just --justfile apps/windows/justfile --working-directory apps/windows run
 
-build-app-windows:
+# Build the WPF solution.
+build-win:
     just --justfile apps/windows/justfile --working-directory apps/windows build
 
-clean-app-windows:
+# Remove build artifacts (bin/obj).
+clean-win:
     just --justfile apps/windows/justfile --working-directory apps/windows clean
 
-test-app-windows:
-    just --justfile apps/windows/justfile --working-directory apps/windows test
+# -----------------------------------------------------------------------
+# --- api : dev (docker-compose.yml, local Mongo + uvicorn with reload) ---
+# -----------------------------------------------------------------------
 
-# --- api (FastAPI / MongoDB) ---
+# Create the venv and install Python dependencies.
+install:
+    just --justfile api/justfile --working-directory api dev-install
 
-# Local dev tooling: venv, tests, lint, one-off migration script.
+# Wrapper: start Mongo, then the API, both in dev mode.
+up:
+    just --justfile api/justfile --working-directory api dev-up
 
-install-api:
-    just --justfile api/justfile --working-directory api install
-
-# Positional arg, not NAME=value: `just run-api 0.0.0.0` to bind to the LAN.
-run-api HOST="127.0.0.1":
-    just --justfile api/justfile --working-directory api run {{HOST}}
-
-clean-api:
-    just --justfile api/justfile --working-directory api clean
-
-migrate-api *ARGS:
-    just --justfile api/justfile --working-directory api migrate {{ARGS}}
-
-# Local dev stack (docker-compose.yml: Mongo only — the app itself runs via run-api).
-
-dev-mongo-up-api:
+# Start Mongo alone (dev container).
+mongo-up:
     just --justfile api/justfile --working-directory api dev-mongo-up
 
-dev-mongo-down-api:
-    just --justfile api/justfile --working-directory api dev-mongo-down
+# Run uvicorn with hot reload. HOST defaults to 0.0.0.0 (reachable from
+# the Windows host while the API runs inside the Linux VM); positional,
+# not NAME=value (`just run 127.0.0.1`).
+run HOST="0.0.0.0":
+    just --justfile api/justfile --working-directory api dev-run {{HOST}}
 
-# Production stack (docker-compose.prod.yml).
+# Stop the dev stack.
+stop:
+    just --justfile api/justfile --working-directory api dev-stop
 
-deploy-api:
-    just --justfile api/justfile --working-directory api deploy
+# -----------------------------------------------------------------
+# --- api : prod (docker-compose.prod.yml, run these on the VPS) ---
+# -----------------------------------------------------------------
 
-down-api:
-    just --justfile api/justfile --working-directory api down
+# Build (if needed) and bring the full stack up.
+deploy:
+    just --justfile api/justfile --working-directory api prod-deploy
 
-logs-api SERVICE="api":
-    just --justfile api/justfile --working-directory api logs {{SERVICE}}
+# Stop the prod stack.
+down:
+    just --justfile api/justfile --working-directory api prod-down
 
-backup-api:
-    just --justfile api/justfile --working-directory api backup
+# Back up Mongo (deploy/backup.sh script).
+backup:
+    just --justfile api/justfile --working-directory api prod-backup
 
-mongo-shell-api:
-    just --justfile api/justfile --working-directory api mongo-shell
+# One-off, idempotent vocabulary.json -> Mongo migration.
+migrate *ARGS:
+    just --justfile api/justfile --working-directory api migrate {{ARGS}}
+
+# Interactive mongosh shell on the prod stack.
+mongosh:
+    just --justfile api/justfile --working-directory api mongosh

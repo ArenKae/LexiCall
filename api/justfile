@@ -1,53 +1,64 @@
+# Justfile for the FastAPI/MongoDB backend (api/). Dev recipes (local Mongo
+# + uvicorn with reload) and prod recipes (docker-compose.prod.yml, on the
+# VPS) are grouped separately below; the root justfile exposes these with
+# an -api suffix.
+
 default:
     just --list
 
-install:
+# -----------------------------------------------------------------------------
+# --- dev (docker-compose.yml: Mongo only, the app itself runs via dev-run) ---
+# -----------------------------------------------------------------------------
+
+# Create the venv and install dependencies (runtime + dev).
+dev-install:
     python3 -m venv .venv
     .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 
-# HOST defaults to loopback-only; pass a positional arg to override, e.g.
-# `just run 0.0.0.0` to bind to the LAN (needed for a machine other than this
-# one, e.g. the Windows host, to reach the API during dev/testing). Note:
-# just recipe args are positional, not NAME=value like make — `just run
-# HOST=0.0.0.0` would pass the literal string "HOST=0.0.0.0" as the value.
-run HOST="127.0.0.1":
-    .venv/bin/uvicorn lexicall_api.main:app --reload --app-dir src --env-file .env --host {{HOST}}
+# Wrapper: start Mongo, then the API, both in dev mode.
+dev-up: dev-mongo-up dev-run
 
-clean:
-    rm -rf .venv .pytest_cache
-
-migrate *ARGS:
-    PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.migrate_from_json {{ARGS}}
-
-# --- dev (docker-compose.yml: Mongo only — the app itself runs via `just run`) ---
-
+# Start Mongo alone (dev container, local data).
 dev-mongo-up:
     docker compose up -d mongo
 
-dev-mongo-down:
+# Run uvicorn with hot reload. HOST defaults to 0.0.0.0 so the API stays
+# reachable from the Windows host while running inside the Linux dev VM;
+# pass a positional arg to restrict it, e.g. `just dev-run 127.0.0.1`.
+# Positional, not NAME=value like make — `just dev-run HOST=127.0.0.1`
+# would pass the literal string "HOST=127.0.0.1" as the value.
+dev-run HOST="0.0.0.0":
+    .venv/bin/uvicorn lexicall_api.main:app --reload --app-dir src --env-file .env --host {{HOST}}
+
+# Stop the dev stack.
+dev-stop:
     docker compose down
 
-# --- prod (docker-compose.prod.yml: API + Mongo, run these on the VPS) ---
+# ------------------------------------------------------------
+# --- prod (docker-compose.prod.yml, run these on the VPS) ---
+# ------------------------------------------------------------
 
 # Build (if needed) and bring the full stack up. Safe to rerun after every
-# `git pull` — Compose only rebuilds/recreates services whose image or config
-# actually changed.
-deploy:
+# `git pull` — Compose only rebuilds/recreates services whose image or
+# config actually changed.
+prod-deploy:
     docker compose -f docker-compose.prod.yml up -d --build
 
-down:
+# Stop the prod stack.
+prod-down:
     docker compose -f docker-compose.prod.yml down
 
-logs SERVICE="api":
-    docker compose -f docker-compose.prod.yml logs -f {{SERVICE}}
-
-
-backup:
+# Back up Mongo (deploy/backup.sh script).
+prod-backup:
     ./deploy/backup.sh
 
-# Interactive mongosh shell, authenticated as root. Password is read straight
-# from .env — never typed or pasted into a masked prompt.
-mongo-shell:
+# One-off, idempotent vocabulary.json -> Mongo migration (see api/README.md).
+migrate *ARGS:
+    PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.migrate_from_json {{ARGS}}
+
+# Interactive mongosh shell, authenticated as root. Password is read
+# straight from .env — never typed or pasted into a masked prompt.
+mongosh:
     #!/usr/bin/env bash
     set -euo pipefail
     ROOT_PWD=$(grep -oP '(?<=^MONGO_ROOT_PASSWORD=).*' .env)

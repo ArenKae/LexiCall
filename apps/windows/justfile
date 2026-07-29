@@ -1,16 +1,19 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 
+# Build/run recipes for the WPF app (apps/windows). The root justfile
+# exposes these with the -app-windows suffix.
+
 default:
     just --list
 
+# Run the app in debug mode.
 run:
     dotnet run --project src/LexiCall.Desktop.csproj
 
+# Build the solution.
 build:
     dotnet build LexiCall.sln
 
+# Remove build artifacts (bin/obj).
 clean:
     dotnet clean LexiCall.sln
-
-test:
-    dotnet test LexiCall.sln
