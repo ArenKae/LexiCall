@@ -78,12 +78,13 @@ public sealed class VocabularyApiClient
                 return ApiConnectionStatus.Unreachable;
             }
 
-            // ResponseHeadersRead : on n'a besoin que du code de statut, pas
-            // de télécharger toutes les entrées pour un simple test de connexion.
-            using var entriesResponse = await _httpClient.GetAsync(
-                "/entries", HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+            // /auth : simple vérification de la clé API, sans requête Mongo
+            // (contrairement à /entries, qui scannerait toute la collection
+            // pour un test de connexion qui n'a besoin d'aucune donnée).
+            using var authResponse = await _httpClient.GetAsync(
+                "/auth", HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
 
-            return entriesResponse.StatusCode == HttpStatusCode.Unauthorized
+            return authResponse.StatusCode == HttpStatusCode.Unauthorized
                 ? ApiConnectionStatus.InvalidApiKey
                 : ApiConnectionStatus.Ok;
         }

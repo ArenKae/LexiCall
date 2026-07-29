@@ -3,11 +3,12 @@
 import json
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.responses import Response
 
 from lexicall_api.database import ensure_indexes, ping
 from lexicall_api.routers import categories, entries, entry_images
+from lexicall_api.security import require_api_key
 
 
 @asynccontextmanager
@@ -35,4 +36,13 @@ def root() -> Response:
 def health() -> Response:
     mongo_ok = ping()
     body = {"status": "ok" if mongo_ok else "degraded", "mongo": "ok" if mongo_ok else "ko"}
+    return Response(content=json.dumps(body) + "\n", media_type="application/json")
+
+
+@app.get("/auth", tags=["health"], dependencies=[Depends(require_api_key)])
+def auth_check() -> Response:
+    # Dédié au test de connectivité authentifié (ex. bouton « Tester la
+    # connexion » côté client) : la dépendance suffit à valider la clé,
+    # sans exécuter la moindre requête Mongo, contrairement à /entries.
+    body = {"status": "ok"}
     return Response(content=json.dumps(body) + "\n", media_type="application/json")
