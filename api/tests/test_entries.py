@@ -8,6 +8,8 @@ import base64
 import uuid
 from datetime import datetime
 
+from lexicall_api.database import get_entries_collection
+
 ENTRY_PAYLOAD = {
     "Word": "Ubac",
     "Definition": "Versant exposé au nord",
@@ -83,6 +85,19 @@ def test_delete_entry(client, auth_headers):
 
     get_response = client.get(f"/entries/{created['Id']}", headers=auth_headers)
     assert get_response.status_code == 404
+
+
+def test_delete_entry_sets_tombstoned_at(client, auth_headers):
+    # TombstonedAt backs the TTL index (database.ensure_indexes()) that
+    # auto-purges old tombstones — must be a real BSON datetime, not the
+    # ISO-8601 strings UpdatedAt/CreatedAt use for CAS comparisons.
+    created = _create_entry(client, auth_headers)
+
+    delete_response = client.delete(f"/entries/{created['Id']}", headers=auth_headers)
+    assert delete_response.status_code == 204
+
+    raw = get_entries_collection().find_one({"Id": created["Id"]})
+    assert isinstance(raw["TombstonedAt"], datetime)
 
 
 def test_get_unknown_entry_returns_404(client, auth_headers):

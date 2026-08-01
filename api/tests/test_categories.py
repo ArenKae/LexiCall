@@ -4,6 +4,8 @@
 import uuid
 from datetime import datetime
 
+from lexicall_api.database import get_categories_collection
+
 
 def _put_category(client, auth_headers, category_id=None, name="Cat", parent_id=None, **overrides):
     category_id = category_id or str(uuid.uuid4())
@@ -80,6 +82,19 @@ def test_delete_unused_leaf_category_returns_204(client, auth_headers):
     category = _create_category(client, auth_headers, "Inutilisée")
     response = client.delete(f"/categories/{category['Id']}", headers=auth_headers)
     assert response.status_code == 204
+
+
+def test_delete_category_sets_tombstoned_at(client, auth_headers):
+    # TombstonedAt backs the TTL index (database.ensure_indexes()) that
+    # auto-purges old tombstones — must be a real BSON datetime, not the
+    # ISO-8601 strings UpdatedAt/CreatedAt use for CAS comparisons.
+    category = _create_category(client, auth_headers, "Éphémère")
+
+    response = client.delete(f"/categories/{category['Id']}", headers=auth_headers)
+    assert response.status_code == 204
+
+    raw = get_categories_collection().find_one({"Id": category["Id"]})
+    assert isinstance(raw["TombstonedAt"], datetime)
 
 
 def test_delete_category_succeeds_once_child_is_tombstoned(client, auth_headers):

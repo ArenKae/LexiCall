@@ -1,6 +1,6 @@
 # Data access for the `entries` collection. Every lookup/update happens via
 # the application field Id, never via Mongo's native _id (see database.py).
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
@@ -97,11 +97,17 @@ def delete_entry(entry_id: str, deleted_at: datetime | None = None) -> tuple[dic
     it yet. Returns (document, applied) — see put_entry; a DELETE that
     loses the CAS comparison
     (e.g. the entry was actually edited more recently elsewhere) must not
-    cascade to the image either."""
+    cascade to the image either.
+
+    TombstonedAt is a genuine BSON Date (unlike UpdatedAt/CreatedAt, which
+    stay ISO-8601 strings for lexicographic CAS comparisons) — it exists
+    solely to back the TTL index in database.ensure_indexes(), which needs a
+    real Date field to auto-expire old tombstones. It's set once, at
+    tombstone time, and never touched again."""
     incoming = timestamps.to_iso_utc(deleted_at) or timestamps.now_iso()
     result = get_entries_collection().find_one_and_update(
         {"Id": entry_id, "UpdatedAt": {"$lt": incoming}},
-        {"$set": {"IsDeleted": True, "UpdatedAt": incoming}},
+        {"$set": {"IsDeleted": True, "UpdatedAt": incoming, "TombstonedAt": datetime.now(timezone.utc)}},
         return_document=ReturnDocument.AFTER,
     )
     if result is not None:

@@ -41,6 +41,19 @@ def ensure_indexes() -> None:
     get_entries_collection().create_index("UpdatedAt")
     get_categories_collection().create_index("UpdatedAt")
 
+    # TTL: MongoDB's background expiry monitor auto-deletes a document once
+    # this field is older than expireAfterSeconds — but only documents that
+    # actually carry the field, which only tombstones do (TombstonedAt is set
+    # once, at delete time, in entries_repo.delete_entry/categories_repo.
+    # delete_category). Live documents are never touched. 30 days is a
+    # generous window given the periodic resync client-side (60s while the
+    # app is open): a client that hasn't reconnected in over a month would
+    # miss the tombstone and could see a stale record reappear, an accepted
+    # tradeoff for a personal-scale app. Once purged, the Id becomes free
+    # again for a new record (no more DuplicateKeyError on that Id).
+    get_entries_collection().create_index("TombstonedAt", expireAfterSeconds=30 * 24 * 60 * 60)
+    get_categories_collection().create_index("TombstonedAt", expireAfterSeconds=30 * 24 * 60 * 60)
+
 
 def strip_mongo_id(doc: dict) -> dict:
     doc = dict(doc)

@@ -2,7 +2,7 @@
 # guards already present client-side in MainWindowViewModel.DeleteCategory
 # (apps/windows/src/ViewModels/MainWindowViewModel.cs) — necessary as soon as
 # there's a second writer, the desktop app is no longer the sole source of truth.
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
@@ -103,11 +103,12 @@ def put_category(category_id: str, data: dict) -> dict:
 
 def delete_category(category_id: str, deleted_at: datetime | None = None) -> dict | None:
     """Deletion = tombstone, no upsert (an unknown Id must stay a 404) —
-    see entries_repo.delete_entry."""
+    see entries_repo.delete_entry. TombstonedAt: see entries_repo.delete_entry
+    for why this is a real BSON Date rather than the usual ISO string."""
     incoming = timestamps.to_iso_utc(deleted_at) or timestamps.now_iso()
     result = get_categories_collection().find_one_and_update(
         {"Id": category_id, "UpdatedAt": {"$lt": incoming}},
-        {"$set": {"IsDeleted": True, "UpdatedAt": incoming}},
+        {"$set": {"IsDeleted": True, "UpdatedAt": incoming, "TombstonedAt": datetime.now(timezone.utc)}},
         return_document=ReturnDocument.AFTER,
     )
     return strip_mongo_id(result) if result is not None else _get_category_raw(category_id)
