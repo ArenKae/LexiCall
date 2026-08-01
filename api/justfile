@@ -20,10 +20,25 @@ dev-install:
 [group('dev')]
 dev-up: dev-mongo-up dev-run
 
-# Start Mongo alone (dev container, local data).
+# Start Mongo alone (dev container, local data). Self-healing: if the
+# container's target port (e.g. 27017) was busy at creation time — a stale
+# SSH tunnel, another Mongo — Docker can silently create it with no port
+# published at all; merely starting it later never fixes that, since port
+# bindings are fixed at creation, not re-evaluated on start. Detected via
+# `len .NetworkSettings.Ports` (0 means no port published at all) and
+# healed with one automatic --force-recreate, which keeps the named volume
+# (dev data untouched) and only replaces the container itself.
 [group('dev')]
 dev-mongo-up:
+    #!/usr/bin/env bash
+    set -euo pipefail
     docker compose up -d mongo
+    container_id=$(docker compose ps -q mongo)
+    port_count=$(docker inspect -f '{{{{len .NetworkSettings.Ports}}' "$container_id")
+    if [ "$port_count" = "0" ]; then
+        echo "Mongo container has no port published (likely created while the port was busy) — recreating..." >&2
+        docker compose up -d --force-recreate mongo
+    fi
 
 # Run uvicorn with hot reload. HOST defaults to 0.0.0.0 so the API stays
 # reachable from the Windows host while running inside the Linux dev VM;
