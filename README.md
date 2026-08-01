@@ -1,143 +1,163 @@
 # LexiCall
 
-LexiCall est une application Windows personnelle pour collecter, organiser,
-rechercher et mémoriser le vocabulaire rencontré pendant la lecture.
+A personal vocabulary tracker for words and expressions collected while reading:
+organize them into a category hierarchy, search across everything instantly, and
+keep the collection in sync across devices, without ever losing offline access to
+a single word.
 
-Le projet privilégie une approche simple : une application utile rapidement,
-un stockage local lisible, peu de dépendances, et une architecture suffisamment
-claire pour rester maintenable par une seule personne.
+**Status**: the Windows desktop client is feature-complete and daily-driven; the
+FastAPI/MongoDB backend is implemented and running in production on a VPS, wired
+to the desktop client through a bidirectional, timestamp-based sync layer (details
+below).
 
-## État actuel
+## Overview
 
-LexiCall est utilisable en Phase 1 (application desktop locale, complète) et sa Phase 2
-(backend FastAPI + MongoDB) est désormais implémentée, déployée en production sur un VPS et câblée au client Windows : chaque mutation locale est poussée vers l'API en tâche de fond, best-effort, en plus de la sauvegarde JSON locale qui reste la seule source de vérité pour l'affichage. Voir la Roadmap
-plus bas pour le détail de ce qui est fait et ce qui reste hors périmètre pour cette phase
-(lecture depuis l'API, résolution de conflits — pertinentes seulement à partir d'un deuxième
-utilisateur, l'app Android de la Phase 3).
+LexiCall started as a personal itch: reading constantly surfaces words and
+expressions worth keeping, and neither note-taking apps nor spreadsheets were
+built for that: the former have no real structure for a growing vocabulary,
+the latter fall apart past a couple hundred rows. This repository is what
+came out of building that tool myself, end to end, from the desktop app I
+use daily to the backend that keeps it in sync.
 
-Fonctionnalités disponibles :
+Two components exist today:
 
-- CRUD des entrées de vocabulaire ;
-- CRUD des catégories, avec sous-catégories (hiérarchie par parent) ;
-- navigation par arbre de catégories dans la fenêtre principale : compteurs
-  par catégorie (descendants inclus), filtres « Toutes les entrées » et
-  « Sans catégorie », renommage inline (F2 ou menu contextuel) ;
-- repères visuels dans l'arbre : une couleur distincte par catégorie racine
-  (répartition par angle d'or, lisible même avec une quinzaine de racines),
-  héritée en atténué par ses sous-catégories, séparateur marqué entre les
-  grandes familles ;
-- panneaux latéraux (catégories / liste / détail) redimensionnables par
-  glisser-déposer, pour les noms de catégories longs ;
-- filtrage par catégorie combinable avec la recherche texte ; fil d'ariane
-  compact (dernier niveau affiché, chemin complet en infobulle) ;
-- liste centrale volontairement compacte (mot, chips de catégories, source)
-  pour voir un maximum d'entrées sans défiler ; cliquer un chip de catégorie
-  (liste ou détail) sélectionne cette catégorie dans l'arbre ;
-- icône (emoji) par catégorie, choisie dans un catalogue thématique filtrable
-  par mot-clé ;
-- image par entrée (upload, redimensionnement/compression automatiques,
-  aperçu agrandi au clic), stockée en base64 dans `vocabulary.json` ;
-- assignation optionnelle de plusieurs catégories à une entrée, via un
-  formulaire où le bloc catégories est mis en avant (grande hauteur, en haut) ;
-- entrées autorisées sans catégorie ;
-- recherche locale sur mots, définitions, notes, source, exemples, tags et catégories ;
-- recherche tolérante aux accents ;
-- fenêtre « Options » (thème clair/sombre, accès au dossier de données, configuration de
-  la synchronisation API avec test de connexion) ; position/taille de la fenêtre et largeur
-  des colonnes mémorisées entre les sessions ;
-- synchronisation best-effort en tâche de fond vers l'API (Phase 2) : chaque ajout/
-  modification/suppression est poussé vers le serveur sans jamais bloquer l'interface, avec
-  rattrapage automatique au démarrage si l'API était injoignable entretemps ; le JSON local
-  reste la seule source de vérité affichée, la synchronisation est un miroir best-effort ;
-- confirmations de suppression via une boîte de dialogue stylée (thème
-  clair/sombre cohérent, plus de MessageBox système) ;
-- sauvegarde et rechargement depuis un fichier JSON local ;
-- migration automatique de l’ancien format JSON si nécessaire.
+- **`apps/windows`**, a WPF/.NET desktop app: the primary way vocabulary gets
+  collected, browsed, and edited.
+- **`api`**, a FastAPI + MongoDB backend that mirrors the desktop client's data,
+  deployed to a VPS behind a reverse proxy with automatic HTTPS.
 
-## Modèle fonctionnel
+```mermaid
+flowchart LR
+    subgraph client["apps/windows (WPF)"]
+        direction TB
+        VM["MainWindowViewModel"] --> Repo["VocabularyRepository"] --> JSON["vocabulary.json<br/>(source of truth for the UI)"]
+    end
 
-Une entrée de vocabulaire contient :
+    subgraph server["api (FastAPI)"]
+        direction TB
+        Routers["entries / categories routers"] --> Repos["repositories (CAS)"] --> Mongo["MongoDB"]
+    end
 
-- mot ;
-- définition ;
-- synonymes ;
-- phrases d’exemple ;
-- notes personnelles ;
-- source ;
-- tags ;
-- zéro, une ou plusieurs catégories ;
-- image optionnelle (JPEG encodé en base64) ;
-- dates de création et modification.
+    client -- "push (LWW)" --> server
+    server -- "delta pull" --> client
+```
 
-Une catégorie contient :
+The local JSON file is what the UI actually reads from; the API is a
+best-effort mirror the client pushes to and pulls from, never a hard
+dependency. Losing network access, or the API being down entirely, doesn't
+touch the desktop app's usability at all.
 
-- nom ;
-- description optionnelle ;
-- icône optionnelle (emoji) ;
-- identifiant stable ;
-- parent optionnel (sous-catégorie) ;
-- dates de création et modification.
+## Design decisions
 
-La hiérarchie interdit les cycles : le sélecteur de parent exclut la catégorie
-éditée et ses descendantes, et le ViewModel revalide avant de persister.
+### Local-first storage
 
-Les catégories sont des données d’organisation, pas des données obligatoires.
-Une entrée reste valide même si elle n’a aucune catégorie.
+The desktop client's entire dataset lives in one JSON document
+(`%LOCALAPPDATA%\LexiCall\vocabulary.json`), loaded into memory at startup and
+rewritten whole on every mutation. No embedded database, no ORM, no schema
+migrations to manage on the client. For a personal dataset that comfortably
+fits in memory, this trades a small amount of write amplification (every save
+rewrites the whole file) for something much more valuable at this scale:
+zero moving parts, a format that's trivially readable/editable by hand, and
+an app that works exactly the same with or without network access, because
+nothing about reading or writing local data depends on it.
 
-## Stockage local
+### Client ↔ server sync: Last-Write-Wins (LWW) over timestamps
 
-Les données sont sauvegardées dans un seul fichier JSON :
+This is the part of the codebase with the most going on, so it's worth
+walking through in some depth.
+
+**The problem.** Reading happens anywhere, so the client has to work fully
+offline and catch up whenever a connection shows up again, without either
+side having to guess what it missed in the meantime. The straightforward way
+to guarantee nothing gets missed is to just re-send the entire local dataset
+on every catch-up: simple, but it doesn't scale. At a few hundred entries,
+that's several hundred sequential HTTP requests on every single startup,
+most of them pushing data the server already has.
+
+**The approach.** The sync layer is bidirectional, driven by a single
+invariant: for any given record, the copy with the most recent `UpdatedAt`
+wins, regardless of which device produced it. That invariant only holds up
+in practice with a few supporting mechanisms:
+
+- **Conditional writes instead of blind overwrites.** Every update on the
+  server is a MongoDB `find_one_and_update` gated on
+  `{"UpdatedAt": {"$lt": incoming}}`: the write only applies if the incoming
+  timestamp is actually newer than what's stored. A push that arrives late
+  (e.g. replayed after being queued while offline) simply loses that
+  comparison instead of clobbering a more recent edit made elsewhere; losing
+  the comparison isn't treated as an error, the server just returns the
+  current winning copy.
+- **Soft deletes.** Deleting a record sets an `IsDeleted` flag and bumps
+  `UpdatedAt`, instead of removing the document. A hard delete would leave no
+  trace for another device to ever learn "this was deleted" from; a
+  tombstone is the one channel a deletion has to actually propagate.
+- **Delta pulls instead of full re-fetches.** Reads take an optional
+  `updated_since` watermark and return only what changed, including
+  tombstones. The server hands back its own timestamp with every response
+  (as a header), and the client persists that value verbatim as the next
+  watermark, rather than trusting its own clock for anything that affects
+  what gets fetched.
+- **Per-record dirty tracking on the client**, instead of one global "last
+  synced" checkpoint. Each local record remembers the `UpdatedAt` value it
+  was last successfully pushed at; a resync only pushes records where that
+  value is stale. This is what keeps a slow network from being a problem: a
+  single record that keeps failing to push stays "dirty" on its own, without
+  ever forcing a full re-push of everything else around it.
+- **A short-interval background timer**, not just a push-on-mutation and a
+  catch-up-on-launch. Network hiccups that resolve mid-session get picked up
+  without waiting for the next app restart, guarded against overlapping with
+  itself and against firing while an edit dialog is open.
+- **Entry images live in their own MongoDB collection**, not as a field on
+  the entry document. A Mongo projection that excludes a field only saves
+  the client bandwidth; the storage engine still reads the whole document,
+  image bytes included, into cache for any scan of the collection. Splitting
+  images out keeps a growing entries collection fast to browse regardless of
+  how many of them carry an image.
+
+## Tech stack
+
+| Component | Technology |
+| --- | --- |
+| Desktop app | .NET 10, C#, WPF |
+| UI architecture | MVVM (hand-rolled, no toolkit) |
+| Desktop storage | Local JSON |
+| Backend | FastAPI, Pydantic |
+| Database | MongoDB |
+| Deployment | Docker Compose |
+
+## Repository structure
+
+Monorepo, one folder per surface:
 
 ```text
-%LOCALAPPDATA%\LexiCall\vocabulary.json
+apps/
+└── windows/   .NET/WPF desktop client
+api/           FastAPI + MongoDB backend
 ```
 
-La préférence de thème, ainsi que la position/taille de la fenêtre et la
-largeur des colonnes, sont stockées à côté, dans `settings.json` (fichier
-distinct des données : perdre l’un n’affecte pas l’autre).
+`apps/windows` is fully self-contained: its own solution file, pinned SDK
+version, and command runner live directly inside it. `api` is a separate
+Python codebase with its own conventions and its own [justfile](api/justfile).
 
-Le fichier contient un document racine :
-
-```json
-{
-  "Entries": [],
-  "Categories": []
-}
+```text
+apps/windows/
+├── LexiCall.sln
+├── global.json           pinned .NET SDK version
+├── justfile               local run/build/test commands
+└── src/
+    ├── Models/             VocabularyEntry, VocabularyCategory, root JSON document
+    ├── ViewModels/         MVVM state and presentation logic
+    ├── Services/           local persistence, theming, API sync client
+    ├── Commands/           WPF ICommand implementations
+    ├── Converters/         XAML value converters
+    ├── Utilities/          text parsing, category-hierarchy helpers
+    ├── Themes/             light/dark color resources and shared styles
+    └── *Window.xaml        main window + modal editors
 ```
 
-Les entrées référencent les catégories par `CategoryIds`. Cela permet de
-renommer une catégorie sans modifier toutes les entrées qui l’utilisent.
+## Getting started
 
-## Technologies
-
-| Composant | Technologie |
-| --- | --- |
-| Application desktop | .NET 10, C#, WPF |
-| Architecture UI | MVVM simple |
-| Stockage Phase 1 | JSON local |
-| Backend (Phase 2) | FastAPI |
-| Base de données (Phase 2) | MongoDB |
-| Mobile futur | React Native, Expo |
-
-## Prérequis
-
-- Windows 10 ou 11 ;
-- SDK [.NET 10](https://dotnet.microsoft.com/download/dotnet/10.0) ;
-- VS Code avec C# Dev Kit, ou Visual Studio avec la charge Desktop .NET.
-
-Vérifier le SDK :
-
-```powershell
-dotnet --version
-```
-
-## Lancer le projet
-
-`apps/windows/` est autonome : son `.sln` et son `global.json` (version de SDK
-épinglée) y vivent directement. La résolution du SDK par `dotnet` remonte
-l'arborescence depuis le **répertoire courant** — place-toi dans le dossier
-pour que l'épinglage soit respecté (lancer depuis la racine avec juste
-`--project` ne suffit pas) :
+**Prerequisites**: Windows 10/11, [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ```powershell
 cd apps/windows
@@ -146,148 +166,17 @@ dotnet build LexiCall.sln
 dotnet run --project src/LexiCall.Desktop.csproj
 ```
 
-Si `just` est installé, le `justfile` racine fait ce déplacement pour toi
-(voir aussi `apps/windows/justfile`, utilisable directement une fois dans
-le dossier) :
+Or, with [`just`](https://github.com/casey/just) installed, from the repo root:
 
 ```powershell
 just run-app-windows
 just build-app-windows
 ```
 
-Pour l'API (`api/`, Python/FastAPI), voir `api/README.md` pour l'installation complète ;
-en résumé, depuis la racine :
+The app runs standalone with no configuration; sync only activates once an
+API URL and key are entered in Options. See [`api/README.md`](api/README.md)
+for backend setup.
 
-```bash
-just install-api
-just dev-mongo-up-api
-just run-api                # HOST=127.0.0.1 par défaut (LAN : just run-api 0.0.0.0)
-```
+## Usage
 
-L'app Windows n'utilise l'API que si `ApiBaseUrl`/`ApiKey` sont renseignés dans Options —
-sans configuration, elle fonctionne exactement comme en Phase 1 pure.
-
-## Structure du dépôt
-
-LexiCall est un monorepo : un dossier par surface applicative. `apps/windows`
-et `api` contiennent du code aujourd'hui ; `apps/android` reste un dossier
-réservé (un simple README) pour la Phase 3, à venir.
-
-```text
-apps/
-├── windows/   application desktop WPF (Phase 1, actuelle — détail ci-dessous)
-└── android/   application mobile React Native/Expo (Phase 3, à venir)
-api/           backend FastAPI + MongoDB (Phase 2, implémenté — voir api/README.md)
-```
-
-## Structure de `apps/windows/`
-
-```text
-apps/windows/
-├── LexiCall.sln          Solution .NET (autonome, propre à cette app)
-├── global.json           Version de SDK .NET épinglée
-├── justfile              Commandes locales (run, build, clean, test)
-└── src/
-    ├── LexiCall.Desktop.csproj
-    ├── Models/               Modèles métier : entrée, catégorie, base JSON
-    ├── ViewModels/           État et logique de présentation MVVM
-    ├── Services/             Persistance locale JSON, gestion du thème, client API (sync)
-    ├── Commands/             Commandes WPF réutilisables
-    ├── Converters/           Convertisseurs XAML (chips, indentation, couleur des catégories)
-    ├── Utilities/            Helpers texte et hiérarchie de catégories
-    ├── Themes/               Couleurs clair/sombre et styles partagés
-    ├── MainWindow.xaml       Vue principale : arbre de catégories, liste, détail
-    ├── EntryEditorWindow     Modale d’ajout/modification d’entrée
-    └── CategoryEditorWindow  Modale d’ajout/modification de catégorie
-```
-
-## Architecture actuelle
-
-Le flux principal est :
-
-```text
-MainWindow.xaml
-  ↕ bindings
-MainWindowViewModel
-  ↕
-VocabularyRepository
-  ↕
-vocabulary.json
-```
-
-Les fenêtres modales (`EntryEditorWindow`, `CategoryEditorWindow`) travaillent
-sur un ViewModel dédié. Quand l’utilisateur valide, elles renvoient le résultat
-à `MainWindowViewModel`, qui met à jour les collections et sauvegarde le JSON.
-
-La gestion des catégories (création, renommage, reparentage, suppression) se
-fait directement dans le panneau latéral de la fenêtre principale ; toute
-mutation déclenche une sauvegarde complète immédiate du fichier JSON.
-
-Depuis la Phase 2, chaque mutation déclenche en plus un envoi best-effort vers l'API
-(`VocabularyApiClient`, en tâche de fond, jamais attendu) : le fichier JSON local reste
-l'unique source de vérité affichée par l'interface, l'API n'est qu'un miroir tenu à jour de
-façon best-effort — voir `.claude/CLAUDE.md` (section « Client sync ») pour le détail du
-modèle de synchronisation.
-
-## Roadmap
-
-### Phase 1 — Desktop local
-
-Objectif : application Windows utilisable sans serveur.
-
-- CRUD entrées ;
-- CRUD catégories, sous-catégories comprises, avec icône (emoji) ;
-- navigation et filtrage par arbre de catégories ;
-- recherche locale ;
-- thème clair/sombre persisté ; disposition de la fenêtre (taille, position,
-  colonnes) mémorisée ;
-- persistance JSON ;
-- illustration des mots par image (upload, redimensionnement/compression,
-  stockage encodé en base64 directement dans `vocabulary.json` — pas de
-  fichiers séparés à gérer/lier).
-
-Prochaines améliorations probables :
-
-- import/export ;
-- raccourcis clavier (au-delà de F2) ;
-
-### Phase 2 — Backend partagé
-
-- API REST FastAPI + MongoDB (`api/`), authentification par clé API (`X-API-Key`) ;
-- migration ponctuelle des données existantes (`vocabulary.json` → MongoDB), idempotente ;
-- client Windows câblé : chaque mutation locale pousse une synchronisation best-effort vers
-  l'API en tâche de fond, avec rattrapage automatique au démarrage si l'API a été injoignable ;
-  configuration (URL, clé) depuis la fenêtre Options, avec test de connexion ;
-- déploiement en production sur un VPS (Docker Compose, HTTPS via reverse proxy avec
-  certificat automatique) — détails d'infrastructure documentés séparément, dans un dépôt
-  privé distinct de celui-ci.
-
-Volontairement hors périmètre pour l'instant :
-
-- bascule des lectures de l'UI vers l'API (le JSON local reste la source de vérité tant
-  qu'un vrai mécanisme de résolution de conflits n'existe pas) ;
-- résolution de conflits entre éditions concurrentes (pas encore nécessaire à un seul
-  utilisateur).
-
-### Phase 3 — Android
-
-- React Native avec Expo ;
-- ajout rapide de mots pendant la lecture ;
-- recherche, édition et révision depuis mobile ;
-- synchronisation via l’API.
-
-### Phase 4 — IA optionnelle
-
-Idées possibles :
-
-- suggestions de synonymes ;
-- exemples de phrases ;
-- suggestions de tags ou catégories ;
-- génération automatique d'une icône par catégorie, via un LLM (Mistral API)
-  lors d'une étape finale d'enrichissement (nécessite forcément un appel LLM :
-  contrairement aux autres idées de cette section, pas d'équivalent local/manuel
-  raisonnable pour cette fonctionnalité) ;
-- enrichissement local via Ollama ou service serveur optionnel.
-
-L’IA ne doit jamais devenir une dépendance obligatoire : LexiCall doit rester
-utilisable sans modèle de langage.
+_Coming soon._

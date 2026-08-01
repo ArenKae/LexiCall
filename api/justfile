@@ -1,24 +1,27 @@
 # Justfile for the FastAPI/MongoDB backend (api/). Dev recipes (local Mongo
-# + uvicorn with reload) and prod recipes (docker-compose.prod.yml, on the
+# + uvicorn with reload) and production recipes (docker-compose.prod.yml, on the
 # VPS) are grouped separately below; the root justfile exposes these with
 # an -api suffix.
 
 default:
     just --list
 
-# -----------------------------------------------------------------------------
-# --- dev (docker-compose.yml: Mongo only, the app itself runs via dev-run) ---
-# -----------------------------------------------------------------------------
+# --------------------------------
+# --- dev (docker-compose.yml) ---
+# --------------------------------
 
 # Create the venv and install dependencies (runtime + dev).
+[group('dev')]
 dev-install:
     python3 -m venv .venv
     .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 
 # Wrapper: start Mongo, then the API, both in dev mode.
+[group('dev')]
 dev-up: dev-mongo-up dev-run
 
 # Start Mongo alone (dev container, local data).
+[group('dev')]
 dev-mongo-up:
     docker compose up -d mongo
 
@@ -27,37 +30,44 @@ dev-mongo-up:
 # pass a positional arg to restrict it, e.g. `just dev-run 127.0.0.1`.
 # Positional, not NAME=value like make — `just dev-run HOST=127.0.0.1`
 # would pass the literal string "HOST=127.0.0.1" as the value.
+[group('dev')]
 dev-run HOST="0.0.0.0":
     .venv/bin/uvicorn lexicall_api.main:app --reload --app-dir src --env-file .env --host {{HOST}}
 
 # Stop the dev stack.
+[group('dev')]
 dev-stop:
     docker compose down
 
-# ------------------------------------------------------------
-# --- prod (docker-compose.prod.yml, run these on the VPS) ---
-# ------------------------------------------------------------
+# --------------------------------------------
+# --- production (docker-compose.prod.yml) ---
+# --------------------------------------------
 
 # Build (if needed) and bring the full stack up. Safe to rerun after every
 # `git pull` — Compose only rebuilds/recreates services whose image or
 # config actually changed.
+[group('production')]
 prod-deploy:
     docker compose -f docker-compose.prod.yml up -d --build
 
-# Stop the prod stack.
+# Stop the production stack.
+[group('production')]
 prod-down:
     docker compose -f docker-compose.prod.yml down
 
 # Back up Mongo (deploy/backup.sh script).
+[group('production')]
 prod-backup:
     ./deploy/backup.sh
 
 # One-off, idempotent vocabulary.json -> Mongo migration (see api/README.md).
+[group('production')]
 migrate *ARGS:
     PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.migrate_from_json {{ARGS}}
 
 # Interactive mongosh shell, authenticated as root. Password is read
 # straight from .env — never typed or pasted into a masked prompt.
+[group('production')]
 mongosh:
     #!/usr/bin/env bash
     set -euo pipefail

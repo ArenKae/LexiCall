@@ -1,8 +1,8 @@
 # LexiCall — API
 
-Phase 2 backend: FastAPI + MongoDB, preparing the progressive migration of
-local storage (`vocabulary.json`, desktop app) toward a server source of
-truth. See the Roadmap in the [root README](../README.md).
+FastAPI + MongoDB backend, mirroring the desktop client's data (`vocabulary.json`) through a
+bidirectional, Last-Write-Wins sync layer. See the [root README](../README.md) for the
+overall architecture and design rationale.
 
 ## Quick start (Linux VM/server)
 

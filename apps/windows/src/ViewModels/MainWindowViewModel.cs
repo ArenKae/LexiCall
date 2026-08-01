@@ -64,7 +64,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         // lancement) : une panne réseau qui se résout en cours de session
         // (VPN qui se reconnecte, VM dev qui redémarre) est rattrapée sans
         // attendre le prochain démarrage de l'app.
-        _periodicSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(3) };
+        _periodicSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
         _periodicSyncTimer.Tick += async (_, _) => await TryResyncAsync();
         _periodicSyncTimer.Start();
 
@@ -222,7 +222,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     // moment même du déclenchement : le Tick de DispatcherTimer s'exécute
     // sur le thread UI, tout comme l'écriture d'IsEditorDialogOpen par le
     // code-behind — pas de race à gérer. Si l'un ou l'autre bloque, on
-    // annule simplement cet appel : le prochain tick, 3 minutes plus tard,
+    // annule simplement cet appel : le prochain tick, 60 secondes plus tard,
     // retentera de lui-même, pas besoin de replanifier quoi que ce soit.
     private async Task TryResyncAsync()
     {
@@ -352,8 +352,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 entry.SyncedAt = entry.UpdatedAt;
             }
 
-            MergePulled(Categories, categoriesPull.Items, FindCategoryIndex, c => c.Id, c => c.UpdatedAt, c => c.IsDeleted);
-            MergePulled(Entries, entriesPull.Items, FindEntryIndex, e => e.Id, e => e.UpdatedAt, e => e.IsDeleted);
+            MergePulled(Categories, categoriesPull.Items, FindCategoryIndex, c => c.Id, c => c.UpdatedAt, c => c.IsDeleted, (c, t) => c.SyncedAt = t);
+            MergePulled(Entries, entriesPull.Items, FindEntryIndex, e => e.Id, e => e.UpdatedAt, e => e.IsDeleted, (e, t) => e.SyncedAt = t);
             RebuildCategoryTree();
             RefreshFilteredEntries();
             SaveDatabase();
@@ -380,7 +380,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Func<Guid, int> findIndex,
         Func<T, Guid> getId,
         Func<T, DateTimeOffset> getUpdatedAt,
-        Func<T, bool> getIsDeleted)
+        Func<T, bool> getIsDeleted,
+        Action<T, DateTimeOffset> setSyncedAt)
     {
         foreach (var item in pulled)
         {
@@ -396,12 +397,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 continue;
             }
 
+            // Un enregistrement qu'on vient de recevoir du serveur est par
+            // définition déjà à jour côté serveur — sans ce marquage, il
+            // resterait signalé "à repousser" (SyncedAt encore null par
+            // défaut sur l'objet désérialisé) et serait renvoyé pour rien au
+            // prochain resync, y compris tout le lot du tout premier pull.
             if (index < 0)
             {
+                setSyncedAt(item, getUpdatedAt(item));
                 collection.Add(item);
             }
             else if (getUpdatedAt(item) > getUpdatedAt(collection[index]))
             {
+                setSyncedAt(item, getUpdatedAt(item));
                 collection[index] = item;
             }
         }
