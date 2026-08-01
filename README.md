@@ -35,7 +35,7 @@ flowchart LR
 
     subgraph server["api (FastAPI)"]
         direction TB
-        Routers["entries / categories routers"] --> Repos["repositories (CAS)"] --> Mongo["MongoDB"]
+        Routers["entries / categories routers"] --> Repos["repositories (conditional writes)"] --> Mongo["MongoDB"]
     end
 
     client -- "push (LWW)" --> server
@@ -79,10 +79,13 @@ invariant: for any given record, the copy with the most recent `UpdatedAt`
 wins, regardless of which device produced it. That invariant only holds up
 in practice with a few supporting mechanisms:
 
-- **Conditional writes instead of blind overwrites.** Every update on the
-  server is a MongoDB `find_one_and_update` gated on
-  `{"UpdatedAt": {"$lt": incoming}}`: the write only applies if the incoming
-  timestamp is actually newer than what's stored. A push that arrives late
+- **Conditional writes instead of blind overwrites**, a pattern known as
+  compare-and-swap (CAS): a write only applies if the record is still in the
+  state the writer expects, checked and applied atomically in a single
+  database operation. Every update on the server is a MongoDB
+  `find_one_and_update` gated on `{"UpdatedAt": {"$lt": incoming}}`: the
+  write only applies if the incoming timestamp is actually newer than what's
+  stored. A push that arrives late
   (e.g. replayed after being queued while offline) simply loses that
   comparison instead of clobbering a more recent edit made elsewhere; losing
   the comparison isn't treated as an error, the server just returns the
@@ -107,14 +110,20 @@ in practice with a few supporting mechanisms:
   catch-up-on-launch. Network hiccups that resolve mid-session get picked up
   without waiting for the next app restart, guarded against overlapping with
   itself and against firing while an edit dialog is open.
-- **PUT-first, POST-on-404 as a client-side upsert.** REST has no native
-  "create or update" verb, and the client has no reliable way to know in
-  advance whether a given record already exists server-side (another device
-  may have created or synced it first). Rather than issuing an existence
-  check before every write, every push just tries a `PUT`; a 404 means the
-  record doesn't exist yet, and the client falls back to `POST` with that
-  same local `Id`, so the record ends up with the same identity on both
-  sides regardless of which device created it first.
+- **A single atomic upsert on the server, not a client-side existence
+  check.** REST has no native "create or update" verb, and the client has
+  no reliable way to know in advance whether a given record already exists
+  server-side (another device may have created or synced it first). Every
+  write is one `PUT`: MongoDB's own `find_one_and_update(..., upsert=True)`
+  creates the record when the Id is unknown and applies the same CAS-gated
+  write otherwise, in a single round trip, so the create-or-update decision
+  never has to leave the server. The one wrinkle is what happens when the
+  Id already exists but this specific push loses the CAS comparison: the
+  filter still matches nothing, so the upsert still attempts an insert,
+  which collides with the unique index and raises a duplicate-key error.
+  That error is the signal telling "stale push against an existing record"
+  apart from "genuine creation", caught and treated as a normal outcome
+  rather than a failure.
 - **Entry images live in their own MongoDB collection**, not as a field on
   the entry document. A Mongo projection that excludes a field only saves
   the client bandwidth; the storage engine still reads the whole document,

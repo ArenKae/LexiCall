@@ -1,9 +1,9 @@
 # Data access for the `entries` collection. Every lookup/update happens via
 # the application field Id, never via Mongo's native _id (see database.py).
-import uuid
 from datetime import datetime
 
 from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from lexicall_api import timestamps
 from lexicall_api.database import get_entries_collection, strip_mongo_id
@@ -32,53 +32,70 @@ def get_entry(entry_id: str) -> dict | None:
 
 
 def _get_entry_raw(entry_id: str) -> dict | None:
-    # Unfiltered (tombstones included) — internal use only, by
-    # update_entry/delete_entry to distinguish "unknown Id" from "the Id
-    # exists but the push lost the CAS comparison" (see their docstrings).
+    # Unfiltered (tombstones included) — internal use only. delete_entry
+    # relies on the None case to distinguish "unknown Id" (404) from "exists
+    # but this delete lost the CAS comparison" (no-op). put_entry only ever
+    # calls this after a DuplicateKeyError, where the Id is already known to
+    # exist, so it never actually sees None there in practice.
     doc = get_entries_collection().find_one({"Id": entry_id})
     return strip_mongo_id(doc) if doc else None
 
 
-def create_entry(data: dict) -> dict:
-    # data may carry a client-supplied Id (e.g. an entry created offline by
-    # the desktop app, synced later) — preserve it so it doesn't diverge from
-    # the client's own copy; generate one only if none was supplied.
-    entry_id = data.get("Id") or str(uuid.uuid4())
-    now = timestamps.now_iso()
-    created_at = timestamps.to_iso_utc(data.get("CreatedAt")) or now
-    updated_at = timestamps.to_iso_utc(data.get("UpdatedAt")) or now
-    doc = {**data, "Id": entry_id, "CreatedAt": created_at, "UpdatedAt": updated_at, "IsDeleted": False}
-    get_entries_collection().insert_one(doc)
-    return strip_mongo_id(doc)
+def put_entry(entry_id: str, data: dict) -> tuple[dict, bool]:
+    """Backs PUT /entries/{id}: a true upsert, not just an update — creates
+    the entry if entry_id is unknown, otherwise applies the same conditional
+    write (CAS) used everywhere else in this module (Last-Write-Wins). This
+    is what lets the client always PUT, never needing a separate POST
+    fallback for a never-before-synced entry.
 
+    $setOnInsert supplies the fields that must exist only on a genuine
+    insert (CreatedAt, IsDeleted) — $set alone would also overwrite them on
+    every ordinary update, which is exactly the CreatedAt corruption
+    VocabularyEntryWrite's field layout is designed to prevent.
 
-def update_entry(entry_id: str, data: dict) -> tuple[dict | None, bool]:
-    """Conditional write (CAS): the $set only applies if the incoming
-    timestamp is newer than what's already stored (Last-Write-Wins).
-    Returns (document, applied): applied is False if the Id exists but THIS
-    push lost the CAS comparison (the returned document is then the current
-    winning version, not the result of this push) — a losing push isn't a
+    Returns (document, applied): applied is False if entry_id already
+    existed but THIS push lost the CAS comparison — a losing push isn't a
     failure for the router (always 200), but side effects tied to it (e.g.
-    the image, see routers/entries.py) must only apply when applied is True,
-    or a stale push could overwrite a more recent state its own metadata
-    never got to touch. document is None only when the Id doesn't exist at
-    all — the one case that should become a 404 in the router."""
+    the image, see routers/entries.py) must only apply when applied is
+    True, or a stale push could overwrite a more recent state its own
+    metadata never got to touch.
+
+    A losing push is detected indirectly: the CAS filter matches nothing
+    (either entry_id is unknown, or it exists with a newer UpdatedAt
+    already), so Mongo attempts an insert either way. If entry_id was
+    already taken, that insert collides with the unique index on Id and
+    raises DuplicateKeyError — the signal that this was actually a stale
+    push against an existing entry, not a genuine creation. That's the
+    entire distinction this function needs; no separate existence check.
+
+    data.pop("CreatedAt", ...): pulled out of $set and routed through
+    $setOnInsert instead — $set and $setOnInsert can't both reference the
+    same field in a single Mongo update (a hard error), and $set would
+    apply it on every ordinary update too, corrupting it."""
     incoming = timestamps.to_iso_utc(data.get("UpdatedAt")) or timestamps.now_iso()
-    result = get_entries_collection().find_one_and_update(
-        {"Id": entry_id, "UpdatedAt": {"$lt": incoming}},
-        {"$set": {**data, "UpdatedAt": incoming}},
-        return_document=ReturnDocument.AFTER,
-    )
-    if result is not None:
+    created_at = timestamps.to_iso_utc(data.pop("CreatedAt", None)) or incoming
+    try:
+        result = get_entries_collection().find_one_and_update(
+            {"Id": entry_id, "UpdatedAt": {"$lt": incoming}},
+            {
+                "$set": {**data, "UpdatedAt": incoming},
+                "$setOnInsert": {"Id": entry_id, "CreatedAt": created_at, "IsDeleted": False},
+            },
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
+        )
         return strip_mongo_id(result), True
-    return _get_entry_raw(entry_id), False
+    except DuplicateKeyError:
+        return _get_entry_raw(entry_id), False
 
 
 def delete_entry(entry_id: str, deleted_at: datetime | None = None) -> tuple[dict | None, bool]:
-    """Deletion = tombstone (same CAS mechanism as update_entry, different
-    $set): IsDeleted instead of a delete_one, so a delta pull can propagate
-    the deletion to a client that hasn't seen it yet. Returns (document,
-    applied) — see update_entry; a DELETE that loses the CAS comparison
+    """Deletion = tombstone (same CAS mechanism as put_entry, different
+    $set, but no upsert — deleting a truly unknown Id must stay a 404, not
+    create a tombstone out of nothing): IsDeleted instead of a delete_one,
+    so a delta pull can propagate the deletion to a client that hasn't seen
+    it yet. Returns (document, applied) — see put_entry; a DELETE that
+    loses the CAS comparison
     (e.g. the entry was actually edited more recently elsewhere) must not
     cascade to the image either."""
     incoming = timestamps.to_iso_utc(deleted_at) or timestamps.now_iso()

@@ -17,10 +17,20 @@ class VocabularyEntryWrite(BaseModel):
     category_ids: list[str] = Field(default_factory=list, alias="CategoryIds")
     tags: list[str] = Field(default_factory=list, alias="Tags")
     # Real client-side edit timestamp, stamped at the moment of the local
-    # action (not of sync) — see entries_repo.update_entry: a conditional
+    # action (not of sync) — see entries_repo.put_entry: a conditional
     # write only applies it if it's newer than the value already stored
     # (Last-Write-Wins).
     updated_at: datetime | None = Field(default=None, alias="UpdatedAt")
+    # Real creation timestamp (matters for an entry created offline, synced
+    # much later) — present on Write, not just Create, because PUT is now a
+    # true upsert (see entries_repo.put_entry) and the client always PUTs,
+    # even for a brand-new entry. Safe to expose here despite Write also
+    # backing plain edits: put_entry routes this through Mongo's
+    # $setOnInsert, which only ever applies on a genuine insert — an edit
+    # sending its own CreatedAt along (the client always serializes the
+    # whole local object) can't touch the stored value, enforced by Mongo
+    # itself rather than by keeping the field off this model.
+    created_at: datetime | None = Field(default=None, alias="CreatedAt")
     # Base64-encoded image (already JPEG-compressed client-side), or empty/
     # None if the entry has none. Never stored on the entries document: the
     # router extracts it and dispatches to entry_images itself (upsert or
@@ -31,17 +41,6 @@ class VocabularyEntryWrite(BaseModel):
     image_base64: str | None = Field(default=None, alias="ImageBase64")
 
     model_config = ConfigDict(populate_by_name=True)
-
-
-class VocabularyEntryCreate(VocabularyEntryWrite):
-    # Optional client-supplied Id, POST-only (never PUT — an update's target
-    # id is the URL path parameter, not the body). Lets an offline-created
-    # entry keep the same Id once it reaches the server, instead of getting
-    # a second, different server-generated one.
-    id: str | None = Field(default=None, alias="Id", min_length=1)
-    # Same idea for the real creation date (created offline, synced later) —
-    # absent from Write: a PUT must never be able to rewrite CreatedAt.
-    created_at: datetime | None = Field(default=None, alias="CreatedAt")
 
 
 class VocabularyEntrySummary(BaseModel):

@@ -2,10 +2,10 @@
 # guards already present client-side in MainWindowViewModel.DeleteCategory
 # (apps/windows/src/ViewModels/MainWindowViewModel.cs) — necessary as soon as
 # there's a second writer, the desktop app is no longer the sole source of truth.
-import uuid
 from datetime import datetime
 
 from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from lexicall_api import timestamps
 from lexicall_api.database import get_categories_collection, strip_mongo_id
@@ -73,33 +73,37 @@ def has_children(category_id: str) -> bool:
     ) > 0
 
 
-def create_category(data: dict) -> dict:
-    # data may carry a client-supplied Id (e.g. a category created offline by
-    # the desktop app, synced later) — preserve it so it doesn't diverge from
-    # the client's own copy; generate one only if none was supplied.
-    category_id = data.get("Id") or str(uuid.uuid4())
-    now = timestamps.now_iso()
-    created_at = timestamps.to_iso_utc(data.get("CreatedAt")) or now
-    updated_at = timestamps.to_iso_utc(data.get("UpdatedAt")) or now
-    doc = {**data, "Id": category_id, "CreatedAt": created_at, "UpdatedAt": updated_at, "IsDeleted": False}
-    get_categories_collection().insert_one(doc)
-    return strip_mongo_id(doc)
+def put_category(category_id: str, data: dict) -> dict:
+    """Backs PUT /categories/{id}: a true upsert — see entries_repo.put_entry
+    for the full rationale (CAS, $setOnInsert, DuplicateKeyError as the
+    stale-push signal). No (document, applied) tuple here, unlike put_entry:
+    categories have no side-effect resource (no image) that would need to
+    know whether this specific push actually won, so a plain document is
+    enough — a losing push is already harmless on its own (the router just
+    returns the current winning document, no cascade to gate).
 
-
-def update_category(category_id: str, data: dict) -> dict | None:
-    """Conditional write (CAS) — see entries_repo.update_entry for the full
-    rationale."""
+    data.pop("CreatedAt", ...): see entries_repo.put_entry for why this
+    can't stay in $set alongside $setOnInsert."""
     incoming = timestamps.to_iso_utc(data.get("UpdatedAt")) or timestamps.now_iso()
-    result = get_categories_collection().find_one_and_update(
-        {"Id": category_id, "UpdatedAt": {"$lt": incoming}},
-        {"$set": {**data, "UpdatedAt": incoming}},
-        return_document=ReturnDocument.AFTER,
-    )
-    return strip_mongo_id(result) if result is not None else _get_category_raw(category_id)
+    created_at = timestamps.to_iso_utc(data.pop("CreatedAt", None)) or incoming
+    try:
+        result = get_categories_collection().find_one_and_update(
+            {"Id": category_id, "UpdatedAt": {"$lt": incoming}},
+            {
+                "$set": {**data, "UpdatedAt": incoming},
+                "$setOnInsert": {"Id": category_id, "CreatedAt": created_at, "IsDeleted": False},
+            },
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
+        )
+        return strip_mongo_id(result)
+    except DuplicateKeyError:
+        return _get_category_raw(category_id)
 
 
 def delete_category(category_id: str, deleted_at: datetime | None = None) -> dict | None:
-    """Deletion = tombstone — see entries_repo.delete_entry."""
+    """Deletion = tombstone, no upsert (an unknown Id must stay a 404) —
+    see entries_repo.delete_entry."""
     incoming = timestamps.to_iso_utc(deleted_at) or timestamps.now_iso()
     result = get_categories_collection().find_one_and_update(
         {"Id": category_id, "UpdatedAt": {"$lt": incoming}},

@@ -2,10 +2,9 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pymongo.errors import DuplicateKeyError
 
 from lexicall_api import timestamps
-from lexicall_api.models.category import VocabularyCategory, VocabularyCategoryCreate, VocabularyCategoryWrite
+from lexicall_api.models.category import VocabularyCategory, VocabularyCategoryWrite
 from lexicall_api.repositories import categories_repo, entries_repo
 from lexicall_api.security import require_api_key
 
@@ -28,30 +27,15 @@ def list_categories(response: Response, updated_since: datetime | None = None) -
     return categories_repo.list_categories(updated_since=updated_since)
 
 
-@router.get("/{category_id}", response_model=VocabularyCategory)
-def get_category(category_id: str) -> dict:
-    category = categories_repo.get_category(category_id)
-    if category is None:
-        raise HTTPException(status_code=404, detail="Category not found.")
-    return category
-
-
-@router.post("", response_model=VocabularyCategory, status_code=status.HTTP_201_CREATED)
-def create_category(payload: VocabularyCategoryCreate) -> dict:
-    _validate_parent(payload.id, payload.parent_id)
-    try:
-        return categories_repo.create_category(payload.model_dump(by_alias=True))
-    except DuplicateKeyError as error:
-        raise HTTPException(status_code=409, detail="A category with this Id already exists.") from error
-
-
 @router.put("/{category_id}", response_model=VocabularyCategory)
-def update_category(category_id: str, payload: VocabularyCategoryWrite) -> dict:
+def upsert_category(category_id: str, payload: VocabularyCategoryWrite) -> dict:
+    # True upsert (see categories_repo.put_category) — the client always
+    # PUTs, whether category_id is brand new or already exists. This is the
+    # only write path for categories; there's no separate POST/create-only
+    # endpoint (see entries_repo.put_entry's docstring for why PUT alone is
+    # enough).
     _validate_parent(category_id, payload.parent_id)
-    category = categories_repo.update_category(category_id, payload.model_dump(by_alias=True))
-    if category is None:
-        raise HTTPException(status_code=404, detail="Category not found.")
-    return category
+    return categories_repo.put_category(category_id, payload.model_dump(by_alias=True))
 
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -70,3 +54,14 @@ def delete_category(category_id: str, deleted_at: datetime | None = None) -> Non
             detail=f"Cannot delete: this category is used by {usage_count} word(s).",
         )
     categories_repo.delete_category(category_id, deleted_at=deleted_at)
+
+
+@router.get("/{category_id}", response_model=VocabularyCategory)
+def get_category(category_id: str) -> dict:
+    # Never called by the desktop client (it only does bulk pulls via
+    # list_categories above) — kept for direct API inspection/debugging and
+    # as a complete, conventional REST resource.
+    category = categories_repo.get_category(category_id)
+    if category is None:
+        raise HTTPException(status_code=404, detail="Category not found.")
+    return category

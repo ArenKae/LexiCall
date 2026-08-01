@@ -13,18 +13,14 @@ class VocabularyCategoryWrite(BaseModel):
     description: str = Field(default="", alias="Description")
     icon_glyph: str = Field(default="", alias="IconGlyph")
     # Real client-side edit timestamp — see VocabularyEntryWrite and
-    # categories_repo.update_category (conditional LWW write).
+    # categories_repo.put_category (conditional LWW upsert).
     updated_at: datetime | None = Field(default=None, alias="UpdatedAt")
+    # Real creation timestamp — see VocabularyEntryWrite.created_at for why
+    # this lives on Write (PUT is a true upsert) and why $setOnInsert, not
+    # field placement, is what actually protects it from an edit.
+    created_at: datetime | None = Field(default=None, alias="CreatedAt")
 
     model_config = ConfigDict(populate_by_name=True)
-
-
-class VocabularyCategoryCreate(VocabularyCategoryWrite):
-    # Optional client-supplied Id, POST-only — see VocabularyEntryCreate.
-    id: str | None = Field(default=None, alias="Id", min_length=1)
-    # Same as VocabularyEntryCreate.created_at — absent from Write so a PUT
-    # can never rewrite CreatedAt.
-    created_at: datetime | None = Field(default=None, alias="CreatedAt")
 
 
 class VocabularyCategory(BaseModel):

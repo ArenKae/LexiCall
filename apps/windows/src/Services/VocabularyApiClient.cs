@@ -155,10 +155,11 @@ public sealed class VocabularyApiClient
         }
     }
 
-    // PUT d'abord (mise à jour) ; si 404 (jamais synchronisée avant), bascule
-    // en POST avec le même Id local — l'API préserve un Id fourni par le
-    // client à la création (voir VocabularyEntryCreate/VocabularyCategoryCreate
-    // côté api/), donc l'entrée garde le même Id des deux côtés.
+    // PUT fait un vrai upsert côté serveur (voir entries_repo.put_entry/
+    // categories_repo.put_category côté api/) : crée l'enregistrement s'il
+    // n'existe pas encore, le met à jour sinon (avec le même Id des deux
+    // côtés, l'API respecte l'Id fourni dans l'URL). Un seul appel, jamais
+    // de repli sur POST — la décision revient entièrement au serveur.
     private async Task<bool> TryUpsertAsync<T>(Guid id, string resourcePath, T payload)
     {
         if (_httpClient is null)
@@ -168,20 +169,8 @@ public sealed class VocabularyApiClient
 
         try
         {
-            using var putResponse = await _httpClient.PutAsJsonAsync($"{resourcePath}/{id}", payload, JsonOptions).ConfigureAwait(false);
-
-            if (putResponse.IsSuccessStatusCode)
-            {
-                return true;
-            }
-
-            if (putResponse.StatusCode != HttpStatusCode.NotFound)
-            {
-                return false;
-            }
-
-            using var postResponse = await _httpClient.PostAsJsonAsync(resourcePath, payload, JsonOptions).ConfigureAwait(false);
-            return postResponse.IsSuccessStatusCode;
+            using var response = await _httpClient.PutAsJsonAsync($"{resourcePath}/{id}", payload, JsonOptions).ConfigureAwait(false);
+            return response.IsSuccessStatusCode;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {

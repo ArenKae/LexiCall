@@ -1,47 +1,54 @@
-# Category CRUD: parent validation (exists, no cycle), and deletion guards
-# replicating client-side MainWindowViewModel.DeleteCategory.
+# Category CRUD: parent validation (exists, no cycle), PUT as a true upsert
+# (see test_put_category_creates_when_id_does_not_exist), and deletion
+# guards replicating client-side MainWindowViewModel.DeleteCategory.
+import uuid
+from datetime import datetime
+
+
+def _put_category(client, auth_headers, category_id=None, name="Cat", parent_id=None, **overrides):
+    category_id = category_id or str(uuid.uuid4())
+    payload = {"Name": name, "ParentId": parent_id, "Description": "", "IconGlyph": "", **overrides}
+    response = client.put(f"/categories/{category_id}", json=payload, headers=auth_headers)
+    return category_id, response
+
+
 def _create_category(client, auth_headers, name="Cat", parent_id=None):
-    payload = {"Name": name, "ParentId": parent_id, "Description": "", "IconGlyph": ""}
-    response = client.post("/categories", json=payload, headers=auth_headers)
-    assert response.status_code == 201
+    _, response = _put_category(client, auth_headers, name=name, parent_id=parent_id)
+    assert response.status_code == 200
     return response.json()
 
 
-def test_create_and_get_category(client, auth_headers):
+def _put_entry(client, auth_headers, **overrides):
+    entry_id = str(uuid.uuid4())
+    payload = {
+        "Word": "Mot",
+        "Definition": "Def",
+        "Synonyms": [],
+        "ExampleSentences": [],
+        "Notes": "",
+        "Source": "",
+        "CategoryIds": [],
+        "Tags": [],
+        **overrides,
+    }
+    return client.put(f"/entries/{entry_id}", json=payload, headers=auth_headers)
+
+
+def test_put_category_creates_and_get_category(client, auth_headers):
     created = _create_category(client, auth_headers, "Nature")
     response = client.get(f"/categories/{created['Id']}", headers=auth_headers)
     assert response.status_code == 200
     assert response.json()["Name"] == "Nature"
 
 
-def test_create_category_rejects_unknown_parent(client, auth_headers):
-    payload = {"Name": "Enfant", "ParentId": "inconnu", "Description": "", "IconGlyph": ""}
-    response = client.post("/categories", json=payload, headers=auth_headers)
+def test_put_category_rejects_unknown_parent(client, auth_headers):
+    _, response = _put_category(client, auth_headers, name="Enfant", parent_id="inconnu")
     assert response.status_code == 400
 
 
-def test_create_category_rejects_empty_name(client, auth_headers):
-    payload = {"Name": "", "ParentId": None, "Description": "", "IconGlyph": ""}
-    response = client.post("/categories", json=payload, headers=auth_headers)
+def test_put_category_rejects_empty_name(client, auth_headers):
+    _, response = _put_category(client, auth_headers, name="")
     assert response.status_code == 422
-
-
-def test_create_category_preserves_client_supplied_id(client, auth_headers):
-    client_id = "44444444-4444-4444-4444-444444444444"
-    payload = {"Name": "Avec id", "ParentId": None, "Description": "", "IconGlyph": "", "Id": client_id}
-    response = client.post("/categories", json=payload, headers=auth_headers)
-    assert response.status_code == 201
-    assert response.json()["Id"] == client_id
-
-
-def test_create_category_rejects_duplicate_id(client, auth_headers):
-    client_id = "55555555-5555-5555-5555-555555555555"
-    payload = {"Name": "Doublon", "ParentId": None, "Description": "", "IconGlyph": "", "Id": client_id}
-    first_response = client.post("/categories", json=payload, headers=auth_headers)
-    assert first_response.status_code == 201
-
-    second_response = client.post("/categories", json=payload, headers=auth_headers)
-    assert second_response.status_code == 409
 
 
 def test_update_category_rejects_cycle(client, auth_headers):
@@ -63,17 +70,7 @@ def test_delete_category_with_children_returns_409(client, auth_headers):
 
 def test_delete_category_used_by_entry_returns_409(client, auth_headers):
     category = _create_category(client, auth_headers, "Utilisée")
-    entry_payload = {
-        "Word": "Mot",
-        "Definition": "Def",
-        "Synonyms": [],
-        "ExampleSentences": [],
-        "Notes": "",
-        "Source": "",
-        "CategoryIds": [category["Id"]],
-        "Tags": [],
-    }
-    client.post("/entries", json=entry_payload, headers=auth_headers)
+    _put_entry(client, auth_headers, CategoryIds=[category["Id"]])
 
     response = client.delete(f"/categories/{category['Id']}", headers=auth_headers)
     assert response.status_code == 409
@@ -99,17 +96,7 @@ def test_delete_category_succeeds_once_child_is_tombstoned(client, auth_headers)
 
 def test_delete_category_succeeds_once_using_entry_is_tombstoned(client, auth_headers):
     category = _create_category(client, auth_headers, "Utilisée")
-    entry_payload = {
-        "Word": "Mot",
-        "Definition": "Def",
-        "Synonyms": [],
-        "ExampleSentences": [],
-        "Notes": "",
-        "Source": "",
-        "CategoryIds": [category["Id"]],
-        "Tags": [],
-    }
-    entry = client.post("/entries", json=entry_payload, headers=auth_headers).json()
+    entry = _put_entry(client, auth_headers, CategoryIds=[category["Id"]]).json()
 
     entry_delete = client.delete(f"/entries/{entry['Id']}", headers=auth_headers)
     assert entry_delete.status_code == 204
@@ -133,3 +120,29 @@ def test_delete_category_is_idempotent(client, auth_headers):
     # (TryDeleteAsync).
     second_delete = client.delete(f"/categories/{category['Id']}", headers=auth_headers)
     assert second_delete.status_code == 404
+
+
+def test_put_category_creates_when_id_does_not_exist(client, auth_headers):
+    new_id = str(uuid.uuid4())
+    _, response = _put_category(client, auth_headers, category_id=new_id, name="Nouvelle")
+    assert response.status_code == 200
+    assert response.json()["Id"] == new_id
+    assert response.json()["Name"] == "Nouvelle"
+
+    get_response = client.get(f"/categories/{new_id}", headers=auth_headers)
+    assert get_response.status_code == 200
+
+
+def test_put_category_update_does_not_change_created_at(client, auth_headers):
+    created = _create_category(client, auth_headers, "Original")
+
+    update_payload = {
+        "Name": "Renommée",
+        "ParentId": None,
+        "Description": "",
+        "IconGlyph": "",
+        "CreatedAt": "1999-01-01T00:00:00+00:00",
+    }
+    response = client.put(f"/categories/{created['Id']}", json=update_payload, headers=auth_headers)
+    assert response.status_code == 200
+    assert datetime.fromisoformat(response.json()["CreatedAt"]) == datetime.fromisoformat(created["CreatedAt"])
