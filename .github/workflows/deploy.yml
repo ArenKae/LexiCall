@@ -1,0 +1,41 @@
+name: Deploy API to VPS
+
+# prod is protected: the only way a push lands on it is a merge commit from
+# a dev -> prod PR, so this trigger already fires exactly once per
+# deliberate release. apps/windows changes still ride along in that merge
+# (monorepo) but must not redeploy the API on their own.
+on:
+  push:
+    branches: [prod]
+    paths:
+      - "**"
+      - "!apps/**"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH into the VPS and run the forced deploy command
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          install -m 600 /dev/null key.pem
+          printf '%s\n' "$SSH_KEY" > key.pem
+          install -m 600 /dev/null known_hosts
+          printf '%s\n' "$KNOWN_HOSTS" > known_hosts
+
+          # The remote authorized_keys entry for this key carries a forced
+          # command — whatever is passed here is ignored server-side. VPS
+          # paths/ports/host and the exact authorized_keys line are
+          # intentionally not recorded in this public repo — see the
+          # private ops repo.
+          ssh -i key.pem -p "$VPS_PORT" \
+            -o UserKnownHostsFile=known_hosts -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            "$VPS_USER@$VPS_HOST" true
