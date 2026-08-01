@@ -24,6 +24,64 @@
             <StackPanel DockPanel.Dock="Right"
                         Orientation="Horizontal"
                         VerticalAlignment="Center">
+                <!-- Statut global de synchro : pastille de connectivité +
+                     icône reflétant le dernier cycle de resync périodique.
+                     Masqué entièrement si la synchro n'est pas configurée. -->
+                <StackPanel Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Margin="0,0,10,0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.NotConfigured}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <Ellipse Width="7"
+                             Height="7"
+                             VerticalAlignment="Center"
+                             ToolTip="Connexion à l’API">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Ok}">
+                                        <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Syncing}">
+                                        <Setter Property="Fill" Value="{DynamicResource Brush.Text.Secondary}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+
+                    <TextBlock Text="&#xE895;"
+                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                               FontSize="13"
+                               Margin="5,0,0,0"
+                               VerticalAlignment="Center"
+                               ToolTip="Dernier cycle de synchronisation">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Ok}">
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Syncing}">
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
                 <Button Style="{StaticResource GhostButtonStyle}"
                         Padding="9,7"
                         Click="OptionsButton_Click"
@@ -52,6 +110,10 @@
                 <ColumnDefinition Width="12" />
                 <ColumnDefinition Width="*" MinWidth="320" />
             </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
             <!-- Poignées de redimensionnement : les catégories réelles ont des noms
                  longs, aucune largeur fixe ne convient à tous les cas. -->
@@ -786,6 +848,45 @@
                     </TextBlock>
                 </Grid>
             </Border>
+
+            <!-- Statut de synchro de l'entrée sélectionnée -->
+            <StackPanel Grid.Row="1"
+                        Grid.Column="4"
+                        Orientation="Horizontal"
+                        Margin="4,8,4,0"
+                        HorizontalAlignment="Right">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedEntrySyncStatusText}" Value="">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+
+                <Ellipse Width="8"
+                         Height="8"
+                         VerticalAlignment="Center"
+                         Margin="0,0,6,0">
+                    <Ellipse.Style>
+                        <Style TargetType="Ellipse">
+                            <Setter Property="Fill" Value="{DynamicResource Brush.Chip.Neutral.Foreground}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedEntrySyncIsSynced}" Value="True">
+                                    <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Ellipse.Style>
+                </Ellipse>
+
+                <TextBlock Text="{Binding SelectedEntrySyncStatusText}"
+                           FontSize="12"
+                           Foreground="{DynamicResource Brush.Text.Secondary}"
+                           VerticalAlignment="Center" />
+            </StackPanel>
         </Grid>
 
     </Grid>

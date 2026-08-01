@@ -16,6 +16,19 @@ using LexiCall.Desktop.Utilities;
 
 namespace LexiCall.Desktop.ViewModels;
 
+// Statut global affiché à côté du bouton Options (voir MainWindow.xaml) —
+// combine la connectivité (ApiConnectionStatus) et la réussite du dernier
+// cycle de resync en un seul état simple à piloter côté XAML : Problem
+// couvre aussi bien une API injoignable qu'un pull qui échoue après un
+// connectivity check pourtant Ok, sans distinguer la cause à ce niveau.
+public enum GlobalSyncStatus
+{
+    NotConfigured,
+    Syncing,
+    Ok,
+    Problem
+}
+
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private readonly VocabularyRepository _repository;
@@ -31,6 +44,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly List<PendingDeletion> _pendingCategoryDeletions;
     private readonly DispatcherTimer _periodicSyncTimer;
     private bool _isSyncing;
+    private GlobalSyncStatus _globalSyncStatus = GlobalSyncStatus.NotConfigured;
 
     public MainWindowViewModel(VocabularyRepository? repository = null, VocabularyApiClient? apiClient = null)
     {
@@ -130,6 +144,40 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ? []
         : GetCategories(SelectedEntry.CategoryIds).ToList();
 
+    // Barre de statut bas-gauche (MainWindow.xaml) : vide si rien à montrer
+    // (pas de sélection, ou synchro non configurée) — la barre entière se
+    // masque alors, plutôt que d'afficher un état trompeur à quelqu'un qui
+    // n'utilise pas la synchro.
+    public string SelectedEntrySyncStatusText
+    {
+        get
+        {
+            if (SelectedEntry is not { } entry || !_apiClient.IsConfigured)
+            {
+                return string.Empty;
+            }
+
+            return entry.SyncedAt switch
+            {
+                null => "Jamais synchronisé",
+                { } syncedAt when syncedAt < entry.UpdatedAt => "Synchronisation en attente",
+                { } syncedAt => $"Synchronisé le {syncedAt.LocalDateTime:g}"
+            };
+        }
+    }
+
+    // Pilote la couleur du point dans MainWindow.xaml.
+    public bool SelectedEntrySyncIsSynced =>
+        SelectedEntry is { SyncedAt: { } syncedAt } entry && syncedAt >= entry.UpdatedAt;
+
+    // Statut global affiché à côté du bouton Options — voir GlobalSyncStatus
+    // et ResyncWithApiAsync pour les points d'écriture.
+    public GlobalSyncStatus GlobalSyncStatus
+    {
+        get => _globalSyncStatus;
+        private set => SetProperty(ref _globalSyncStatus, value);
+    }
+
     public string EmptyListMessage
     {
         get
@@ -170,6 +218,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(HasSelectedEntry));
                 OnPropertyChanged(nameof(SelectedEntryCategories));
                 OnPropertyChanged(nameof(EmptyDetailMessage));
+                OnPropertyChanged(nameof(SelectedEntrySyncStatusText));
+                OnPropertyChanged(nameof(SelectedEntrySyncIsSynced));
             }
         }
     }
@@ -212,6 +262,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _apiClient = new VocabularyApiClient(apiBaseUrl, apiKey);
         OnPropertyChanged(nameof(ApiBaseUrl));
         OnPropertyChanged(nameof(ApiKey));
+
+        // Les deux indicateurs de synchro dépendent de _apiClient.IsConfigured
+        // (masqués s'il est faux) — sans ceci, ils resteraient figés sur
+        // l'ancien état jusqu'au prochain cycle de resync (jusqu'à 60s).
+        GlobalSyncStatus = _apiClient.IsConfigured ? GlobalSyncStatus.Syncing : GlobalSyncStatus.NotConfigured;
+        OnPropertyChanged(nameof(SelectedEntrySyncStatusText));
+        OnPropertyChanged(nameof(SelectedEntrySyncIsSynced));
     }
 
     public Task<ApiConnectionStatus> TestApiConnectionAsync() => _apiClient.TestConnectionAsync();
@@ -254,15 +311,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (!_apiClient.IsConfigured)
         {
+            GlobalSyncStatus = GlobalSyncStatus.NotConfigured;
             return;
         }
 
+        // Encore sur le thread appelant à ce stade (pas d'await avant ici) :
+        // pas besoin de Dispatcher.Invoke pour ces deux écritures.
+        GlobalSyncStatus = GlobalSyncStatus.Syncing;
         var status = await _apiClient.TestConnectionAsync().ConfigureAwait(false);
 
         if (status != ApiConnectionStatus.Ok)
         {
             // API injoignable ou mal configurée : pas la peine de tenter des
             // centaines d'upserts qui échoueraient tous à chaque démarrage.
+            Application.Current.Dispatcher.Invoke(() => GlobalSyncStatus = GlobalSyncStatus.Problem);
             return;
         }
 
@@ -325,6 +387,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             // Échec : checkpoint et SyncedAt inchangés, on retentera au
             // prochain déclenchement (prochain tick ou démarrage).
+            Application.Current.Dispatcher.Invoke(() => GlobalSyncStatus = GlobalSyncStatus.Problem);
             return;
         }
 
@@ -332,6 +395,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         if (entriesPull is null)
         {
+            Application.Current.Dispatcher.Invoke(() => GlobalSyncStatus = GlobalSyncStatus.Problem);
             return;
         }
 
@@ -357,6 +421,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             RebuildCategoryTree();
             RefreshFilteredEntries();
             SaveDatabase();
+            GlobalSyncStatus = GlobalSyncStatus.Ok;
+
+            // Inconditionnel plutôt que ciblé sur l'entrée sélectionnée : peu
+            // coûteux (un seul cycle par minute), et couvre à la fois une
+            // confirmation de push groupé (mutation en place, comme dans
+            // PushEntryUpsertAsync) et une mise à jour par delta-pull — c'est
+            // le déclencheur "live" demandé pour la barre de statut.
+            OnPropertyChanged(nameof(SelectedEntrySyncStatusText));
+            OnPropertyChanged(nameof(SelectedEntrySyncIsSynced));
         });
 
         if (categoriesPull.ServerTimestamp is { } newCheckpoint)
@@ -436,6 +509,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 Entries[index].SyncedAt = entry.UpdatedAt;
                 SaveDatabase();
+
+                // Mutation en place : SelectedEntry n'est pas réassigné par ce
+                // chemin (contrairement à MergePulled), donc son setter ne
+                // notifie pas tout seul — nécessaire pour que le badge de la
+                // barre de statut se mette à jour sans re-sélectionner l'entrée.
+                if (SelectedEntry?.Id == entry.Id)
+                {
+                    OnPropertyChanged(nameof(SelectedEntrySyncStatusText));
+                    OnPropertyChanged(nameof(SelectedEntrySyncIsSynced));
+                }
             }
         });
     }

@@ -24,6 +24,7 @@
     <SolidColorBrush x:Key="Brush.Text.OnAccentSoft" Color="#12142B" />
 
     <SolidColorBrush x:Key="Brush.Danger" Color="#ED4245" />
+    <SolidColorBrush x:Key="Brush.Success" Color="#3BA55C" />
 
     <SolidColorBrush x:Key="Brush.Chip.Neutral.Background" Color="#3A3C43" />
     <SolidColorBrush x:Key="Brush.Chip.Neutral.Foreground" Color="#C8CDD3" />
