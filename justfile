@@ -38,7 +38,7 @@ install:
 
 # Wrapper: start Mongo, then the API, both in dev mode.
 [group('api : dev')]
-up:
+start:
     just --justfile api/justfile --working-directory api dev-up
 
 # Start Mongo alone (dev container).
