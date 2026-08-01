@@ -20,6 +20,15 @@ internal sealed class AppSettings
     public string? ApiBaseUrl { get; set; }
     public string? ApiKey { get; set; }
 
+    // Checkpoint de PULL uniquement (voir MainWindowViewModel.ResyncWithApiAsync) :
+    // la chaîne X-Sync-Timestamp exacte telle que reçue de l'API, jamais
+    // reformatée localement — renvoyée telle quelle comme prochain
+    // updated_since, pour que le serveur n'ait jamais à parser un format
+    // qu'il n'a pas lui-même produit. Null tant qu'aucun pull n'a réussi
+    // (l'API renvoie alors la vue complète). Indépendant du suivi des push,
+    // qui se fait par enregistrement via VocabularyEntry/Category.SyncedAt.
+    public string? LastPulledAt { get; set; }
+
     // Couleurs de catégorie choisies manuellement (Id → "#RRGGBB"), voir
     // CategoryColorStore. Purement une préférence de présentation locale à
     // cette installation de l'app Windows : jamais écrite dans vocabulary.json

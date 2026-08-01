@@ -83,3 +83,52 @@ def test_delete_unused_leaf_category_returns_204(client, auth_headers):
     category = _create_category(client, auth_headers, "Inutilisée")
     response = client.delete(f"/categories/{category['Id']}", headers=auth_headers)
     assert response.status_code == 204
+
+
+def test_delete_category_succeeds_once_child_is_tombstoned(client, auth_headers):
+    parent = _create_category(client, auth_headers, "Parent")
+    child = _create_category(client, auth_headers, "Enfant", parent_id=parent["Id"])
+
+    child_delete = client.delete(f"/categories/{child['Id']}", headers=auth_headers)
+    assert child_delete.status_code == 204
+
+    # Le guard has_children ne doit plus compter un enfant déjà tombstoné.
+    parent_delete = client.delete(f"/categories/{parent['Id']}", headers=auth_headers)
+    assert parent_delete.status_code == 204
+
+
+def test_delete_category_succeeds_once_using_entry_is_tombstoned(client, auth_headers):
+    category = _create_category(client, auth_headers, "Utilisée")
+    entry_payload = {
+        "Word": "Mot",
+        "Definition": "Def",
+        "Synonyms": [],
+        "ExampleSentences": [],
+        "Notes": "",
+        "Source": "",
+        "CategoryIds": [category["Id"]],
+        "Tags": [],
+    }
+    entry = client.post("/entries", json=entry_payload, headers=auth_headers).json()
+
+    entry_delete = client.delete(f"/entries/{entry['Id']}", headers=auth_headers)
+    assert entry_delete.status_code == 204
+
+    # Le guard count_entries_using_category ne doit plus compter une entrée
+    # déjà tombstonée.
+    category_delete = client.delete(f"/categories/{category['Id']}", headers=auth_headers)
+    assert category_delete.status_code == 204
+
+
+def test_delete_category_is_idempotent(client, auth_headers):
+    category = _create_category(client, auth_headers, "Solo")
+
+    first_delete = client.delete(f"/categories/{category['Id']}", headers=auth_headers)
+    assert first_delete.status_code == 204
+
+    # Second appel : la catégorie est déjà tombstonée, donc introuvable via la
+    # vue live utilisée par le pré-check du routeur — 404, pas 204. Documente
+    # l'asymétrie assumée avec entries.delete_entry (idempotent en 204/204) :
+    # le client traite déjà 404 et succès comme équivalents (TryDeleteAsync).
+    second_delete = client.delete(f"/categories/{category['Id']}", headers=auth_headers)
+    assert second_delete.status_code == 404

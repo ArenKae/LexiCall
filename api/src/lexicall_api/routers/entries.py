@@ -1,7 +1,10 @@
 # CRUD endpoints for vocabulary entries.
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pymongo.errors import DuplicateKeyError
 
+from lexicall_api import timestamps
 from lexicall_api.models.entry import VocabularyEntryCreate, VocabularyEntrySummary, VocabularyEntryWrite
 from lexicall_api.repositories import categories_repo, entries_repo, entry_images_repo
 from lexicall_api.security import require_api_key
@@ -16,8 +19,13 @@ def _validate_category_ids(category_ids: list[str]) -> None:
 
 
 @router.get("", response_model=list[VocabularyEntrySummary])
-def list_entries() -> list[dict]:
-    return entries_repo.list_entries()
+def list_entries(response: Response, updated_since: datetime | None = None) -> list[dict]:
+    # Capturé AVANT la requête : toute écriture atterrissant entre la capture
+    # et l'exécution de la requête aura un UpdatedAt >= ce timestamp, donc
+    # sera simplement récupérée au PROCHAIN pull plutôt que d'être ratée par
+    # un checkpoint trop optimiste.
+    response.headers["X-Sync-Timestamp"] = timestamps.now_iso()
+    return entries_repo.list_entries(updated_since=updated_since)
 
 
 @router.get("/{entry_id}", response_model=VocabularyEntrySummary)
@@ -47,7 +55,7 @@ def update_entry(entry_id: str, payload: VocabularyEntryWrite) -> dict:
 
 
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_entry(entry_id: str) -> None:
-    if not entries_repo.delete_entry(entry_id):
+def delete_entry(entry_id: str, deleted_at: datetime | None = None) -> None:
+    if entries_repo.delete_entry(entry_id, deleted_at=deleted_at) is None:
         raise HTTPException(status_code=404, detail="Entry not found.")
     entry_images_repo.delete_image(entry_id)

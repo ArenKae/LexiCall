@@ -1,7 +1,10 @@
 # CRUD endpoints for vocabulary categories.
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pymongo.errors import DuplicateKeyError
 
+from lexicall_api import timestamps
 from lexicall_api.models.category import VocabularyCategory, VocabularyCategoryCreate, VocabularyCategoryWrite
 from lexicall_api.repositories import categories_repo, entries_repo
 from lexicall_api.security import require_api_key
@@ -19,8 +22,10 @@ def _validate_parent(category_id: str | None, parent_id: str | None) -> None:
 
 
 @router.get("", response_model=list[VocabularyCategory])
-def list_categories() -> list[dict]:
-    return categories_repo.list_categories()
+def list_categories(response: Response, updated_since: datetime | None = None) -> list[dict]:
+    # Voir routers/entries.py:list_entries pour la justification du header.
+    response.headers["X-Sync-Timestamp"] = timestamps.now_iso()
+    return categories_repo.list_categories(updated_since=updated_since)
 
 
 @router.get("/{category_id}", response_model=VocabularyCategory)
@@ -50,7 +55,7 @@ def update_category(category_id: str, payload: VocabularyCategoryWrite) -> dict:
 
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_category(category_id: str) -> None:
+def delete_category(category_id: str, deleted_at: datetime | None = None) -> None:
     if categories_repo.get_category(category_id) is None:
         raise HTTPException(status_code=404, detail="Category not found.")
     if categories_repo.has_children(category_id):
@@ -64,4 +69,4 @@ def delete_category(category_id: str) -> None:
             status_code=409,
             detail=f"Cannot delete: this category is used by {usage_count} word(s).",
         )
-    categories_repo.delete_category(category_id)
+    categories_repo.delete_category(category_id, deleted_at=deleted_at)

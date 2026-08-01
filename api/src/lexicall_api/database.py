@@ -36,6 +36,11 @@ def ensure_indexes() -> None:
     get_categories_collection().create_index("Id", unique=True)
     get_entry_images_collection().create_index("Id", unique=True)
 
+    # Non-unique : sert la requête différentielle updated_since (sync LWW),
+    # pour éviter un scan complet à chaque pull.
+    get_entries_collection().create_index("UpdatedAt")
+    get_categories_collection().create_index("UpdatedAt")
+
 
 def strip_mongo_id(doc: dict) -> dict:
     doc = dict(doc)

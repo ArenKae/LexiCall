@@ -60,10 +60,20 @@ public partial class MainWindow : Window
             Owner = this
         };
 
-        if (dialog.ShowDialog() == true &&
-            dialog.SavedEntry is not null)
+        // Empêche la synchro périodique de fusionner un pull pendant que
+        // cette fenêtre est ouverte (voir MainWindowViewModel.TryResyncAsync).
+        ViewModel.IsEditorDialogOpen = true;
+        try
         {
-            ViewModel.AddEntry(dialog.SavedEntry);
+            if (dialog.ShowDialog() == true &&
+                dialog.SavedEntry is not null)
+            {
+                ViewModel.AddEntry(dialog.SavedEntry);
+            }
+        }
+        finally
+        {
+            ViewModel.IsEditorDialogOpen = false;
         }
     }
 
@@ -79,10 +89,18 @@ public partial class MainWindow : Window
             Owner = this
         };
 
-        if (dialog.ShowDialog() == true &&
-            dialog.SavedEntry is not null)
+        ViewModel.IsEditorDialogOpen = true;
+        try
         {
-            ViewModel.UpdateEntry(dialog.SavedEntry);
+            if (dialog.ShowDialog() == true &&
+                dialog.SavedEntry is not null)
+            {
+                ViewModel.UpdateEntry(dialog.SavedEntry);
+            }
+        }
+        finally
+        {
+            ViewModel.IsEditorDialogOpen = false;
         }
     }
 
@@ -214,19 +232,27 @@ public partial class MainWindow : Window
             Owner = this
         };
 
-        if (dialog.ShowDialog() == true &&
-            dialog.SavedCategory is not null)
+        ViewModel.IsEditorDialogOpen = true;
+        try
         {
-            var error = ViewModel.SaveCategory(dialog.SavedCategory);
+            if (dialog.ShowDialog() == true &&
+                dialog.SavedCategory is not null)
+            {
+                var error = ViewModel.SaveCategory(dialog.SavedCategory);
 
-            if (error is not null)
-            {
-                MessageBox.Show(this, error, "Enregistrement impossible", MessageBoxButton.OK, MessageBoxImage.Warning);
+                if (error is not null)
+                {
+                    MessageBox.Show(this, error, "Enregistrement impossible", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                else
+                {
+                    ViewModel.SetCategoryColor(dialog.SavedCategory.Id, dialog.SavedColorHex);
+                }
             }
-            else
-            {
-                ViewModel.SetCategoryColor(dialog.SavedCategory.Id, dialog.SavedColorHex);
-            }
+        }
+        finally
+        {
+            ViewModel.IsEditorDialogOpen = false;
         }
     }
 

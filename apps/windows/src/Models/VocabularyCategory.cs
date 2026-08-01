@@ -20,4 +20,10 @@ public sealed class VocabularyCategory
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.Now;
 
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
+
+    // Voir VocabularyEntry.IsDeleted / SyncedAt — même rôle, pour les
+    // catégories.
+    public bool IsDeleted { get; init; }
+
+    public DateTimeOffset? SyncedAt { get; set; }
 }

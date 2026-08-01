@@ -1,6 +1,8 @@
 # Entry CRUD: CategoryIds validation. Image handling has its own dedicated
 # tests, see test_entry_images.py — images are a separate resource entirely
 # (entry_images collection), not a field on the entry itself.
+from datetime import datetime
+
 ENTRY_PAYLOAD = {
     "Word": "Ubac",
     "Definition": "Versant exposé au nord",
@@ -94,3 +96,85 @@ def test_delete_entry(client, auth_headers):
 def test_get_unknown_entry_returns_404(client, auth_headers):
     response = client.get("/entries/does-not-exist", headers=auth_headers)
     assert response.status_code == 404
+
+
+def test_delete_entry_is_idempotent(client, auth_headers):
+    created = client.post("/entries", json=ENTRY_PAYLOAD, headers=auth_headers).json()
+
+    first_delete = client.delete(f"/entries/{created['Id']}", headers=auth_headers)
+    assert first_delete.status_code == 204
+
+    second_delete = client.delete(f"/entries/{created['Id']}", headers=auth_headers)
+    assert second_delete.status_code == 204
+
+
+def test_list_entries_returns_sync_timestamp_header(client, auth_headers):
+    response = client.get("/entries", headers=auth_headers)
+    assert response.status_code == 200
+    assert "x-sync-timestamp" in response.headers
+
+    # Rejouer immédiatement avec ce même timestamp comme updated_since ne
+    # doit plus rien renvoyer (convergence en régime stable).
+    checkpoint = response.headers["x-sync-timestamp"]
+    follow_up = client.get("/entries", params={"updated_since": checkpoint}, headers=auth_headers)
+    assert follow_up.status_code == 200
+    assert follow_up.json() == []
+
+
+def test_update_entry_with_stale_updated_at_is_noop(client, auth_headers):
+    created = client.post("/entries", json=ENTRY_PAYLOAD, headers=auth_headers).json()
+
+    stale_payload = {
+        **ENTRY_PAYLOAD,
+        "Word": "Ne-doit-pas-s'appliquer",
+        "UpdatedAt": "2000-01-01T00:00:00+00:00",
+    }
+    response = client.put(f"/entries/{created['Id']}", json=stale_payload, headers=auth_headers)
+    assert response.status_code == 200
+    assert response.json()["Word"] == "Ubac"
+    assert response.json()["UpdatedAt"] == created["UpdatedAt"]
+
+
+def test_update_entry_trusts_client_supplied_updated_at(client, auth_headers):
+    created = client.post("/entries", json=ENTRY_PAYLOAD, headers=auth_headers).json()
+
+    future_timestamp = "2999-01-01T00:00:00+00:00"
+    payload = {**ENTRY_PAYLOAD, "Word": "Renomme", "UpdatedAt": future_timestamp}
+    response = client.put(f"/entries/{created['Id']}", json=payload, headers=auth_headers)
+    assert response.status_code == 200
+    # Comparaison en datetime plutôt qu'en chaîne exacte : Pydantic peut
+    # reformater la précision (microsecondes) sans changer l'instant réel.
+    assert datetime.fromisoformat(response.json()["UpdatedAt"]) == datetime.fromisoformat(future_timestamp)
+
+
+def test_create_entry_preserves_client_supplied_created_at(client, auth_headers):
+    past_timestamp = "2020-06-15T12:00:00+00:00"
+    payload = {**ENTRY_PAYLOAD, "CreatedAt": past_timestamp}
+    created = client.post("/entries", json=payload, headers=auth_headers).json()
+    assert datetime.fromisoformat(created["CreatedAt"]) == datetime.fromisoformat(past_timestamp)
+
+
+def test_delete_entry_tombstones_and_appears_in_delta_pull(client, auth_headers):
+    created = client.post("/entries", json=ENTRY_PAYLOAD, headers=auth_headers).json()
+
+    checkpoint = client.get("/entries", headers=auth_headers).headers["x-sync-timestamp"]
+
+    delete_response = client.delete(f"/entries/{created['Id']}", headers=auth_headers)
+    assert delete_response.status_code == 204
+
+    plain_list = client.get("/entries", headers=auth_headers).json()
+    assert all(entry["Id"] != created["Id"] for entry in plain_list)
+
+    delta = client.get("/entries", params={"updated_since": checkpoint}, headers=auth_headers).json()
+    matching = [entry for entry in delta if entry["Id"] == created["Id"]]
+    assert len(matching) == 1
+    assert matching[0]["IsDeleted"] is True
+
+
+def test_new_entry_appears_in_delta_pull(client, auth_headers):
+    checkpoint = client.get("/entries", headers=auth_headers).headers["x-sync-timestamp"]
+
+    created = client.post("/entries", json=ENTRY_PAYLOAD, headers=auth_headers).json()
+
+    delta = client.get("/entries", params={"updated_since": checkpoint}, headers=auth_headers).json()
+    assert any(entry["Id"] == created["Id"] for entry in delta)

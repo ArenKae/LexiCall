@@ -86,6 +86,18 @@ def test_put_image_too_large_returns_413(client, auth_headers, monkeypatch):
     assert response.status_code == 413
 
 
+def test_put_image_for_deleted_entry_returns_404(client, auth_headers):
+    entry_id = _create_entry(client, auth_headers)
+    client.delete(f"/entries/{entry_id}", headers=auth_headers)
+
+    response = client.put(
+        f"/entries/{entry_id}/image",
+        content=IMAGE_BYTES,
+        headers={**auth_headers, "Content-Type": "image/jpeg"},
+    )
+    assert response.status_code == 404
+
+
 def test_delete_entry_cascades_to_image(client, auth_headers):
     entry_id = _create_entry(client, auth_headers)
     client.put(

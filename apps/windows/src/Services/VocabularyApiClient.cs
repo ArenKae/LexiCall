@@ -20,6 +20,12 @@ public enum ApiConnectionStatus
     Ok
 }
 
+// Résultat d'un pull différentiel : les enregistrements reçus, et
+// l'horodatage serveur (X-Sync-Timestamp) à utiliser comme prochain
+// updatedSince — jamais recalculé depuis l'horloge locale, voir
+// AppSettings.LastPulledAt.
+public sealed record SyncPullResult<T>(IReadOnlyList<T> Items, string? ServerTimestamp);
+
 public sealed class VocabularyApiClient
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -112,8 +118,12 @@ public sealed class VocabularyApiClient
         return await TryUpsertEntryImageAsync(entry.Id, entry.ImageBase64).ConfigureAwait(false);
     }
 
-    public Task<bool> TryDeleteEntryAsync(Guid id) =>
-        TryDeleteAsync($"/entries/{id}");
+    // deletedAt : heure réelle de la suppression locale (pas de la synchro,
+    // qui peut survenir bien plus tard si hors-ligne) — même principe que
+    // l'UpdatedAt déjà tamponné à l'édition, nécessaire pour que le tombstone
+    // côté API porte le bon horodatage LWW.
+    public Task<bool> TryDeleteEntryAsync(Guid id, DateTimeOffset deletedAt) =>
+        TryDeleteAsync($"/entries/{id}?deleted_at={Uri.EscapeDataString(deletedAt.UtcDateTime.ToString("o"))}");
 
     // Chaîne vide = pas d'image : supprime la ressource côté serveur plutôt
     // que d'envoyer un PUT vide. La suppression d'image en cascade sur
@@ -148,8 +158,46 @@ public sealed class VocabularyApiClient
     public Task<bool> TryUpsertCategoryAsync(VocabularyCategory category) =>
         TryUpsertAsync(category.Id, "/categories", category);
 
-    public Task<bool> TryDeleteCategoryAsync(Guid id) =>
-        TryDeleteAsync($"/categories/{id}");
+    public Task<bool> TryDeleteCategoryAsync(Guid id, DateTimeOffset deletedAt) =>
+        TryDeleteAsync($"/categories/{id}?deleted_at={Uri.EscapeDataString(deletedAt.UtcDateTime.ToString("o"))}");
+
+    public Task<SyncPullResult<VocabularyCategory>?> TryPullCategoriesAsync(string? updatedSince) =>
+        TryPullAsync<VocabularyCategory>("/categories", updatedSince);
+
+    public Task<SyncPullResult<VocabularyEntry>?> TryPullEntriesAsync(string? updatedSince) =>
+        TryPullAsync<VocabularyEntry>("/entries", updatedSince);
+
+    private async Task<SyncPullResult<T>?> TryPullAsync<T>(string resourcePath, string? updatedSince)
+    {
+        if (_httpClient is null)
+        {
+            return null;
+        }
+
+        var path = updatedSince is null
+            ? resourcePath
+            : $"{resourcePath}?updated_since={Uri.EscapeDataString(updatedSince)}";
+
+        try
+        {
+            using var response = await _httpClient.GetAsync(path).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var items = await response.Content.ReadFromJsonAsync<List<T>>(JsonOptions).ConfigureAwait(false) ?? [];
+            var serverTimestamp = response.Headers.TryGetValues("X-Sync-Timestamp", out var values)
+                ? values.FirstOrDefault()
+                : null;
+            return new SyncPullResult<T>(items, serverTimestamp);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            return null;
+        }
+    }
 
     // PUT d'abord (mise à jour) ; si 404 (jamais synchronisée avant), bascule
     // en POST avec le même Id local — l'API préserve un Id fourni par le

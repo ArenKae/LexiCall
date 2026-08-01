@@ -7,7 +7,9 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Media;
+using System.Windows.Threading;
 using LexiCall.Desktop.Models;
 using LexiCall.Desktop.Services;
 using LexiCall.Desktop.Utilities;
@@ -25,6 +27,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private VocabularyEntry? _selectedEntry;
     private CategoryNodeViewModel? _selectedCategoryNode;
     private HashSet<Guid>? _activeCategoryFilterIds;
+    private readonly List<PendingDeletion> _pendingEntryDeletions;
+    private readonly List<PendingDeletion> _pendingCategoryDeletions;
+    private readonly DispatcherTimer _periodicSyncTimer;
+    private bool _isSyncing;
 
     public MainWindowViewModel(VocabularyRepository? repository = null, VocabularyApiClient? apiClient = null)
     {
@@ -36,6 +42,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         Entries = new ObservableCollection<VocabularyEntry>(database.Entries);
         Categories = new ObservableCollection<VocabularyCategory>(database.Categories);
+        _pendingEntryDeletions = database.PendingEntryDeletions;
+        _pendingCategoryDeletions = database.PendingCategoryDeletions;
         FilteredEntries = [];
         CategoryTree = [];
         RebuildCategoryTree();
@@ -52,10 +60,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _apiKey = settings.ApiKey;
         _apiClient = apiClient ?? new VocabularyApiClient(_apiBaseUrl, _apiKey);
 
-        // Rattrapage en tâche de fond des mutations faites hors ligne, jamais
-        // encore poussées vers l'API — voir ResyncWithApiAsync. Non awaité
-        // volontairement : ne doit jamais retarder l'ouverture de la fenêtre.
-        _ = ResyncWithApiAsync();
+        // Synchronisation périodique pendant l'exécution (pas seulement au
+        // lancement) : une panne réseau qui se résout en cours de session
+        // (VPN qui se reconnecte, VM dev qui redémarre) est rattrapée sans
+        // attendre le prochain démarrage de l'app.
+        _periodicSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(3) };
+        _periodicSyncTimer.Tick += async (_, _) => await TryResyncAsync();
+        _periodicSyncTimer.Start();
+
+        // Premier essai de rattrapage en tâche de fond des mutations faites
+        // hors ligne, jamais encore poussées vers l'API — voir
+        // ResyncWithApiAsync. Non awaité volontairement : ne doit jamais
+        // retarder l'ouverture de la fenêtre.
+        _ = TryResyncAsync();
     }
 
     public ObservableCollection<VocabularyEntry> Entries { get; }
@@ -165,6 +182,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public string ApiKey => _apiKey ?? string.Empty;
 
+    // Basculé par MainWindow.xaml.cs autour de chaque ShowDialog() sur
+    // EntryEditorWindow/CategoryEditorWindow — empêche TryResyncAsync de
+    // fusionner un pull pendant qu'une édition est en cours. Simple booléen
+    // plutôt qu'une référence à Application.Current.Windows : les ViewModels
+    // de ce projet ne référencent jamais de type Window concret.
+    public bool IsEditorDialogOpen { get; set; }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public void ToggleTheme()
@@ -192,13 +216,40 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public Task<ApiConnectionStatus> TestApiConnectionAsync() => _apiClient.TestConnectionAsync();
 
-    // Pousse tout l'état local vers l'API, une seule fois au démarrage — voir
-    // le constructeur. Rattrape les mutations faites pendant que l'API était
-    // injoignable (chaque mutation tente déjà un push best-effort au moment où
-    // elle se produit, cf. AddEntry/UpdateEntry/DeleteEntry/SaveCategory/
-    // RenameCategory/DeleteCategory ; ceci couvre les échecs de ces tentatives).
-    // Catégories poussées avant les entrées : l'API valide les CategoryIds
-    // d'une entrée contre les catégories déjà connues côté serveur.
+    // Point d'entrée partagé entre le démarrage et le timer périodique —
+    // garde de ré-entrance (un resync déjà en cours n'en démarre pas un
+    // second) et garde d'édition (voir IsEditorDialogOpen). Vérifiés au
+    // moment même du déclenchement : le Tick de DispatcherTimer s'exécute
+    // sur le thread UI, tout comme l'écriture d'IsEditorDialogOpen par le
+    // code-behind — pas de race à gérer. Si l'un ou l'autre bloque, on
+    // annule simplement cet appel : le prochain tick, 3 minutes plus tard,
+    // retentera de lui-même, pas besoin de replanifier quoi que ce soit.
+    private async Task TryResyncAsync()
+    {
+        if (_isSyncing || IsEditorDialogOpen)
+        {
+            return;
+        }
+
+        _isSyncing = true;
+
+        try
+        {
+            await ResyncWithApiAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _isSyncing = false;
+        }
+    }
+
+    // Rattrape les mutations faites pendant que l'API était injoignable
+    // (chaque mutation tente déjà un push best-effort au moment où elle se
+    // produit, cf. AddEntry/UpdateEntry/SaveCategory/RenameCategory ; ceci
+    // couvre les échecs de ces tentatives) et récupère les changements faits
+    // par un autre client. Catégories poussées/pull-ées avant les entrées :
+    // l'API valide les CategoryIds d'une entrée contre les catégories déjà
+    // connues côté serveur.
     private async Task ResyncWithApiAsync()
     {
         if (!_apiClient.IsConfigured)
@@ -215,19 +266,221 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        // Snapshot pris avant la boucle : Entries/Categories sont des
-        // ObservableCollection liées à l'UI, pas sûres à énumérer pendant que
-        // l'utilisateur les modifie (ce qui peut arriver, cette boucle tourne
-        // en tâche de fond sans bloquer l'UI).
-        foreach (var category in Categories.ToList())
+        // Rejoue les suppressions en attente. Entrées avant catégories —
+        // l'inverse de la convention "catégories avant entrées" ci-dessous :
+        // le guard serveur count_entries_using_category compte encore une
+        // entrée tant qu'elle n'est pas tombstonée, donc une suppression de
+        // catégorie encore en attente échouerait (409) si l'entrée qui
+        // l'utilisait n'est pas déjà supprimée côté serveur.
+        foreach (var pending in _pendingEntryDeletions.ToList())
         {
-            await _apiClient.TryUpsertCategoryAsync(category).ConfigureAwait(false);
+            if (await _apiClient.TryDeleteEntryAsync(pending.Id, pending.DeletedAt).ConfigureAwait(false))
+            {
+                _pendingEntryDeletions.Remove(pending);
+            }
         }
 
-        foreach (var entry in Entries.ToList())
+        foreach (var pending in _pendingCategoryDeletions.ToList())
         {
-            await _apiClient.TryUpsertEntryAsync(entry).ConfigureAwait(false);
+            if (await _apiClient.TryDeleteCategoryAsync(pending.Id, pending.DeletedAt).ConfigureAwait(false))
+            {
+                _pendingCategoryDeletions.Remove(pending);
+            }
         }
+
+        // Push borné par enregistrement via SyncedAt (pas un checkpoint
+        // global) : isole un échec permanent à un seul enregistrement plutôt
+        // que de bloquer tout le lot, et couvre déjà naturellement le tout
+        // premier sync (SyncedAt == null pour tout le monde au départ).
+        var categoriesToPush = Categories.Where(c => c.SyncedAt is null || c.SyncedAt < c.UpdatedAt).ToList();
+        var syncedCategories = new List<VocabularyCategory>();
+
+        foreach (var category in categoriesToPush)
+        {
+            if (await _apiClient.TryUpsertCategoryAsync(category).ConfigureAwait(false))
+            {
+                syncedCategories.Add(category);
+            }
+        }
+
+        var entriesToPush = Entries.Where(e => e.SyncedAt is null || e.SyncedAt < e.UpdatedAt).ToList();
+        var syncedEntries = new List<VocabularyEntry>();
+
+        foreach (var entry in entriesToPush)
+        {
+            if (await _apiClient.TryUpsertEntryAsync(entry).ConfigureAwait(false))
+            {
+                syncedEntries.Add(entry);
+            }
+        }
+
+        // Pull différentiel : checkpoint = dernier pull réussi (LastPulledAt),
+        // totalement indépendant du succès des push ci-dessus — chaque
+        // enregistrement gère déjà son propre état via SyncedAt. Null => tout
+        // premier pull, déjà géré côté API (vue complète sans updated_since).
+        var checkpoint = SettingsStore.Load().LastPulledAt;
+        var categoriesPull = await _apiClient.TryPullCategoriesAsync(checkpoint).ConfigureAwait(false);
+
+        if (categoriesPull is null)
+        {
+            // Échec : checkpoint et SyncedAt inchangés, on retentera au
+            // prochain déclenchement (prochain tick ou démarrage).
+            return;
+        }
+
+        var entriesPull = await _apiClient.TryPullEntriesAsync(checkpoint).ConfigureAwait(false);
+
+        if (entriesPull is null)
+        {
+            return;
+        }
+
+        // Un seul passage par le thread UI pour tout le lot (confirmations de
+        // push ET fusion du pull) plutôt qu'un Dispatcher.Invoke par
+        // enregistrement — Entries/Categories sont des ObservableCollection
+        // liées à l'UI ; rien avant ce point n'écrit dedans depuis ce thread
+        // de fond (seulement des lectures via .ToList()/.Where()).
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            foreach (var category in syncedCategories)
+            {
+                category.SyncedAt = category.UpdatedAt;
+            }
+
+            foreach (var entry in syncedEntries)
+            {
+                entry.SyncedAt = entry.UpdatedAt;
+            }
+
+            MergePulled(Categories, categoriesPull.Items, FindCategoryIndex, c => c.Id, c => c.UpdatedAt, c => c.IsDeleted);
+            MergePulled(Entries, entriesPull.Items, FindEntryIndex, e => e.Id, e => e.UpdatedAt, e => e.IsDeleted);
+            RebuildCategoryTree();
+            RefreshFilteredEntries();
+            SaveDatabase();
+        });
+
+        if (categoriesPull.ServerTimestamp is { } newCheckpoint)
+        {
+            var latest = SettingsStore.Load();
+            latest.LastPulledAt = newCheckpoint;
+            SettingsStore.Save(latest);
+        }
+    }
+
+    // Fusionne les enregistrements reçus d'un pull différentiel dans une
+    // ObservableCollection locale : supprime si tombstoné, sinon insère ou
+    // remplace (uniquement si réellement plus récent — garde défensive, le
+    // serveur ne renvoie déjà que des lignes plus récentes que le
+    // checkpoint). Générique plutôt que dupliqué pour VocabularyEntry et
+    // VocabularyCategory, via de petits accès délégués faute d'interface
+    // commune entre les deux modèles.
+    private static void MergePulled<T>(
+        ObservableCollection<T> collection,
+        IReadOnlyList<T> pulled,
+        Func<Guid, int> findIndex,
+        Func<T, Guid> getId,
+        Func<T, DateTimeOffset> getUpdatedAt,
+        Func<T, bool> getIsDeleted)
+    {
+        foreach (var item in pulled)
+        {
+            var index = findIndex(getId(item));
+
+            if (getIsDeleted(item))
+            {
+                if (index >= 0)
+                {
+                    collection.RemoveAt(index);
+                }
+
+                continue;
+            }
+
+            if (index < 0)
+            {
+                collection.Add(item);
+            }
+            else if (getUpdatedAt(item) > getUpdatedAt(collection[index]))
+            {
+                collection[index] = item;
+            }
+        }
+    }
+
+    // Push immédiat par mutation : confirme SyncedAt sur succès plutôt que de
+    // tirer et oublier, pour que le push borné de ResyncWithApiAsync sache
+    // que cet enregistrement n'a plus besoin d'être repoussé.
+    private async Task PushEntryUpsertAsync(VocabularyEntry entry)
+    {
+        if (!await _apiClient.TryUpsertEntryAsync(entry).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            var index = FindEntryIndex(entry.Id);
+
+            // Ne marque synced que si l'entrée n'a pas été réditée entretemps
+            // (nouvelle édition avant confirmation de la précédente) — sinon
+            // on marquerait à tort une version plus récente comme synchronisée.
+            if (index >= 0 && Entries[index].UpdatedAt == entry.UpdatedAt)
+            {
+                Entries[index].SyncedAt = entry.UpdatedAt;
+                SaveDatabase();
+            }
+        });
+    }
+
+    private async Task PushCategoryUpsertAsync(VocabularyCategory category)
+    {
+        if (!await _apiClient.TryUpsertCategoryAsync(category).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            var index = FindCategoryIndex(category.Id);
+
+            if (index >= 0 && Categories[index].UpdatedAt == category.UpdatedAt)
+            {
+                Categories[index].SyncedAt = category.UpdatedAt;
+                SaveDatabase();
+            }
+        });
+    }
+
+    // Pousse une suppression en attente ; l'efface de la file seulement à
+    // confirmation. Si le push échoue (hors-ligne), l'enregistrement reste
+    // dans _pendingEntryDeletions/_pendingCategoryDeletions (persisté dans
+    // vocabulary.json), retenté au prochain ResyncWithApiAsync.
+    private async Task PushEntryDeletionAsync(Guid id, DateTimeOffset deletedAt)
+    {
+        if (!await _apiClient.TryDeleteEntryAsync(id, deletedAt).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            _pendingEntryDeletions.RemoveAll(p => p.Id == id);
+            SaveDatabase();
+        });
+    }
+
+    private async Task PushCategoryDeletionAsync(Guid id, DateTimeOffset deletedAt)
+    {
+        if (!await _apiClient.TryDeleteCategoryAsync(id, deletedAt).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            _pendingCategoryDeletions.RemoveAll(p => p.Id == id);
+            SaveDatabase();
+        });
     }
 
     public void AddEntry(VocabularyEntry entry)
@@ -247,7 +500,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         // Best-effort, jamais awaité : ne doit jamais ralentir l'UI, encore
         // moins quand l'API est injoignable (cas courant pour l'instant).
-        _ = _apiClient.TryUpsertEntryAsync(entry);
+        _ = PushEntryUpsertAsync(entry);
     }
 
     public void UpdateEntry(VocabularyEntry updatedEntry)
@@ -269,7 +522,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         SaveDatabase();
-        _ = _apiClient.TryUpsertEntryAsync(updatedEntry);
+        _ = PushEntryUpsertAsync(updatedEntry);
     }
 
     public void DeleteEntry(VocabularyEntry entry)
@@ -288,8 +541,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SelectedEntry = FilteredEntries.Count == 0
             ? null
             : FilteredEntries[Math.Min(index, FilteredEntries.Count - 1)];
+
+        var deletedAt = DateTimeOffset.Now;
+        _pendingEntryDeletions.Add(new PendingDeletion { Id = entry.Id, DeletedAt = deletedAt });
         SaveDatabase();
-        _ = _apiClient.TryDeleteEntryAsync(entry.Id);
+        _ = PushEntryDeletionAsync(entry.Id, deletedAt);
     }
 
     // Ajout ou remplacement d'une catégorie validée par CategoryEditorWindow.
@@ -317,7 +573,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         OnCategoriesChanged();
-        _ = _apiClient.TryUpsertCategoryAsync(category);
+        _ = PushCategoryUpsertAsync(category);
         return null;
     }
 
@@ -370,7 +626,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         category.Name = name;
         category.UpdatedAt = DateTimeOffset.Now;
         OnCategoriesChanged();
-        _ = _apiClient.TryUpsertCategoryAsync(category);
+        _ = PushCategoryUpsertAsync(category);
         return null;
     }
 
@@ -398,8 +654,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Categories.RemoveAt(index);
         CategoryColorStore.ClearColor(categoryId);
         CategoryOrderStore.ClearOrder(categoryId);
+
+        var deletedAt = DateTimeOffset.Now;
+        _pendingCategoryDeletions.Add(new PendingDeletion { Id = categoryId, DeletedAt = deletedAt });
+
+        // OnCategoriesChanged() sauvegarde déjà — un seul SaveDatabase() pour
+        // la suppression ET la tentative en attente, pas deux appels séparés.
         OnCategoriesChanged();
-        _ = _apiClient.TryDeleteCategoryAsync(categoryId);
+        _ = PushCategoryDeletionAsync(categoryId, deletedAt);
         return null;
     }
 
@@ -705,7 +967,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _repository.SaveDatabase(new VocabularyDatabase
         {
             Entries = Entries.ToList(),
-            Categories = Categories.ToList()
+            Categories = Categories.ToList(),
+            PendingEntryDeletions = _pendingEntryDeletions,
+            PendingCategoryDeletions = _pendingCategoryDeletions
         });
     }
 
