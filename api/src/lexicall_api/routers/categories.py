@@ -23,7 +23,7 @@ def _validate_parent(category_id: str | None, parent_id: str | None) -> None:
 
 @router.get("", response_model=list[VocabularyCategory])
 def list_categories(response: Response, updated_since: datetime | None = None) -> list[dict]:
-    # Voir routers/entries.py:list_entries pour la justification du header.
+    # See routers/entries.py:list_entries for the rationale behind the header.
     response.headers["X-Sync-Timestamp"] = timestamps.now_iso()
     return categories_repo.list_categories(updated_since=updated_since)
 

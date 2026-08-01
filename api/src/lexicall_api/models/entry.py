@@ -16,11 +16,19 @@ class VocabularyEntryWrite(BaseModel):
     source: str = Field(default="", alias="Source")
     category_ids: list[str] = Field(default_factory=list, alias="CategoryIds")
     tags: list[str] = Field(default_factory=list, alias="Tags")
-    # Horodatage réel d'édition côté client, tamponné au moment de l'action
-    # locale (pas de la synchronisation) — voir entries_repo.update_entry :
-    # une écriture conditionnelle ne l'applique que si elle est plus récente
-    # que la valeur déjà stockée (Last-Write-Wins).
+    # Real client-side edit timestamp, stamped at the moment of the local
+    # action (not of sync) — see entries_repo.update_entry: a conditional
+    # write only applies it if it's newer than the value already stored
+    # (Last-Write-Wins).
     updated_at: datetime | None = Field(default=None, alias="UpdatedAt")
+    # Base64-encoded image (already JPEG-compressed client-side), or empty/
+    # None if the entry has none. Never stored on the entries document: the
+    # router extracts it and dispatches to entry_images itself (upsert or
+    # delete depending on the case) — see routers/entries.py. Deliberately
+    # absent from VocabularyEntrySummary: echoing it back on every GET would
+    # reintroduce exactly the WiredTiger cache pressure the two-collection
+    # split was meant to eliminate.
+    image_base64: str | None = Field(default=None, alias="ImageBase64")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -31,9 +39,8 @@ class VocabularyEntryCreate(VocabularyEntryWrite):
     # entry keep the same Id once it reaches the server, instead of getting
     # a second, different server-generated one.
     id: str | None = Field(default=None, alias="Id", min_length=1)
-    # Idem pour la date de création réelle (offline-créée puis synced plus
-    # tard) — absent de Write : un PUT ne doit jamais pouvoir réécrire
-    # CreatedAt.
+    # Same idea for the real creation date (created offline, synced later) —
+    # absent from Write: a PUT must never be able to rewrite CreatedAt.
     created_at: datetime | None = Field(default=None, alias="CreatedAt")
 
 
@@ -53,11 +60,11 @@ class VocabularyEntrySummary(BaseModel):
     tags: list[str] = Field(default_factory=list, alias="Tags")
     created_at: datetime = Field(alias="CreatedAt")
     updated_at: datetime = Field(alias="UpdatedAt")
-    # Tombstone : True une fois l'entrée supprimée (soft-delete, voir
-    # entries_repo.delete_entry) — reste visible uniquement via un pull
-    # différentiel (updated_since), pour que les autres clients apprennent la
-    # suppression. Défaut False : pas de backfill nécessaire pour les
-    # documents Mongo existants qui n'ont pas encore ce champ.
+    # Tombstone: True once the entry is deleted (soft-delete, see
+    # entries_repo.delete_entry) — only visible through a delta pull
+    # (updated_since), so other clients learn about the deletion. Defaults
+    # to False: no backfill needed for existing Mongo documents that don't
+    # have this field yet.
     is_deleted: bool = Field(default=False, alias="IsDeleted")
 
     model_config = ConfigDict(populate_by_name=True)

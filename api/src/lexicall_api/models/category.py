@@ -12,8 +12,8 @@ class VocabularyCategoryWrite(BaseModel):
     parent_id: str | None = Field(default=None, alias="ParentId")
     description: str = Field(default="", alias="Description")
     icon_glyph: str = Field(default="", alias="IconGlyph")
-    # Horodatage réel d'édition côté client — voir VocabularyEntryWrite et
-    # categories_repo.update_category (écriture conditionnelle LWW).
+    # Real client-side edit timestamp — see VocabularyEntryWrite and
+    # categories_repo.update_category (conditional LWW write).
     updated_at: datetime | None = Field(default=None, alias="UpdatedAt")
 
     model_config = ConfigDict(populate_by_name=True)
@@ -22,8 +22,8 @@ class VocabularyCategoryWrite(BaseModel):
 class VocabularyCategoryCreate(VocabularyCategoryWrite):
     # Optional client-supplied Id, POST-only — see VocabularyEntryCreate.
     id: str | None = Field(default=None, alias="Id", min_length=1)
-    # Idem VocabularyEntryCreate.created_at — absent de Write pour qu'un PUT
-    # ne puisse jamais réécrire CreatedAt.
+    # Same as VocabularyEntryCreate.created_at — absent from Write so a PUT
+    # can never rewrite CreatedAt.
     created_at: datetime | None = Field(default=None, alias="CreatedAt")
 
 
@@ -35,7 +35,7 @@ class VocabularyCategory(BaseModel):
     icon_glyph: str = Field(default="", alias="IconGlyph")
     created_at: datetime = Field(alias="CreatedAt")
     updated_at: datetime = Field(alias="UpdatedAt")
-    # Tombstone — voir VocabularyEntrySummary.is_deleted.
+    # Tombstone — see VocabularyEntrySummary.is_deleted.
     is_deleted: bool = Field(default=False, alias="IsDeleted")
 
     model_config = ConfigDict(populate_by_name=True)

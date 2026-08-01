@@ -12,8 +12,8 @@ from lexicall_api.database import get_categories_collection, strip_mongo_id
 
 
 def list_categories(updated_since: datetime | None = None) -> list[dict]:
-    # Voir entries_repo.list_entries : même logique, tombstones exclus sans
-    # updated_since, inclus avec (pull différentiel).
+    # See entries_repo.list_entries: same logic, tombstones excluded without
+    # updated_since, included with it (delta pull).
     query = (
         {"UpdatedAt": {"$gt": timestamps.to_iso_utc(updated_since)}}
         if updated_since is not None
@@ -33,15 +33,15 @@ def get_category(category_id: str) -> dict | None:
 
 
 def _get_category_raw(category_id: str) -> dict | None:
-    # Non filtré (tombstones inclus) — usage interne, voir
-    # entries_repo._get_entry_raw pour la justification.
+    # Unfiltered (tombstones included) — internal use, see
+    # entries_repo._get_entry_raw for the rationale.
     doc = get_categories_collection().find_one({"Id": category_id})
     return strip_mongo_id(doc) if doc else None
 
 
 def category_exists(category_id: str) -> bool:
-    # Live uniquement : une catégorie tombstonée ne doit plus être une cible
-    # valide pour un nouveau ParentId ou CategoryIds.
+    # Live only: a tombstoned category must no longer be a valid target for
+    # a new ParentId or CategoryIds.
     return get_categories_collection().count_documents(
         {"Id": category_id, "IsDeleted": {"$ne": True}}, limit=1
     ) > 0
@@ -50,8 +50,8 @@ def category_exists(category_id: str) -> bool:
 def creates_cycle(category_id: str, parent_id: str | None) -> bool:
     """True if assigning parent_id as the parent of category_id would create a
     cycle (parent_id == category_id, or category_id is an ancestor of parent_id).
-    Pure traversée de structure : pas de filtre IsDeleted, la liveness d'un
-    parent candidat est déjà tranchée séparément par category_exists."""
+    Pure structure traversal: no IsDeleted filter, a candidate parent's
+    liveness is already decided separately by category_exists."""
     visited: set[str] = set()
     current = parent_id
     while current is not None:
@@ -66,8 +66,8 @@ def creates_cycle(category_id: str, parent_id: str | None) -> bool:
 
 
 def has_children(category_id: str) -> bool:
-    # Live uniquement : un enfant déjà tombstoné ne doit plus bloquer la
-    # suppression de son parent.
+    # Live only: a child that's already tombstoned must no longer block its
+    # parent's deletion.
     return get_categories_collection().count_documents(
         {"ParentId": category_id, "IsDeleted": {"$ne": True}}, limit=1
     ) > 0
@@ -87,8 +87,8 @@ def create_category(data: dict) -> dict:
 
 
 def update_category(category_id: str, data: dict) -> dict | None:
-    """Écriture conditionnelle (CAS) — voir entries_repo.update_entry pour la
-    justification complète."""
+    """Conditional write (CAS) — see entries_repo.update_entry for the full
+    rationale."""
     incoming = timestamps.to_iso_utc(data.get("UpdatedAt")) or timestamps.now_iso()
     result = get_categories_collection().find_one_and_update(
         {"Id": category_id, "UpdatedAt": {"$lt": incoming}},
@@ -99,7 +99,7 @@ def update_category(category_id: str, data: dict) -> dict | None:
 
 
 def delete_category(category_id: str, deleted_at: datetime | None = None) -> dict | None:
-    """Suppression = tombstone — voir entries_repo.delete_entry."""
+    """Deletion = tombstone — see entries_repo.delete_entry."""
     incoming = timestamps.to_iso_utc(deleted_at) or timestamps.now_iso()
     result = get_categories_collection().find_one_and_update(
         {"Id": category_id, "UpdatedAt": {"$lt": incoming}},
@@ -111,8 +111,8 @@ def delete_category(category_id: str, deleted_at: datetime | None = None) -> dic
 
 def upsert_category(doc: dict) -> str:
     """Used by the migration: idempotent upsert by Id, preserves the
-    document's original CreatedAt/UpdatedAt (no regeneration). Non filtré par
-    IsDeleted à dessein — voir entries_repo.upsert_entry.
+    document's original CreatedAt/UpdatedAt (no regeneration). Deliberately
+    not filtered by IsDeleted — see entries_repo.upsert_entry.
     $set rather than replace_one: only $set does a field-by-field comparison
     and reports modified_count=0 for content that's genuinely unchanged —
     replace_one reports modified_count>0 even when writing identical content."""

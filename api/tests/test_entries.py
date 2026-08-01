@@ -1,6 +1,10 @@
-# Entry CRUD: CategoryIds validation. Image handling has its own dedicated
-# tests, see test_entry_images.py — images are a separate resource entirely
-# (entry_images collection), not a field on the entry itself.
+# Entry CRUD: CategoryIds validation, timestamps/CAS, tombstones, and the
+# ImageBase64 write-only field (accepted here, but never stored on the entry
+# document — dispatched server-side to the separate entry_images collection,
+# see test_create_entry_with_image_uploads_it and friends below). Direct
+# reads/writes of the image resource itself (GET/PUT/DELETE
+# /entries/{id}/image) have their own dedicated tests in test_entry_images.py.
+import base64
 from datetime import datetime
 
 ENTRY_PAYLOAD = {
@@ -13,6 +17,9 @@ ENTRY_PAYLOAD = {
     "CategoryIds": [],
     "Tags": [],
 }
+
+IMAGE_BYTES = b"\xff\xd8\xff\xe0fake-jpeg-bytes"
+IMAGE_BASE64 = base64.b64encode(IMAGE_BYTES).decode("ascii")
 
 
 def test_create_and_get_entry(client, auth_headers):
@@ -113,8 +120,8 @@ def test_list_entries_returns_sync_timestamp_header(client, auth_headers):
     assert response.status_code == 200
     assert "x-sync-timestamp" in response.headers
 
-    # Rejouer immédiatement avec ce même timestamp comme updated_since ne
-    # doit plus rien renvoyer (convergence en régime stable).
+    # Immediately replaying with that same timestamp as updated_since should
+    # return nothing (steady-state convergence).
     checkpoint = response.headers["x-sync-timestamp"]
     follow_up = client.get("/entries", params={"updated_since": checkpoint}, headers=auth_headers)
     assert follow_up.status_code == 200
@@ -142,8 +149,9 @@ def test_update_entry_trusts_client_supplied_updated_at(client, auth_headers):
     payload = {**ENTRY_PAYLOAD, "Word": "Renomme", "UpdatedAt": future_timestamp}
     response = client.put(f"/entries/{created['Id']}", json=payload, headers=auth_headers)
     assert response.status_code == 200
-    # Comparaison en datetime plutôt qu'en chaîne exacte : Pydantic peut
-    # reformater la précision (microsecondes) sans changer l'instant réel.
+    # Compared as datetimes rather than exact strings: Pydantic may
+    # reformat the precision (microseconds) without changing the actual
+    # instant.
     assert datetime.fromisoformat(response.json()["UpdatedAt"]) == datetime.fromisoformat(future_timestamp)
 
 
@@ -178,3 +186,79 @@ def test_new_entry_appears_in_delta_pull(client, auth_headers):
 
     delta = client.get("/entries", params={"updated_since": checkpoint}, headers=auth_headers).json()
     assert any(entry["Id"] == created["Id"] for entry in delta)
+
+
+def test_create_entry_with_image_uploads_it(client, auth_headers):
+    payload = {**ENTRY_PAYLOAD, "ImageBase64": IMAGE_BASE64}
+    created = client.post("/entries", json=payload, headers=auth_headers).json()
+
+    image_response = client.get(f"/entries/{created['Id']}/image", headers=auth_headers)
+    assert image_response.status_code == 200
+    assert image_response.content == IMAGE_BYTES
+    assert image_response.headers["content-type"] == "image/jpeg"
+
+
+def test_create_entry_without_image_creates_no_image_resource(client, auth_headers):
+    created = client.post("/entries", json=ENTRY_PAYLOAD, headers=auth_headers).json()
+
+    image_response = client.get(f"/entries/{created['Id']}/image", headers=auth_headers)
+    assert image_response.status_code == 404
+
+
+def test_update_entry_sets_image(client, auth_headers):
+    created = client.post("/entries", json=ENTRY_PAYLOAD, headers=auth_headers).json()
+
+    payload = {**ENTRY_PAYLOAD, "ImageBase64": IMAGE_BASE64}
+    update_response = client.put(f"/entries/{created['Id']}", json=payload, headers=auth_headers)
+    assert update_response.status_code == 200
+
+    image_response = client.get(f"/entries/{created['Id']}/image", headers=auth_headers)
+    assert image_response.status_code == 200
+    assert image_response.content == IMAGE_BYTES
+
+
+def test_update_entry_clearing_image_deletes_it(client, auth_headers):
+    payload = {**ENTRY_PAYLOAD, "ImageBase64": IMAGE_BASE64}
+    created = client.post("/entries", json=payload, headers=auth_headers).json()
+
+    clear_payload = {**ENTRY_PAYLOAD, "ImageBase64": ""}
+    update_response = client.put(f"/entries/{created['Id']}", json=clear_payload, headers=auth_headers)
+    assert update_response.status_code == 200
+
+    image_response = client.get(f"/entries/{created['Id']}/image", headers=auth_headers)
+    assert image_response.status_code == 404
+
+
+def test_update_entry_with_stale_updated_at_does_not_touch_image(client, auth_headers):
+    payload = {**ENTRY_PAYLOAD, "ImageBase64": IMAGE_BASE64}
+    created = client.post("/entries", json=payload, headers=auth_headers).json()
+
+    # This push loses the CAS comparison (UpdatedAt is in the past): neither
+    # the metadata nor the image should move, even though this push
+    # explicitly asks to clear ImageBase64.
+    stale_payload = {
+        **ENTRY_PAYLOAD,
+        "ImageBase64": "",
+        "UpdatedAt": "2000-01-01T00:00:00+00:00",
+    }
+    response = client.put(f"/entries/{created['Id']}", json=stale_payload, headers=auth_headers)
+    assert response.status_code == 200
+
+    image_response = client.get(f"/entries/{created['Id']}/image", headers=auth_headers)
+    assert image_response.status_code == 200
+    assert image_response.content == IMAGE_BYTES
+
+
+def test_create_entry_rejects_invalid_image_base64(client, auth_headers):
+    payload = {**ENTRY_PAYLOAD, "ImageBase64": "not-valid-base64!!"}
+    response = client.post("/entries", json=payload, headers=auth_headers)
+    assert response.status_code == 400
+
+
+def test_create_entry_rejects_image_too_large(client, auth_headers, monkeypatch):
+    from lexicall_api.config import settings
+
+    monkeypatch.setattr(settings, "max_image_bytes", 4)
+    payload = {**ENTRY_PAYLOAD, "ImageBase64": IMAGE_BASE64}
+    response = client.post("/entries", json=payload, headers=auth_headers)
+    assert response.status_code == 413

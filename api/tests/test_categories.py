@@ -92,7 +92,7 @@ def test_delete_category_succeeds_once_child_is_tombstoned(client, auth_headers)
     child_delete = client.delete(f"/categories/{child['Id']}", headers=auth_headers)
     assert child_delete.status_code == 204
 
-    # Le guard has_children ne doit plus compter un enfant déjà tombstoné.
+    # The has_children guard must no longer count an already-tombstoned child.
     parent_delete = client.delete(f"/categories/{parent['Id']}", headers=auth_headers)
     assert parent_delete.status_code == 204
 
@@ -114,8 +114,8 @@ def test_delete_category_succeeds_once_using_entry_is_tombstoned(client, auth_he
     entry_delete = client.delete(f"/entries/{entry['Id']}", headers=auth_headers)
     assert entry_delete.status_code == 204
 
-    # Le guard count_entries_using_category ne doit plus compter une entrée
-    # déjà tombstonée.
+    # The count_entries_using_category guard must no longer count an
+    # already-tombstoned entry.
     category_delete = client.delete(f"/categories/{category['Id']}", headers=auth_headers)
     assert category_delete.status_code == 204
 
@@ -126,9 +126,10 @@ def test_delete_category_is_idempotent(client, auth_headers):
     first_delete = client.delete(f"/categories/{category['Id']}", headers=auth_headers)
     assert first_delete.status_code == 204
 
-    # Second appel : la catégorie est déjà tombstonée, donc introuvable via la
-    # vue live utilisée par le pré-check du routeur — 404, pas 204. Documente
-    # l'asymétrie assumée avec entries.delete_entry (idempotent en 204/204) :
-    # le client traite déjà 404 et succès comme équivalents (TryDeleteAsync).
+    # Second call: the category is already tombstoned, so it's not found by
+    # the live view the router's pre-check uses — 404, not 204. Documents
+    # the accepted asymmetry with entries.delete_entry (idempotent as
+    # 204/204): the client already treats 404 and success as equivalent
+    # (TryDeleteAsync).
     second_delete = client.delete(f"/categories/{category['Id']}", headers=auth_headers)
     assert second_delete.status_code == 404

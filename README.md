@@ -107,12 +107,26 @@ in practice with a few supporting mechanisms:
   catch-up-on-launch. Network hiccups that resolve mid-session get picked up
   without waiting for the next app restart, guarded against overlapping with
   itself and against firing while an edit dialog is open.
+- **PUT-first, POST-on-404 as a client-side upsert.** REST has no native
+  "create or update" verb, and the client has no reliable way to know in
+  advance whether a given record already exists server-side (another device
+  may have created or synced it first). Rather than issuing an existence
+  check before every write, every push just tries a `PUT`; a 404 means the
+  record doesn't exist yet, and the client falls back to `POST` with that
+  same local `Id`, so the record ends up with the same identity on both
+  sides regardless of which device created it first.
 - **Entry images live in their own MongoDB collection**, not as a field on
   the entry document. A Mongo projection that excludes a field only saves
   the client bandwidth; the storage engine still reads the whole document,
   image bytes included, into cache for any scan of the collection. Splitting
   images out keeps a growing entries collection fast to browse regardless of
-  how many of them carry an image.
+  how many of them carry an image. The client still sends the image as part
+  of the same request that creates or updates an entry, though: the server
+  decodes it, validates it, and decides on its own whether to upsert or
+  clear the separate image resource, gated on the same CAS check the entry's
+  metadata already went through. That keeps the two collections in sync
+  without relying on the client to make a second request that could fail,
+  get skipped, or race against the first.
 
 ## Tech stack
 

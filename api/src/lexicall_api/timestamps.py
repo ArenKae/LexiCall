@@ -1,20 +1,20 @@
-# Horodatage partagé par les repositories (comparaisons CAS) et les routeurs
-# (en-tête X-Sync-Timestamp) : centralise le format pour qu'il reste identique
-# partout où deux timestamps sont comparés.
+# Timestamp formatting shared by the repositories (CAS comparisons) and the
+# routers (X-Sync-Timestamp header): centralizes the format so it stays
+# identical everywhere two timestamps are compared.
 from datetime import datetime, timezone
 
 
 def now_iso() -> str:
-    # timespec="microseconds" force la présence de la partie fractionnaire
-    # (absente quand microseconds==0), sinon deux timestamps de la même
-    # seconde se compareraient mal lexicographiquement dans un filtre CAS.
+    # timespec="microseconds" forces the fractional part to always be present
+    # (absent when microseconds==0), otherwise two timestamps within the same
+    # second would compare incorrectly lexicographically in a CAS filter.
     return datetime.now(timezone.utc).isoformat(timespec="microseconds")
 
 
 def to_iso_utc(value: datetime | None) -> str | None:
-    # Normalise un datetime client (offset non-UTC éventuel) vers le même
-    # format que now_iso(), pour que la comparaison lexicographique Mongo
-    # reflète l'ordre chronologique réel.
+    # Normalizes a client datetime (possibly non-UTC offset) to the same
+    # format as now_iso(), so Mongo's lexicographic comparison reflects the
+    # actual chronological order.
     if value is None:
         return None
     return value.astimezone(timezone.utc).isoformat(timespec="microseconds")

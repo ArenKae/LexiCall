@@ -41,8 +41,8 @@ def health() -> Response:
 
 @app.get("/auth", tags=["health"], dependencies=[Depends(require_api_key)])
 def auth_check() -> Response:
-    # Dédié au test de connectivité authentifié (ex. bouton « Tester la
-    # connexion » côté client) : la dépendance suffit à valider la clé,
-    # sans exécuter la moindre requête Mongo, contrairement à /entries.
+    # Dedicated authenticated connectivity check (e.g. the client's "Tester
+    # la connexion" button): the dependency alone validates the key, without
+    # running any Mongo query, unlike /entries.
     body = {"status": "ok"}
     return Response(content=json.dumps(body) + "\n", media_type="application/json")
