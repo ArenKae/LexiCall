@@ -1,6 +1,6 @@
-// Code-behind du sélecteur d'icône. Même pattern que les autres fenêtres
-// modales : le ViewModel signale la sélection, le code-behind traduit ça en
-// fermeture avec DialogResult = true.
+// Code-behind for the icon picker. Same pattern as the other modal windows:
+// the ViewModel signals the selection, the code-behind translates that into
+// closing with DialogResult = true.
 using System.Windows;
 using System.Windows.Controls;
 using LexiCall.Desktop.Services;

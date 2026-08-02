@@ -1,6 +1,6 @@
-// Code-behind du sélecteur de couleur. Même pattern que IconPickerWindow : le
-// ViewModel signale la sélection, le code-behind traduit ça en fermeture avec
-// DialogResult = true.
+// Code-behind for the color picker. Same pattern as IconPickerWindow: the
+// ViewModel signals the selection, the code-behind translates that into
+// closing with DialogResult = true.
 using System.Windows;
 using System.Windows.Controls;
 using LexiCall.Desktop.Services;

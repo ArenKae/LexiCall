@@ -1,6 +1,6 @@
-// ViewModel de la fenêtre de sélection d'icône (emoji) pour une catégorie :
-// affiche CategoryIconCatalog, filtrable par mot-clé ; cliquer une icône
-// déclenche IconSelected (même principe que CategorySaved).
+// ViewModel for a category's icon (emoji) picker window: displays
+// CategoryIconCatalog, filterable by keyword; clicking an icon fires
+// IconSelected (same pattern as CategorySaved).
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;

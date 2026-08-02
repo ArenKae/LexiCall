@@ -1,6 +1,6 @@
-// Détecte le passage sous le seuil de largeur où le panneau Détails bascule
-// d'une disposition côte à côte (métadonnées | image) vers une disposition
-// empilée. Utilisé via DataTrigger sur l'ActualWidth du Grid conteneur.
+// Detects when the detail panel drops below the width where it switches from
+// a side-by-side layout (metadata | image) to a stacked one. Used via a
+// DataTrigger on the container Grid's ActualWidth.
 using System.Globalization;
 using System.Windows.Data;
 

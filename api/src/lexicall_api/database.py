@@ -29,28 +29,20 @@ def ping() -> bool:
 
 
 def ensure_indexes() -> None:
-    # Application Id distinct from Mongo's native _id: unique index so that
-    # lookups by Id (used everywhere across the API and migration) stay fast
-    # and so two documents can never share the same Id.
+    # Unique on the application Id (not Mongo's _id): fast lookups, and
+    # guarantees no two documents share the same Id.
     get_entries_collection().create_index("Id", unique=True)
     get_categories_collection().create_index("Id", unique=True)
     get_entry_images_collection().create_index("Id", unique=True)
 
-    # Non-unique: serves the updated_since delta query (LWW sync), so a pull
-    # doesn't require a full collection scan.
+    # Speeds up the updated_since delta query used for sync pulls.
     get_entries_collection().create_index("UpdatedAt")
     get_categories_collection().create_index("UpdatedAt")
 
-    # TTL: MongoDB's background expiry monitor auto-deletes a document once
-    # this field is older than expireAfterSeconds — but only documents that
-    # actually carry the field, which only tombstones do (TombstonedAt is set
-    # once, at delete time, in entries_repo.delete_entry/categories_repo.
-    # delete_category). Live documents are never touched. 30 days is a
-    # generous window given the periodic resync client-side (60s while the
-    # app is open): a client that hasn't reconnected in over a month would
-    # miss the tombstone and could see a stale record reappear, an accepted
-    # tradeoff for a personal-scale app. Once purged, the Id becomes free
-    # again for a new record (no more DuplicateKeyError on that Id).
+    # TTL: MongoDB auto-deletes a document once TombstonedAt is older than
+    # this many seconds. Only tombstones carry that field, so live records
+    # are never touched. 30 days is generous next to the 60s client resync,
+    # but a client offline longer than that could miss a deletion.
     get_entries_collection().create_index("TombstonedAt", expireAfterSeconds=30 * 24 * 60 * 60)
     get_categories_collection().create_index("TombstonedAt", expireAfterSeconds=30 * 24 * 60 * 60)
 

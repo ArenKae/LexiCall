@@ -1,6 +1,6 @@
-// Petit ViewModel utilisé par la liste de cases à cocher du formulaire d'entrée.
-// Il découple l'état de sélection UI du modèle VocabularyCategory lui-même.
-// Depth indique la profondeur hiérarchique, pour l'indentation visuelle.
+// Small ViewModel for the entry form's category checklist. Decouples UI
+// selection state from the VocabularyCategory model itself; Depth drives
+// visual indentation.
 using System.ComponentModel;
 using LexiCall.Desktop.Models;
 

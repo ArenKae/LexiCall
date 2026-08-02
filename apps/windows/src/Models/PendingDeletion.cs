@@ -1,6 +1,6 @@
-// Trace une suppression tentée mais pas encore confirmée par l'API (voir
-// MainWindowViewModel.DeleteEntry/DeleteCategory/ResyncWithApiAsync) —
-// rejouée tant que le push échoue, avec le DeletedAt d'origine.
+// A deletion attempted but not yet confirmed by the API (see
+// MainWindowViewModel.DeleteEntry/DeleteCategory/ResyncWithApiAsync) — retried
+// with its original DeletedAt until the push succeeds.
 namespace LexiCall.Desktop.Models;
 
 public sealed class PendingDeletion

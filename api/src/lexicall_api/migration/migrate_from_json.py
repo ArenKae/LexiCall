@@ -1,9 +1,8 @@
-# Migrates a vocabulary.json (current { Entries, Categories } format only,
-# not the old flat format) to MongoDB. Idempotent: upsert by the application
-# field Id, never by Mongo's native _id — rerunning with the same file
-# duplicates nothing. Tolerant of inconsistent data (duplicate ids, broken/
-# cyclic parents, orphaned CategoryIds): neutralizes and counts rather than
-# abandoning the whole import, like SanitizeDatabase on the desktop app side.
+# Migrates a vocabulary.json (current { Entries, Categories } format) to
+# MongoDB. Idempotent: upserts by the application Id field, so rerunning
+# with the same file duplicates nothing. Inconsistent data (duplicate ids,
+# broken/cyclic parents, orphaned CategoryIds) is neutralized and counted
+# rather than aborting the whole import.
 import argparse
 import base64
 import json

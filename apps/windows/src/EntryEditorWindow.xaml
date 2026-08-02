@@ -9,9 +9,8 @@
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
     <!--
-        Formulaire modal d'ajout/modification d'une entrée.
-        Les catégories sont optionnelles et sélectionnées par cases à cocher,
-        indentées selon leur profondeur dans la hiérarchie.
+        Modal add/edit entry form. Categories are optional and picked via
+        checkboxes, indented by their depth in the hierarchy.
     -->
     <Grid Margin="24">
         <Grid.RowDefinitions>

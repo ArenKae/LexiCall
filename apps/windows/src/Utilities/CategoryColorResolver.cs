@@ -1,11 +1,10 @@
-// Couleur effective d'une catégorie : une couleur choisie manuellement (voir
-// CategoryColorStore) sur elle-même ou un ancêtre si elle en a une, sinon la
-// teinte automatique dérivée de l'index de sa racine (angle d'or, pour des
-// teintes bien séparées quel que soit le nombre de catégories). Point d'entrée
-// unique pour l'arbre (MainWindowViewModel.RebuildCategoryTree), les chips de
-// catégorie (CategoryChipColorConverter) et l'aperçu du sélecteur de couleur
-// (CategoryEditorWindowViewModel) : une future évolution du stockage de
-// l'override n'a qu'ici à changer.
+// A category's effective color: a manually chosen color (see
+// CategoryColorStore) on itself or an ancestor if one exists, otherwise the
+// automatic hue derived from its root's index (golden-angle spacing, for
+// well-separated hues at any category count). Single entry point for the
+// tree (MainWindowViewModel.RebuildCategoryTree), category chips
+// (CategoryChipColorConverter), and the color picker preview
+// (CategoryEditorWindowViewModel).
 using System.Windows.Media;
 using LexiCall.Desktop.Models;
 

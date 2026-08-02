@@ -1,11 +1,11 @@
 <!--
-    Styles partagés par toutes les fenêtres. Tout référence les brushes du thème
-    en DynamicResource pour que la bascule clair/sombre s'applique à chaud.
+    Styles shared by every window. Everything references theme brushes via
+    DynamicResource so the light/dark toggle applies live.
 -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Bouton standard (secondaire). -->
+    <!-- Standard (secondary) button. -->
     <Style TargetType="Button">
         <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
@@ -43,7 +43,7 @@
         </Setter>
     </Style>
 
-    <!-- Bouton principal (action primaire de la fenêtre). -->
+    <!-- Primary button (the window's main action). -->
     <Style x:Key="AccentButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.OnAccent}" />
@@ -112,7 +112,7 @@
         </Setter>
     </Style>
 
-    <!-- Bouton discret (icônes, actions de panneau : bascule de thème, "+"). -->
+    <!-- Ghost button (icons, panel actions: theme toggle, "+"). -->
     <Style x:Key="GhostButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
@@ -214,7 +214,7 @@
         </Setter>
     </Style>
 
-    <!-- Flèche d'expansion des nœuds de l'arbre des catégories. -->
+    <!-- Expand arrow for category tree nodes. -->
     <Style x:Key="TreeExpanderStyle" TargetType="ToggleButton">
         <Setter Property="Focusable" Value="False" />
         <Setter Property="Cursor" Value="Hand" />
@@ -259,8 +259,8 @@
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
     </Style>
 
-    <!-- TreeViewItem retemplé pour utiliser les couleurs du thème (au lieu des
-         couleurs système) ; IsExpanded/IsSelected liés au ViewModel du nœud. -->
+    <!-- TreeViewItem re-templated to use theme colors (instead of system
+         colors); IsExpanded/IsSelected bound to the node's ViewModel. -->
     <Style TargetType="TreeViewItem">
         <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
         <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
@@ -290,8 +290,8 @@
                             </Grid>
                         </Border>
 
-                        <!-- Séparateur sous les catégories racines, hors de HeaderBorder pour ne
-                             pas agrandir la zone de centrage de la flèche Expander. -->
+                        <!-- Separator under root categories, kept outside HeaderBorder so it
+                             doesn't enlarge the Expander arrow's centering area. -->
                         <Border>
                             <Border.Style>
                                 <Style TargetType="Border">
@@ -331,7 +331,7 @@
         </Setter>
     </Style>
 
-    <!-- Carte : conteneur principal des panneaux (sidebar, liste, détail). -->
+    <!-- Card: main container for the panels (sidebar, list, detail). -->
     <Style x:Key="CardBorderStyle" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
@@ -356,7 +356,7 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
-    <!-- Poignée de redimensionnement entre panneaux : discrète au repos, visible au survol. -->
+    <!-- Resize handle between panels: subtle at rest, visible on hover. -->
     <Style TargetType="GridSplitter">
         <Setter Property="Template">
             <Setter.Value>
@@ -380,7 +380,7 @@
         </Setter>
     </Style>
 
-    <!-- Sélecteur déroulant aux couleurs du thème (non éditable). -->
+    <!-- Themed dropdown (non-editable). -->
     <Style TargetType="ComboBox">
         <Setter Property="Background" Value="{DynamicResource Brush.Input.Background}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
@@ -487,7 +487,7 @@
         </Setter>
     </Style>
 
-    <!-- Menu contextuel (clic droit sur un nœud de l'arbre des catégories). -->
+    <!-- Context menu (right-click on a category tree node). -->
     <Style TargetType="ContextMenu">
         <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Strong}" />
@@ -548,7 +548,7 @@
         </Setter>
     </Style>
 
-    <!-- Barres de défilement fines : pas de flèches, piste transparente, pouce discret. -->
+    <!-- Thin scrollbars: no arrows, transparent track, subtle thumb. -->
     <Style x:Key="ScrollBarPageButtonStyle" TargetType="RepeatButton">
         <Setter Property="IsTabStop" Value="False" />
         <Setter Property="Focusable" Value="False" />

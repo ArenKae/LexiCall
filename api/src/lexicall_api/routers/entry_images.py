@@ -1,11 +1,7 @@
-# Read access for entry images: kept as a separate resource/collection from
-# `entries` so listing/scanning entries never touches image bytes. There's no
-# standalone write route here — the client always bundles the image in the
-# entry PUT (see routers/entries.py:upsert_entry), which dispatches to
-# entry_images_repo itself, gated on the same CAS check as the entry's
-# metadata. A separate write endpoint would reopen the exact race that
-# design closed: two independent requests able to set an entry's image with
-# no ordering guarantee between them.
+# Read-only: entry images live in their own collection so scanning `entries`
+# never touches image bytes. There's no write route here — the client always
+# bundles the image with the entry PUT instead, which is what keeps two
+# independent requests from racing to set the same image.
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 

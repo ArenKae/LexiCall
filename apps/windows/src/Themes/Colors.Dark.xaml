@@ -1,5 +1,5 @@
-<!-- Thème sombre : mêmes clés de brush que Colors.Light.xaml, valeurs sombres
-     inspirées de la palette Discord (gris neutres, texte quasi blanc, accent blurple). -->
+<!-- Dark theme: same brush keys as Colors.Light.xaml, dark values inspired by
+     Discord's palette (neutral grays, near-white text, blurple accent). -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
@@ -34,9 +34,9 @@
 
     <SolidColorBrush x:Key="Brush.Input.Background" Color="#1E1F22" />
 
-    <!-- Opacité du halo de couleur de catégorie dans l'arbre (MainWindow.xaml) :
-         voir Colors.Light.xaml, un même mélange alpha se voit déjà bien plus
-         sur un fond sombre. -->
+    <!-- Category color halo opacity in the tree (MainWindow.xaml): see
+         Colors.Light.xaml — the same alpha blend already reads much more
+         strongly against a dark background. -->
     <sys:Double x:Key="Opacity.CategoryHalo">0.14</sys:Double>
     <sys:Double x:Key="Opacity.CategoryHalo.Root">0.22</sys:Double>
 

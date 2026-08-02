@@ -1,7 +1,5 @@
-# Data access for the `categories` collection. Replicates server-side the
-# guards already present client-side in MainWindowViewModel.DeleteCategory
-# (apps/windows/src/ViewModels/MainWindowViewModel.cs) — necessary as soon as
-# there's a second writer, the desktop app is no longer the sole source of truth.
+# Data access for the `categories` collection, keyed by the application Id
+# field rather than Mongo's native _id.
 from datetime import datetime, timezone
 
 from pymongo import ReturnDocument
@@ -12,8 +10,9 @@ from lexicall_api.database import get_categories_collection, strip_mongo_id
 
 
 def list_categories(updated_since: datetime | None = None) -> list[dict]:
-    # See entries_repo.list_entries: same logic, tombstones excluded without
-    # updated_since, included with it (delta pull).
+    # No updated_since: live view, tombstones excluded. With it: delta pull
+    # that includes tombstones too, since that's how a deletion reaches
+    # another client.
     query = (
         {"UpdatedAt": {"$gt": timestamps.to_iso_utc(updated_since)}}
         if updated_since is not None
@@ -33,8 +32,8 @@ def get_category(category_id: str) -> dict | None:
 
 
 def _get_category_raw(category_id: str) -> dict | None:
-    # Unfiltered (tombstones included) — internal use, see
-    # entries_repo._get_entry_raw for the rationale.
+    # Includes tombstoned categories — for internal use where a
+    # soft-deleted record still needs to be found by Id.
     doc = get_categories_collection().find_one({"Id": category_id})
     return strip_mongo_id(doc) if doc else None
 
@@ -48,10 +47,10 @@ def category_exists(category_id: str) -> bool:
 
 
 def creates_cycle(category_id: str, parent_id: str | None) -> bool:
-    """True if assigning parent_id as the parent of category_id would create a
-    cycle (parent_id == category_id, or category_id is an ancestor of parent_id).
-    Pure structure traversal: no IsDeleted filter, a candidate parent's
-    liveness is already decided separately by category_exists."""
+    """True if assigning parent_id as the parent of category_id would create
+    a cycle (parent_id == category_id, or category_id is an ancestor of
+    parent_id). Pure structure traversal, no IsDeleted filter — a candidate
+    parent's liveness is checked separately by category_exists."""
     visited: set[str] = set()
     current = parent_id
     while current is not None:
@@ -74,17 +73,16 @@ def has_children(category_id: str) -> bool:
 
 
 def put_category(category_id: str, data: dict) -> dict:
-    """Backs PUT /categories/{id}: a true upsert — see entries_repo.put_entry
-    for the full rationale (CAS, $setOnInsert, DuplicateKeyError as the
-    stale-push signal). No (document, applied) tuple here, unlike put_entry:
-    categories have no side-effect resource (no image) that would need to
-    know whether this specific push actually won, so a plain document is
-    enough — a losing push is already harmless on its own (the router just
-    returns the current winning document, no cascade to gate).
+    """True upsert: creates the category if unknown, otherwise updates it
+    only if the incoming UpdatedAt is newer (Last-Write-Wins). A losing
+    write still attempts an insert, which collides with the unique index on
+    Id and raises DuplicateKeyError — the signal that this was a stale push
+    against an existing category, not a genuine creation.
 
-    data.pop("CreatedAt", ...): see entries_repo.put_entry for why this
-    can't stay in $set alongside $setOnInsert."""
+    Unlike entries, this returns just the document: there's no image to
+    gate on whether the push actually won."""
     incoming = timestamps.to_iso_utc(data.get("UpdatedAt")) or timestamps.now_iso()
+    # Routed through $setOnInsert below so an edit can never overwrite it.
     created_at = timestamps.to_iso_utc(data.pop("CreatedAt", None)) or incoming
     try:
         result = get_categories_collection().find_one_and_update(
@@ -102,9 +100,9 @@ def put_category(category_id: str, data: dict) -> dict:
 
 
 def delete_category(category_id: str, deleted_at: datetime | None = None) -> dict | None:
-    """Deletion = tombstone, no upsert (an unknown Id must stay a 404) —
-    see entries_repo.delete_entry. TombstonedAt: see entries_repo.delete_entry
-    for why this is a real BSON Date rather than the usual ISO string."""
+    """Soft-delete: sets IsDeleted instead of removing the document. Never
+    an upsert — an unknown Id must stay a 404. TombstonedAt is a real BSON
+    Date so MongoDB's TTL index can auto-expire old tombstones."""
     incoming = timestamps.to_iso_utc(deleted_at) or timestamps.now_iso()
     result = get_categories_collection().find_one_and_update(
         {"Id": category_id, "UpdatedAt": {"$lt": incoming}},
@@ -115,12 +113,10 @@ def delete_category(category_id: str, deleted_at: datetime | None = None) -> dic
 
 
 def upsert_category(doc: dict) -> str:
-    """Used by the migration: idempotent upsert by Id, preserves the
-    document's original CreatedAt/UpdatedAt (no regeneration). Deliberately
-    not filtered by IsDeleted — see entries_repo.upsert_entry.
-    $set rather than replace_one: only $set does a field-by-field comparison
-    and reports modified_count=0 for content that's genuinely unchanged —
-    replace_one reports modified_count>0 even when writing identical content."""
+    """Idempotent upsert by Id for the one-shot JSON migration: keeps the
+    document's original CreatedAt/UpdatedAt as-is and matches on Id
+    regardless of IsDeleted, so a tombstone gets updated in place instead of
+    colliding with the unique index."""
     result = get_categories_collection().update_one({"Id": doc["Id"]}, {"$set": doc}, upsert=True)
     if result.upserted_id is not None:
         return "inserted"

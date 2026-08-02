@@ -1,6 +1,6 @@
-// Prépare une image sélectionnée par l'utilisateur avant stockage inline dans
-// vocabulary.json : redimensionnement (borne max) puis compression JPEG, pour
-// que la base JSON reste légère même après de nombreux ajouts d'images.
+// Prepares a user-picked image before it's stored inline in vocabulary.json:
+// downscale to a max dimension, then JPEG compression, so the JSON database
+// stays light even after many images are added.
 using System.IO;
 using System.Windows.Media.Imaging;
 

@@ -1,6 +1,6 @@
-// Code-behind de la fenêtre Options : réutilise MainWindowViewModel comme
-// DataContext (pas de ViewModel dédié) puisque ThemeToggleText/DataFilePath y
-// vivent déjà.
+// Code-behind for the Options window: reuses MainWindowViewModel as
+// DataContext (no dedicated ViewModel) since ThemeToggleText/DataFilePath
+// already live there.
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -46,8 +46,8 @@ public partial class OptionsWindow : Window
 
     private void OpenDataFolderButton_Click(object sender, RoutedEventArgs e)
     {
-        // Le dossier n'existe pas forcément encore (aucune sauvegarde effectuée) :
-        // on le crée pour que l'Explorateur ait toujours quelque chose à ouvrir.
+        // The folder may not exist yet (no save has happened): create it so
+        // Explorer always has something to open.
         var folderPath = Path.GetDirectoryName(((MainWindowViewModel)DataContext).DataFilePath);
 
         if (string.IsNullOrEmpty(folderPath))

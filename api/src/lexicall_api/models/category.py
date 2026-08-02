@@ -7,17 +7,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class VocabularyCategoryWrite(BaseModel):
-    # min_length=1: reject an empty string, not just a missing field.
     name: str = Field(alias="Name", min_length=1)
     parent_id: str | None = Field(default=None, alias="ParentId")
     description: str = Field(default="", alias="Description")
     icon_glyph: str = Field(default="", alias="IconGlyph")
-    # Real client-side edit timestamp — see VocabularyEntryWrite and
-    # categories_repo.put_category (conditional LWW upsert).
+    # Client-stamped edit time, used for Last-Write-Wins comparisons.
     updated_at: datetime | None = Field(default=None, alias="UpdatedAt")
-    # Real creation timestamp — see VocabularyEntryWrite.created_at for why
-    # this lives on Write (PUT is a true upsert) and why $setOnInsert, not
-    # field placement, is what actually protects it from an edit.
+    # Trusted from the client so an offline-created category keeps its real
+    # creation date; only actually applied on first insert (see put_category).
     created_at: datetime | None = Field(default=None, alias="CreatedAt")
 
     model_config = ConfigDict(populate_by_name=True)
@@ -31,7 +28,7 @@ class VocabularyCategory(BaseModel):
     icon_glyph: str = Field(default="", alias="IconGlyph")
     created_at: datetime = Field(alias="CreatedAt")
     updated_at: datetime = Field(alias="UpdatedAt")
-    # Tombstone — see VocabularyEntrySummary.is_deleted.
+    # True once soft-deleted; only ever seen through a delta pull.
     is_deleted: bool = Field(default=False, alias="IsDeleted")
 
     model_config = ConfigDict(populate_by_name=True)

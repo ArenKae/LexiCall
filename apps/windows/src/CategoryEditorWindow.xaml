@@ -8,8 +8,8 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!-- Formulaire modal d'ajout/modification d'une catégorie (le renommage
-         rapide se fait directement dans l'arbre de la fenêtre principale). -->
+    <!-- Modal add/edit category form (quick rename happens directly in the
+         main window's tree instead). -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -44,8 +44,8 @@
                              Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                              VerticalAlignment="Center" />
 
-                    <!-- Sélecteur d'icône : ouvre IconPickerWindow, qui referme
-                         aussitôt qu'une icône est choisie. -->
+                    <!-- Icon picker: opens IconPickerWindow, which closes
+                         itself as soon as an icon is chosen. -->
                     <Button Grid.Column="1"
                             Width="44" Height="36"
                             Padding="0"
@@ -82,8 +82,8 @@
                            FontWeight="SemiBold" />
                 <StackPanel Orientation="Horizontal"
                             Margin="0,6,0,0">
-                    <!-- Sélecteur de couleur : ouvre ColorPickerWindow, qui referme
-                         aussitôt qu'une couleur (ou "Automatique") est choisie. -->
+                    <!-- Color picker: opens ColorPickerWindow, which closes
+                         itself as soon as a color (or "Automatique") is chosen. -->
                     <Button Width="36" Height="36"
                             Padding="0"
                             Click="ChooseColorButton_Click"

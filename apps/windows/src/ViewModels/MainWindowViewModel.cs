@@ -1,6 +1,6 @@
-// ViewModel principal : expose à MainWindow.xaml l'arbre des catégories,
-// la liste d'entrées filtrée (catégorie + recherche) et les opérations CRUD
-// sur les entrées et les catégories.
+// Main ViewModel: exposes the category tree, the filtered entry list
+// (category + search), and CRUD operations on entries and categories to
+// MainWindow.xaml.
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
@@ -16,11 +16,11 @@ using LexiCall.Desktop.Utilities;
 
 namespace LexiCall.Desktop.ViewModels;
 
-// Statut global affiché à côté du bouton Options (voir MainWindow.xaml) —
-// combine la connectivité (ApiConnectionStatus) et la réussite du dernier
-// cycle de resync en un seul état simple à piloter côté XAML : Problem
-// couvre aussi bien une API injoignable qu'un pull qui échoue après un
-// connectivity check pourtant Ok, sans distinguer la cause à ce niveau.
+// Global status shown next to the Options button (see MainWindow.xaml) —
+// combines connectivity (ApiConnectionStatus) and the last resync outcome
+// into one XAML-friendly state. Problem covers both an unreachable API and
+// a pull that fails despite a healthy connectivity check; the cause isn't
+// distinguished further here.
 public enum GlobalSyncStatus
 {
     NotConfigured,
@@ -74,18 +74,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _apiKey = settings.ApiKey;
         _apiClient = apiClient ?? new VocabularyApiClient(_apiBaseUrl, _apiKey);
 
-        // Synchronisation périodique pendant l'exécution (pas seulement au
-        // lancement) : une panne réseau qui se résout en cours de session
-        // (VPN qui se reconnecte, VM dev qui redémarre) est rattrapée sans
-        // attendre le prochain démarrage de l'app.
+        // Periodic sync while the app runs (not just at launch): a network
+        // outage that resolves mid-session (VPN reconnects, dev VM restarts)
+        // is caught without waiting for the next app launch.
         _periodicSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
         _periodicSyncTimer.Tick += async (_, _) => await TryResyncAsync();
         _periodicSyncTimer.Start();
 
-        // Premier essai de rattrapage en tâche de fond des mutations faites
-        // hors ligne, jamais encore poussées vers l'API — voir
-        // ResyncWithApiAsync. Non awaité volontairement : ne doit jamais
-        // retarder l'ouverture de la fenêtre.
+        // First catch-up attempt for offline mutations never yet pushed to
+        // the API — see ResyncWithApiAsync. Deliberately not awaited: must
+        // never delay the window opening.
         _ = TryResyncAsync();
     }
 
@@ -93,11 +91,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public ObservableCollection<VocabularyCategory> Categories { get; }
 
-    // Liste affichée par l'UI, reconstruite à partir d'Entries à chaque recherche ou mutation.
+    // List shown by the UI, rebuilt from Entries on every search or mutation.
     public ObservableCollection<VocabularyEntry> FilteredEntries { get; }
 
-    // Arbre latéral : nœuds virtuels ("Toutes", "Sans catégorie") puis les
-    // catégories racines avec leurs sous-catégories.
+    // Sidebar tree: virtual nodes ("Toutes les entrées", "Sans catégorie")
+    // followed by root categories with their subcategories.
     public ObservableCollection<CategoryNodeViewModel> CategoryTree { get; }
 
     public string DataFilePath => _repository.FilePath;
@@ -130,24 +128,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public CategoryNodeViewModel? SelectedCategoryNode => _selectedCategoryNode;
 
-    // Dernier niveau seulement ; le chemin complet est exposé via SelectedCategoryTooltip.
+    // Leaf name only; the full path is exposed via SelectedCategoryTooltip.
     public string SelectedCategoryLabel => _selectedCategoryNode?.DisplayName ?? "Toutes les entrées";
 
-    // Null quand le chemin complet n'apporterait rien (nœud virtuel ou racine).
+    // Null when the full path wouldn't add anything (virtual node or root category).
     public string? SelectedCategoryTooltip => _selectedCategoryNode?.Category is VocabularyCategory { ParentId: not null } category
         ? GetCategoryPath(category)
         : null;
 
-    // Objets complets (pas juste le nom) : les chips du détail ont besoin de
-    // l'Id pour le clic (cf. SelectCategory).
+    // Full objects, not just names: detail chips need the Id for their click
+    // handler (see SelectCategory).
     public IReadOnlyList<VocabularyCategory> SelectedEntryCategories => SelectedEntry is null
         ? []
         : GetCategories(SelectedEntry.CategoryIds).ToList();
 
-    // Barre de statut bas-gauche (MainWindow.xaml) : vide si rien à montrer
-    // (pas de sélection, ou synchro non configurée) — la barre entière se
-    // masque alors, plutôt que d'afficher un état trompeur à quelqu'un qui
-    // n'utilise pas la synchro.
+    // Bottom-left status bar (MainWindow.xaml): empty when there's nothing to
+    // show (no selection, or sync not configured) — the whole bar hides
+    // instead of showing a misleading state to someone not using sync.
     public string SelectedEntrySyncStatusText
     {
         get
@@ -166,12 +163,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    // Pilote la couleur du point dans MainWindow.xaml.
+    // Drives the status dot's color in MainWindow.xaml.
     public bool SelectedEntrySyncIsSynced =>
         SelectedEntry is { SyncedAt: { } syncedAt } entry && syncedAt >= entry.UpdatedAt;
 
-    // Statut global affiché à côté du bouton Options — voir GlobalSyncStatus
-    // et ResyncWithApiAsync pour les points d'écriture.
+    // Global status shown next to the Options button — see GlobalSyncStatus
+    // and ResyncWithApiAsync for where it's set.
     public GlobalSyncStatus GlobalSyncStatus
     {
         get => _globalSyncStatus;
@@ -232,11 +229,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public string ApiKey => _apiKey ?? string.Empty;
 
-    // Basculé par MainWindow.xaml.cs autour de chaque ShowDialog() sur
-    // EntryEditorWindow/CategoryEditorWindow — empêche TryResyncAsync de
-    // fusionner un pull pendant qu'une édition est en cours. Simple booléen
-    // plutôt qu'une référence à Application.Current.Windows : les ViewModels
-    // de ce projet ne référencent jamais de type Window concret.
+    // Toggled by MainWindow.xaml.cs around every ShowDialog() on
+    // EntryEditorWindow/CategoryEditorWindow — stops TryResyncAsync from
+    // merging a pull while an edit is in progress. A plain bool rather than
+    // an Application.Current.Windows check: ViewModels never reference a
+    // concrete Window type.
     public bool IsEditorDialogOpen { get; set; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -247,8 +244,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ThemeToggleText));
     }
 
-    // Appelé par OptionsWindow : persiste (load-merge-save, comme le reste de
-    // settings.json) puis reconstruit le client HTTP avec les nouvelles valeurs.
+    // Called by OptionsWindow: persists (load-merge-save, like the rest of
+    // settings.json) then rebuilds the HTTP client with the new values.
     public void UpdateApiSettings(string? apiBaseUrl, string? apiKey)
     {
         _apiBaseUrl = apiBaseUrl;
@@ -263,9 +260,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ApiBaseUrl));
         OnPropertyChanged(nameof(ApiKey));
 
-        // Les deux indicateurs de synchro dépendent de _apiClient.IsConfigured
-        // (masqués s'il est faux) — sans ceci, ils resteraient figés sur
-        // l'ancien état jusqu'au prochain cycle de resync (jusqu'à 60s).
+        // Both sync indicators depend on _apiClient.IsConfigured (hidden when
+        // false) — without this they'd stay stuck on the old state until
+        // the next resync cycle (up to 60s later).
         GlobalSyncStatus = _apiClient.IsConfigured ? GlobalSyncStatus.Syncing : GlobalSyncStatus.NotConfigured;
         OnPropertyChanged(nameof(SelectedEntrySyncStatusText));
         OnPropertyChanged(nameof(SelectedEntrySyncIsSynced));
@@ -273,14 +270,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public Task<ApiConnectionStatus> TestApiConnectionAsync() => _apiClient.TestConnectionAsync();
 
-    // Point d'entrée partagé entre le démarrage et le timer périodique —
-    // garde de ré-entrance (un resync déjà en cours n'en démarre pas un
-    // second) et garde d'édition (voir IsEditorDialogOpen). Vérifiés au
-    // moment même du déclenchement : le Tick de DispatcherTimer s'exécute
-    // sur le thread UI, tout comme l'écriture d'IsEditorDialogOpen par le
-    // code-behind — pas de race à gérer. Si l'un ou l'autre bloque, on
-    // annule simplement cet appel : le prochain tick, 60 secondes plus tard,
-    // retentera de lui-même, pas besoin de replanifier quoi que ce soit.
+    // Shared entry point for startup and the periodic timer — re-entrancy
+    // guard (a resync already running skips a second one) and edit guard
+    // (see IsEditorDialogOpen). Both checked at trigger time: DispatcherTimer
+    // .Tick and IsEditorDialogOpen writes both run on the UI thread, so
+    // there's no race to handle. If either guard trips, this call is simply
+    // skipped — the next tick, 60 seconds later, retries on its own.
     private async Task TryResyncAsync()
     {
         if (_isSyncing || IsEditorDialogOpen)
@@ -300,13 +295,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    // Rattrape les mutations faites pendant que l'API était injoignable
-    // (chaque mutation tente déjà un push best-effort au moment où elle se
-    // produit, cf. AddEntry/UpdateEntry/SaveCategory/RenameCategory ; ceci
-    // couvre les échecs de ces tentatives) et récupère les changements faits
-    // par un autre client. Catégories poussées/pull-ées avant les entrées :
-    // l'API valide les CategoryIds d'une entrée contre les catégories déjà
-    // connues côté serveur.
+    // Catches up on mutations made while the API was unreachable (every
+    // mutation already attempts a best-effort push when it happens, see
+    // AddEntry/UpdateEntry/SaveCategory/RenameCategory; this covers failures
+    // of those attempts) and pulls changes made by another client.
+    // Categories are pushed/pulled before entries: the API validates an
+    // entry's CategoryIds against categories it already knows about.
     private async Task ResyncWithApiAsync()
     {
         if (!_apiClient.IsConfigured)
@@ -315,25 +309,24 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        // Encore sur le thread appelant à ce stade (pas d'await avant ici) :
-        // pas besoin de Dispatcher.Invoke pour ces deux écritures.
+        // Still on the caller's thread here (no await yet) — no
+        // Dispatcher.Invoke needed for these two writes.
         GlobalSyncStatus = GlobalSyncStatus.Syncing;
         var status = await _apiClient.TestConnectionAsync().ConfigureAwait(false);
 
         if (status != ApiConnectionStatus.Ok)
         {
-            // API injoignable ou mal configurée : pas la peine de tenter des
-            // centaines d'upserts qui échoueraient tous à chaque démarrage.
+            // Unreachable or misconfigured API: no point attempting hundreds
+            // of upserts that would all fail, on every startup.
             Application.Current.Dispatcher.Invoke(() => GlobalSyncStatus = GlobalSyncStatus.Problem);
             return;
         }
 
-        // Rejoue les suppressions en attente. Entrées avant catégories —
-        // l'inverse de la convention "catégories avant entrées" ci-dessous :
-        // le guard serveur count_entries_using_category compte encore une
-        // entrée tant qu'elle n'est pas tombstonée, donc une suppression de
-        // catégorie encore en attente échouerait (409) si l'entrée qui
-        // l'utilisait n'est pas déjà supprimée côté serveur.
+        // Retries pending deletions. Entries before categories — the
+        // reverse of the "categories before entries" convention below: the
+        // server's count_entries_using_category guard still counts an entry
+        // until it's tombstoned, so a pending category deletion would 409
+        // if the entry that used it isn't already gone server-side.
         foreach (var pending in _pendingEntryDeletions.ToList())
         {
             if (await _apiClient.TryDeleteEntryAsync(pending.Id, pending.DeletedAt).ConfigureAwait(false))
@@ -350,10 +343,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             }
         }
 
-        // Push borné par enregistrement via SyncedAt (pas un checkpoint
-        // global) : isole un échec permanent à un seul enregistrement plutôt
-        // que de bloquer tout le lot, et couvre déjà naturellement le tout
-        // premier sync (SyncedAt == null pour tout le monde au départ).
+        // Push gated per record via SyncedAt, not a global checkpoint:
+        // isolates a permanent failure to one record instead of blocking the
+        // whole batch, and naturally covers the very first sync (SyncedAt
+        // == null for everyone).
         var categoriesToPush = Categories.Where(c => c.SyncedAt is null || c.SyncedAt < c.UpdatedAt).ToList();
         var syncedCategories = new List<VocabularyCategory>();
 
@@ -376,17 +369,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             }
         }
 
-        // Pull différentiel : checkpoint = dernier pull réussi (LastPulledAt),
-        // totalement indépendant du succès des push ci-dessus — chaque
-        // enregistrement gère déjà son propre état via SyncedAt. Null => tout
-        // premier pull, déjà géré côté API (vue complète sans updated_since).
+        // Delta pull: checkpoint is the last successful pull (LastPulledAt),
+        // entirely independent from whether the pushes above succeeded —
+        // each record already tracks its own state via SyncedAt. Null means
+        // the very first pull, already handled server-side (full view, no
+        // updated_since).
         var checkpoint = SettingsStore.Load().LastPulledAt;
         var categoriesPull = await _apiClient.TryPullCategoriesAsync(checkpoint).ConfigureAwait(false);
 
         if (categoriesPull is null)
         {
-            // Échec : checkpoint et SyncedAt inchangés, on retentera au
-            // prochain déclenchement (prochain tick ou démarrage).
+            // Failure: checkpoint and SyncedAt stay unchanged, retried on
+            // the next trigger (next tick or launch).
             Application.Current.Dispatcher.Invoke(() => GlobalSyncStatus = GlobalSyncStatus.Problem);
             return;
         }
@@ -399,11 +393,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        // Un seul passage par le thread UI pour tout le lot (confirmations de
-        // push ET fusion du pull) plutôt qu'un Dispatcher.Invoke par
-        // enregistrement — Entries/Categories sont des ObservableCollection
-        // liées à l'UI ; rien avant ce point n'écrit dedans depuis ce thread
-        // de fond (seulement des lectures via .ToList()/.Where()).
+        // One UI-thread dispatch for the whole batch (push confirmations and
+        // pull merge) instead of one Dispatcher.Invoke per record —
+        // Entries/Categories are UI-bound ObservableCollections; nothing
+        // before this point writes to them from this background thread
+        // (only reads via .ToList()/.Where()).
         Application.Current.Dispatcher.Invoke(() =>
         {
             foreach (var category in syncedCategories)
@@ -423,11 +417,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SaveDatabase();
             GlobalSyncStatus = GlobalSyncStatus.Ok;
 
-            // Inconditionnel plutôt que ciblé sur l'entrée sélectionnée : peu
-            // coûteux (un seul cycle par minute), et couvre à la fois une
-            // confirmation de push groupé (mutation en place, comme dans
-            // PushEntryUpsertAsync) et une mise à jour par delta-pull — c'est
-            // le déclencheur "live" demandé pour la barre de statut.
+            // Unconditional rather than scoped to the selected entry: cheap
+            // (one cycle per minute), and covers both a batched push
+            // confirmation (in-place mutation, as in PushEntryUpsertAsync)
+            // and a delta-pull update — the "live" trigger the status bar
+            // needs.
             OnPropertyChanged(nameof(SelectedEntrySyncStatusText));
             OnPropertyChanged(nameof(SelectedEntrySyncIsSynced));
         });
@@ -440,13 +434,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    // Fusionne les enregistrements reçus d'un pull différentiel dans une
-    // ObservableCollection locale : supprime si tombstoné, sinon insère ou
-    // remplace (uniquement si réellement plus récent — garde défensive, le
-    // serveur ne renvoie déjà que des lignes plus récentes que le
-    // checkpoint). Générique plutôt que dupliqué pour VocabularyEntry et
-    // VocabularyCategory, via de petits accès délégués faute d'interface
-    // commune entre les deux modèles.
+    // Merges records from a delta pull into a local ObservableCollection:
+    // removes if tombstoned, otherwise inserts or replaces (only if actually
+    // newer — a defensive check, the server already returns only rows newer
+    // than the checkpoint). Generic over VocabularyEntry and
+    // VocabularyCategory via small delegate accessors, since the two models
+    // share no common interface.
     private static void MergePulled<T>(
         ObservableCollection<T> collection,
         IReadOnlyList<T> pulled,
@@ -470,11 +463,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 continue;
             }
 
-            // Un enregistrement qu'on vient de recevoir du serveur est par
-            // définition déjà à jour côté serveur — sans ce marquage, il
-            // resterait signalé "à repousser" (SyncedAt encore null par
-            // défaut sur l'objet désérialisé) et serait renvoyé pour rien au
-            // prochain resync, y compris tout le lot du tout premier pull.
+            // A record just received from the server is by definition
+            // already in sync — without this it would stay marked "needs
+            // push" (SyncedAt still null on the deserialized object) and get
+            // pushed back for nothing on the next resync, including the
+            // entire first pull.
             if (index < 0)
             {
                 setSyncedAt(item, getUpdatedAt(item));
@@ -488,9 +481,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    // Push immédiat par mutation : confirme SyncedAt sur succès plutôt que de
-    // tirer et oublier, pour que le push borné de ResyncWithApiAsync sache
-    // que cet enregistrement n'a plus besoin d'être repoussé.
+    // Immediate push per mutation: confirms SyncedAt on success rather than
+    // fire-and-forget, so ResyncWithApiAsync's gated push knows this record
+    // no longer needs pushing.
     private async Task PushEntryUpsertAsync(VocabularyEntry entry)
     {
         if (!await _apiClient.TryUpsertEntryAsync(entry).ConfigureAwait(false))
@@ -502,18 +495,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var index = FindEntryIndex(entry.Id);
 
-            // Ne marque synced que si l'entrée n'a pas été réditée entretemps
-            // (nouvelle édition avant confirmation de la précédente) — sinon
-            // on marquerait à tort une version plus récente comme synchronisée.
+            // Only marks synced if the entry wasn't edited again in the
+            // meantime (a new edit before the previous one's confirmation)
+            // — otherwise a newer version would be wrongly marked as synced.
             if (index >= 0 && Entries[index].UpdatedAt == entry.UpdatedAt)
             {
                 Entries[index].SyncedAt = entry.UpdatedAt;
                 SaveDatabase();
 
-                // Mutation en place : SelectedEntry n'est pas réassigné par ce
-                // chemin (contrairement à MergePulled), donc son setter ne
-                // notifie pas tout seul — nécessaire pour que le badge de la
-                // barre de statut se mette à jour sans re-sélectionner l'entrée.
+                // In-place mutation: SelectedEntry isn't reassigned on this
+                // path (unlike MergePulled), so its setter doesn't notify on
+                // its own — needed for the status bar badge to update
+                // without re-selecting the entry.
                 if (SelectedEntry?.Id == entry.Id)
                 {
                     OnPropertyChanged(nameof(SelectedEntrySyncStatusText));
@@ -542,10 +535,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         });
     }
 
-    // Pousse une suppression en attente ; l'efface de la file seulement à
-    // confirmation. Si le push échoue (hors-ligne), l'enregistrement reste
-    // dans _pendingEntryDeletions/_pendingCategoryDeletions (persisté dans
-    // vocabulary.json), retenté au prochain ResyncWithApiAsync.
+    // Pushes a pending deletion; only clears it from the queue on
+    // confirmation. If the push fails (offline), the record stays in
+    // _pendingEntryDeletions/_pendingCategoryDeletions (persisted in
+    // vocabulary.json), retried on the next ResyncWithApiAsync.
     private async Task PushEntryDeletionAsync(Guid id, DateTimeOffset deletedAt)
     {
         if (!await _apiClient.TryDeleteEntryAsync(id, deletedAt).ConfigureAwait(false))
@@ -579,8 +572,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Entries.Insert(0, entry);
         OnEntriesChanged();
 
-        // Recherche réinitialisée pour que le mot ajouté reste visible ; la
-        // catégorie sélectionnée, elle, est préservée par RebuildCategoryTree.
+        // Search is reset so the newly added word stays visible; the
+        // selected category is preserved by RebuildCategoryTree.
         _searchQuery = string.Empty;
         OnPropertyChanged(nameof(SearchQuery));
 
@@ -589,8 +582,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SelectedEntry = entry;
         SaveDatabase();
 
-        // Best-effort, jamais awaité : ne doit jamais ralentir l'UI, encore
-        // moins quand l'API est injoignable (cas courant pour l'instant).
+        // Best-effort, never awaited: must never slow down the UI,
+        // especially when the API is unreachable (still the common case for now).
         _ = PushEntryUpsertAsync(entry);
     }
 
@@ -639,12 +632,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _ = PushEntryDeletionAsync(entry.Id, deletedAt);
     }
 
-    // Ajout ou remplacement d'une catégorie validée par CategoryEditorWindow.
-    // Retourne un message d'erreur, ou null si l'opération a réussi.
+    // Adds or replaces a category validated by CategoryEditorWindow. Returns
+    // an error message, or null on success.
     public string? SaveCategory(VocabularyCategory category)
     {
-        // Garde-fou anti-cycle : l'éditeur exclut déjà les descendants du sélecteur
-        // de parent, mais on revérifie avant de persister.
+        // Anti-cycle guard: the editor already excludes descendants from the
+        // parent picker, but this re-checks before persisting.
         if (category.ParentId is Guid parentId &&
             (parentId == category.Id ||
              CategoryHierarchy.GetDescendantIds(Categories, category.Id).Contains(parentId)))
@@ -668,10 +661,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return null;
     }
 
-    // Couleur choisie manuellement pour une catégorie (ou null pour revenir à
-    // l'automatique) : appelé après un SaveCategory réussi depuis
-    // CategoryEditorWindow. Préférence locale à l'app Windows (CategoryColorStore),
-    // ne touche ni vocabulary.json ni api/.
+    // Manually assigned category color (or null to revert to automatic),
+    // called after a successful SaveCategory from CategoryEditorWindow. A
+    // local Windows-app preference (CategoryColorStore) — touches neither
+    // vocabulary.json nor api/.
     public void SetCategoryColor(Guid categoryId, string? colorHex)
     {
         if (string.IsNullOrEmpty(colorHex))
@@ -749,16 +742,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var deletedAt = DateTimeOffset.Now;
         _pendingCategoryDeletions.Add(new PendingDeletion { Id = categoryId, DeletedAt = deletedAt });
 
-        // OnCategoriesChanged() sauvegarde déjà — un seul SaveDatabase() pour
-        // la suppression ET la tentative en attente, pas deux appels séparés.
+        // OnCategoriesChanged() already saves — one SaveDatabase() call for
+        // both the deletion and the pending-deletion record, not two separate calls.
         OnCategoriesChanged();
         _ = PushCategoryDeletionAsync(categoryId, deletedAt);
         return null;
     }
 
-    // Déplace une catégorie parmi ses frères (même parent effectif) et fige
-    // l'ordre résultant du groupe entier dans CategoryOrderStore — préférence
-    // locale à l'app Windows, ne touche ni vocabulary.json ni api/.
+    // Moves a category among its siblings (same effective parent) and
+    // persists the resulting order for the whole group in CategoryOrderStore
+    // — a local Windows-app preference, touches neither vocabulary.json nor api/.
     public void MoveCategoryUp(Guid categoryId) => MoveCategory(categoryId, offset: -1);
 
     public void MoveCategoryDown(Guid categoryId) => MoveCategory(categoryId, offset: 1);
@@ -796,7 +789,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SaveDatabase();
     }
 
-    // Appelé par les nœuds quand le TreeView les sélectionne (binding IsSelected).
+    // Called by a node when the TreeView selects it (IsSelected binding).
     private void OnCategoryNodeSelected(CategoryNodeViewModel node)
     {
         if (_selectedCategoryNode == node)
@@ -804,7 +797,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        // Le ViewModel doit rester cohérent même sans vue attachée.
+        // The ViewModel must stay consistent even with no view attached.
         var previousNode = _selectedCategoryNode;
         _selectedCategoryNode = node;
         previousNode?.IsSelected = false;
@@ -814,7 +807,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RefreshFilteredEntries();
     }
 
-    // Clic sur un chip de catégorie : sélectionne la même catégorie dans l'arbre de gauche.
+    // Category-chip click: selects the same category in the left-hand tree.
     public void SelectCategory(Guid categoryId)
     {
         var node = CollectNodes(CategoryTree)
@@ -833,8 +826,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         node.IsSelected = true;
     }
 
-    // Remonte les parents dans l'arbre affiché (pas juste la hiérarchie de
-    // catégories) pour pouvoir déplier jusqu'au nœud ciblé.
+    // Walks up parents in the displayed tree (not just the category
+    // hierarchy) to expand down to the target node.
     private IEnumerable<CategoryNodeViewModel> GetAncestors(CategoryNodeViewModel node)
     {
         var ancestorIds = new List<Guid>();
@@ -852,7 +845,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void RebuildCategoryTree()
     {
-        // Reconstruit à chaque mutation ; on préserve l'expansion et la sélection courante.
+        // Rebuilt on every mutation; preserves the current expansion and selection.
         var expandedIds = CollectNodes(CategoryTree)
             .Where(node => node.Category is not null && node.IsExpanded)
             .Select(node => node.Category!.Id)
@@ -870,8 +863,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         uncategorizedNode.EntryCount = Entries.Count(entry => entry.CategoryIds.Count == 0);
         CategoryTree.Add(uncategorizedNode);
 
-        // Flatten fournit un parcours en profondeur avec la profondeur de chaque
-        // nœud : une pile suffit pour reconstituer l'imbrication.
+        // Flatten gives a depth-first walk with each node's depth; a stack
+        // is enough to reconstruct the nesting.
         var categoryOrder = CategoryOrderStore.LoadAll();
         var colorIndexes = CategoryHierarchy.ComputeColorIndexes(Categories);
         var colorOverrides = CategoryColorStore.LoadAll();
@@ -927,12 +920,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _ => allNode
         } ?? allNode;
 
-        // Le nœud précédent n'existe plus : le callback mettra le filtre à jour.
+        // The previous node no longer exists: the callback will update the filter.
         _selectedCategoryNode = null;
         nodeToSelect.IsSelected = true;
     }
 
-    // Compte les entrées du sous-arbre et retourne les Ids couverts, utilisés par le parent.
+    // Counts entries in the subtree and returns the covered Ids, used by the parent.
     private HashSet<Guid> ComputeEntryCounts(CategoryNodeViewModel node)
     {
         var subtreeIds = new HashSet<Guid> { node.Category!.Id };
@@ -1099,8 +1092,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SelectedEntry = stillVisible ?? FilteredEntries.FirstOrDefault();
     }
 
-    // Ensemble des Ids couverts par le nœud sélectionné (catégorie + descendantes),
-    // ou null quand aucun filtre de catégorie ne s'applique.
+    // Set of Ids covered by the selected node (category + descendants), or
+    // null when no category filter applies.
     private HashSet<Guid>? BuildCategoryFilterIds()
     {
         if (_selectedCategoryNode?.Category is not VocabularyCategory category)
@@ -1150,8 +1143,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         var normalizedQuery = NormalizeForSearch(SearchQuery);
 
-        // La recherche reste volontairement simple : pas d'index, juste un scan en
-        // mémoire. C'est suffisant pour la Phase 1 et quelques centaines de mots.
+        // Search stays deliberately simple: no index, just an in-memory
+        // scan — enough for Phase 1 and a few hundred entries.
         return SearchFieldMatches(entry.Word, normalizedQuery) ||
             SearchFieldMatches(entry.Definition, normalizedQuery) ||
             SearchFieldMatches(entry.Notes, normalizedQuery) ||
@@ -1201,7 +1194,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private static string NormalizeForSearch(string value)
     {
-        // Supprime les accents avant comparaison ("ephemere" retrouve "Éphémère").
+        // Strips accents before comparing ("ephemere" matches "Éphémère").
         var normalized = value.Normalize(NormalizationForm.FormD);
         var builder = new StringBuilder(normalized.Length);
 

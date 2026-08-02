@@ -12,8 +12,8 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!-- Fenêtre principale : arbre de catégories à gauche (CRUD contextuel),
-         liste filtrée par catégorie + recherche au centre, détail à droite. -->
+    <!-- Main window: category tree on the left (contextual CRUD), category +
+         search filtered list in the center, detail on the right. -->
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -24,9 +24,9 @@
             <StackPanel DockPanel.Dock="Right"
                         Orientation="Horizontal"
                         VerticalAlignment="Center">
-                <!-- Statut global de synchro : pastille de connectivité +
-                     icône reflétant le dernier cycle de resync périodique.
-                     Masqué entièrement si la synchro n'est pas configurée. -->
+                <!-- Global sync status: connectivity dot + icon reflecting
+                     the last periodic resync cycle. Hidden entirely when
+                     sync isn't configured. -->
                 <StackPanel Orientation="Horizontal"
                             VerticalAlignment="Center"
                             Margin="0,0,10,0">
@@ -115,8 +115,8 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- Poignées de redimensionnement : les catégories réelles ont des noms
-                 longs, aucune largeur fixe ne convient à tous les cas. -->
+            <!-- Resize handles: real category names can be long, no fixed
+                 width fits every case. -->
             <GridSplitter Grid.Column="1"
                           Width="12"
                           HorizontalAlignment="Stretch"
@@ -130,7 +130,7 @@
                           Background="Transparent"
                           ResizeBehavior="PreviousAndNext" />
 
-            <!-- ═══ Panneau des catégories ═══ -->
+            <!-- ═══ Category panel ═══ -->
             <Border Grid.Column="0"
                     Style="{StaticResource CardBorderStyle}"
                     Padding="10">
@@ -171,20 +171,20 @@
                                     </Grid.ColumnDefinitions>
 
                                     <Grid.ContextMenu>
-                                        <!-- FontFamily sur chaque MenuItem : l'émoji préfixant le Header se
-                                             résout via Segoe UI Emoji/Symbol, le reste du texte retombe sur
-                                             Segoe UI comme partout ailleurs (résolution par caractère). -->
+                                        <!-- FontFamily on each MenuItem: the emoji prefixing the Header
+                                             resolves via Segoe UI Emoji/Symbol, the rest of the text falls
+                                             back to Segoe UI like everywhere else (per-character resolution). -->
                                         <ContextMenu>
                                             <MenuItem Header="➕  Nouvelle sous-catégorie…"
                                                       FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
                                                       Click="AddSubCategoryMenuItem_Click" />
                                             <Separator />
-                                            <!-- IsEnabled recalculé à l'ouverture (CanMoveUp/CanMoveDown), voir
-                                                 CategoryNode_ContextMenuOpening : désactivés en bout de groupe.
-                                                 Header composé à la main (au lieu d'un simple préfixe texte) :
-                                                 les flèches fines (↑/↓) restaient fines même en Bold — un triangle
-                                                 plein (▲/▼) donne un repère bien plus visible, avec sa propre
-                                                 taille et une colonne de largeur fixe alignée sur les autres icônes. -->
+                                            <!-- IsEnabled recomputed on open (CanMoveUp/CanMoveDown), see
+                                                 CategoryNode_ContextMenuOpening: disabled at either end of the
+                                                 group. Header built by hand (instead of a plain text prefix):
+                                                 the thin arrows (↑/↓) stayed thin even in Bold — a solid
+                                                 triangle (▲/▼) reads as a much clearer marker, with its own
+                                                 size and a fixed-width column aligned with the other icons. -->
                                             <MenuItem IsEnabled="{Binding CanMoveUp}"
                                                       InputGestureText="Ctrl+Haut"
                                                       Click="MoveCategoryUpMenuItem_Click">
@@ -232,8 +232,8 @@
                                         </ContextMenu>
                                     </Grid.ContextMenu>
 
-                                    <!-- Halo de fond : identifie d'un coup d'œil la famille de catégorie
-                                         en parcourant la liste, sans nuire à la lisibilité du texte. -->
+                                    <!-- Background halo: identifies a category's family at a glance
+                                         while scanning the list, without hurting text readability. -->
                                     <Border Grid.Column="0" Grid.ColumnSpan="3"
                                             CornerRadius="4"
                                             Margin="-4,-1,-4,-1">
@@ -253,8 +253,8 @@
                                         </Border.Style>
                                     </Border>
 
-                                    <!-- Repère de couleur plein : la sous-catégorie reprend la teinte de sa
-                                         racine, atténuée, pour montrer son appartenance. -->
+                                    <!-- Solid color marker: a subcategory reuses its root's hue, dimmed,
+                                         to show which family it belongs to. -->
                                     <Border Grid.Column="0"
                                             CornerRadius="2"
                                             Margin="0,1,4,1">
@@ -289,7 +289,7 @@
                                             </Style>
                                         </Grid.Style>
 
-                                        <!-- Icône (emoji) : repère visuel complémentaire à la couleur. -->
+                                        <!-- Icon (emoji): a visual marker complementing the color. -->
                                         <TextBlock Grid.Column="0"
                                                    Text="{Binding DisplayIcon}"
                                                    FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
@@ -324,7 +324,7 @@
                                         </TextBlock>
                                     </Grid>
 
-                                    <!-- Renommage inline : Entrée valide, Échap annule. -->
+                                    <!-- Inline rename: Enter commits, Escape cancels. -->
                                     <TextBox Grid.Column="1"
                                              Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}"
                                              Padding="4,1"
@@ -370,7 +370,7 @@
                 </Grid>
             </Border>
 
-            <!-- ═══ Recherche et liste des mots ═══ -->
+            <!-- ═══ Search and entry list ═══ -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -386,8 +386,8 @@
                             <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                                 <Setter Property="Padding" Value="9,6,40,6" />
                                 <Style.Triggers>
-                                    <!-- Espace réservé à la loupe seulement au repos (vide, non focus) :
-                                         dès le clic, le texte démarre au ras du bord. -->
+                                    <!-- Space reserved for the magnifier only at rest (empty, unfocused):
+                                         as soon as it's clicked, text starts flush with the edge. -->
                                     <MultiDataTrigger>
                                         <MultiDataTrigger.Conditions>
                                             <Condition Binding="{Binding SearchQuery}" Value="" />
@@ -400,8 +400,9 @@
                         </TextBox.Style>
                     </TextBox>
 
-                    <!-- Loupe façon placeholder : décorative (IsHitTestVisible=False),
-                         visible seulement au repos (vide, non focus). -->
+                    <!-- Placeholder-style magnifier: decorative
+                         (IsHitTestVisible=False), visible only at rest
+                         (empty, unfocused). -->
                     <Canvas Width="14" Height="14"
                             Margin="15,0,0,0"
                             HorizontalAlignment="Left"
@@ -433,7 +434,7 @@
                               StrokeEndLineCap="Round" />
                     </Canvas>
 
-                    <!-- Croix d'effacement : visible seulement si la recherche n'est pas vide. -->
+                    <!-- Clear cross: visible only while the search isn't empty. -->
                     <Button HorizontalAlignment="Right"
                             VerticalAlignment="Center"
                             Width="18" Height="18"
@@ -510,7 +511,7 @@
                         <ListBox ItemsSource="{Binding FilteredEntries}"
                                  SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
-                            <!-- Layout compact : priorité au nombre de mots visibles sans défiler. -->
+                            <!-- Compact layout: prioritizes how many entries are visible without scrolling. -->
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
                                     <Setter Property="Padding" Value="8,4" />
@@ -539,8 +540,8 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <!-- Cliquable : sélectionne cette catégorie dans le
-                                                         panneau de gauche (Cursor="Hand" signale l'action). -->
+                                                    <!-- Clickable: selects this category in the left-hand
+                                                         panel (Cursor="Hand" signals the action). -->
                                                     <Border Margin="0,0,4,2"
                                                             Padding="7,2"
                                                             CornerRadius="8"
@@ -596,7 +597,7 @@
                 </Border>
             </Grid>
 
-            <!-- ═══ Détail du mot sélectionné ═══ -->
+            <!-- ═══ Selected entry's detail ═══ -->
             <Border Grid.Column="4"
                     Style="{StaticResource CardBorderStyle}"
                     Padding="26">
@@ -670,7 +671,7 @@
                                                    FontSize="16"
                                                    TextWrapping="Wrap" />
 
-                                        <!-- Les catégories en tête : c'est l'axe d'organisation principal. -->
+                                        <!-- Categories come first: that's the main organizing axis. -->
                                         <ItemsControl ItemsSource="{Binding DataContext.SelectedEntryCategories, RelativeSource={RelativeSource AncestorType=Window}}"
                                                       Margin="0,14,0,0">
                                             <ItemsControl.ItemsPanel>
@@ -680,8 +681,8 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <!-- Cliquable : sélectionne cette catégorie dans le
-                                                         panneau de gauche (Cursor="Hand" signale l'action). -->
+                                                    <!-- Clickable: selects this category in the left-hand
+                                                         panel (Cursor="Hand" signals the action). -->
                                                     <Border Margin="0,0,8,8"
                                                             Padding="10,4"
                                                             CornerRadius="12"
@@ -705,11 +706,11 @@
 
                                         <Separator Margin="0,16,0,20" />
 
-                                        <!-- Métadonnées à gauche, image en haut à droite (colonne Auto,
-                                             repliée à 0 si absente). Sous le seuil de WidthBreakpointConverter,
-                                             les Style.Triggers replacent l'image en 2e ligne pleine largeur —
-                                             Grid.Row/Column doivent donc rester définis via Style, pas en
-                                             attribut direct, sinon la valeur locale primerait sur le Trigger. -->
+                                        <!-- Metadata on the left, image top-right (Auto column, collapses
+                                             to 0 when absent). Below WidthBreakpointConverter's threshold,
+                                             Style.Triggers move the image to a full-width 2nd row —
+                                             Grid.Row/Column must therefore stay set via Style, not as a
+                                             direct attribute, or the local value would win over the Trigger. -->
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
@@ -849,7 +850,7 @@
                 </Grid>
             </Border>
 
-            <!-- Statut de synchro de l'entrée sélectionnée -->
+            <!-- Sync status for the selected entry -->
             <StackPanel Grid.Row="1"
                         Grid.Column="4"
                         Orientation="Horizontal"

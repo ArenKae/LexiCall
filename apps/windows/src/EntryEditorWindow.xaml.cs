@@ -1,6 +1,5 @@
-// Code-behind de la fenêtre d'édition d'entrée.
-// La fenêtre expose SavedEntry au parent et se ferme quand le ViewModel signale
-// qu'une entrée valide a été construite.
+// Code-behind for the entry editor window. Exposes SavedEntry to the caller
+// and closes when the ViewModel signals a valid entry was built.
 using System.Windows;
 using LexiCall.Desktop.Models;
 using LexiCall.Desktop.Services;
@@ -23,8 +22,8 @@ public partial class EntryEditorWindow : Window
         DataContext = _viewModel;
         ThemeService.RegisterWindow(this);
 
-        // Le ViewModel ne connaît pas WPF. Il émet donc un événement métier simple
-        // que la fenêtre traduit en DialogResult.
+        // The ViewModel knows nothing about WPF: it raises a plain business
+        // event that the window translates into a DialogResult.
         _viewModel.EntrySaved += (_, _) =>
         {
             DialogResult = true;
@@ -34,8 +33,8 @@ public partial class EntryEditorWindow : Window
 
     public VocabularyEntry? SavedEntry => _viewModel.SavedEntry;
 
-    // Le sélecteur de fichiers est un détail WPF : le ViewModel reçoit
-    // uniquement le chemin choisi et ne connaît rien d'OpenFileDialog.
+    // The file picker is a WPF detail: the ViewModel only receives the chosen
+    // path and knows nothing about OpenFileDialog.
     private void SelectImageButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new Microsoft.Win32.OpenFileDialog

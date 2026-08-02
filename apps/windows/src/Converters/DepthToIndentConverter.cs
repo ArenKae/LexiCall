@@ -1,6 +1,6 @@
-// Transforme la profondeur hiérarchique d'une catégorie en marge gauche,
-// pour indenter les listes plates (cases à cocher de l'éditeur d'entrée)
-// sans que les ViewModels manipulent de types WPF.
+// Turns a category's hierarchy depth into a left margin, to indent flat
+// lists (entry editor's category checklist) without ViewModels touching any
+// WPF type.
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;

@@ -1,7 +1,7 @@
-// Base d'icônes (emoji) proposées par IconPickerWindow, regroupées en
-// collections thématiques filtrables par mot-clé. Rendues via Segoe UI Emoji
-// (fournie avec Windows), pas d'assets à gérer. Mots-clés sans accents pour
-// une recherche simple par Contains.
+// Catalog of icons (emoji) offered by IconPickerWindow, grouped into
+// keyword-filterable themed collections. Rendered via Segoe UI Emoji (bundled
+// with Windows) — no assets to manage. Keywords are French and unaccented,
+// matching the app's French UI, for a simple Contains search.
 namespace LexiCall.Desktop.Utilities;
 
 public sealed record CategoryIconOption(string Glyph, string Keywords);

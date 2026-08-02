@@ -1,8 +1,7 @@
-# Scinde les images inline (ImageBase64) restant dans `entries` vers
-# `entry_images`, en lisant directement Mongo — contrairement à
-# migrate_from_json.py, ne dépend d'aucun export vocabulary.json et traite
-# donc l'état réel de la base, y compris les entrées créées uniquement via
-# l'API depuis le déploiement initial.
+# Splits inline images (ImageBase64) still left on `entries` out to
+# `entry_images`, reading directly from Mongo instead of a vocabulary.json
+# export — so it also catches entries that were only ever created through
+# live API sync.
 import argparse
 import base64
 from dataclasses import dataclass

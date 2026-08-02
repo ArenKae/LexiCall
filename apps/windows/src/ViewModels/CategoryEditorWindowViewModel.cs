@@ -1,6 +1,6 @@
-// ViewModel du formulaire d'ajout/modification d'une catégorie : validation
-// locale puis événement CategorySaved avec le résultat dans SavedCategory.
-// Le sélecteur de parent exclut la catégorie éditée et ses descendantes.
+// ViewModel for the add/edit category form: local validation, then a
+// CategorySaved event with the result in SavedCategory. The parent picker
+// excludes the edited category and its descendants.
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -64,9 +64,9 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
 
     public VocabularyCategory? SavedCategory { get; private set; }
 
-    // Couleur choisie au moment de l'enregistrement (null = automatique) :
-    // séparée de SavedCategory, car ce n'est pas un champ du modèle de
-    // catégorie — voir CategoryColorStore.
+    // Color chosen at save time (null = automatic) — kept separate from
+    // SavedCategory since it isn't a field on the category model, see
+    // CategoryColorStore.
     public string? SavedColorHex { get; private set; }
 
     public string WindowTitle => _existingCategory is null
@@ -116,11 +116,10 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
 
     public bool HasIcon => !string.IsNullOrEmpty(IconGlyph);
 
-    // Repère neutre tant qu'aucune icône n'a été choisie, pour que le bouton
-    // du sélecteur ne soit jamais vide.
+    // Neutral glyph until an icon is chosen, so the picker button is never empty.
     public string IconDisplayGlyph => HasIcon ? IconGlyph : "🏷️";
 
-    // Null = pas de couleur choisie manuellement (couleur automatique).
+    // Null = no manually chosen color (automatic).
     public string? ColorHex
     {
         get => _colorHex;
@@ -136,11 +135,11 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
 
     public bool HasCustomColor => !string.IsNullOrEmpty(ColorHex);
 
-    // Aperçu du bouton de sélection : la couleur choisie, ou la couleur
-    // automatique de la catégorie existante (calculée en ignorant son propre
-    // override, pour prévisualiser correctement un retour à "Automatique"),
-    // ou un repère neutre pour une catégorie pas encore créée — son index de
-    // couleur automatique n'existe qu'après le premier enregistrement.
+    // Picker button preview: the chosen color, or the existing category's
+    // automatic color (computed ignoring its own override, to correctly
+    // preview a revert to "Automatique"), or a neutral glyph for a category
+    // not yet created — its automatic color index only exists after the
+    // first save.
     public SolidColorBrush ColorPreviewBrush
     {
         get
@@ -185,8 +184,8 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
 
     private List<CategoryParentOption> BuildParentOptions()
     {
-        // Une catégorie ne peut pas devenir son propre parent ni celui d'une de
-        // ses descendantes : on retire tout son sous-arbre des options.
+        // A category can't become its own parent or one of its descendants':
+        // its whole subtree is removed from the options.
         var excludedIds = new HashSet<Guid>();
 
         if (_existingCategory is not null)

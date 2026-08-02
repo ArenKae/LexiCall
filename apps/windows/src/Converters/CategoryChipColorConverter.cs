@@ -1,11 +1,8 @@
-// Couleur de fond des pills de catégorie sur une entrée : la couleur effective
-// de la catégorie (CategoryColorResolver — choisie manuellement ou dérivée
-// automatiquement), mêlée en transparence à ce qu'il y a derrière — comme le
-// halo de couleur de l'arbre — plutôt qu'en aplat plein. Ça garde le lien
-// visuel direct avec la couleur de la catégorie sans écart de vivacité entre
-// l'arbre et les pills, et reste lisible dans les deux thèmes avec un texte de
-// couleur fixe (Brush.Text.Primary, posé directement en XAML). MultiBinding :
-// [0] = VocabularyCategory du chip, [1] = toutes les catégories connues.
+// Background color for an entry's category chips: the category's effective
+// color (CategoryColorResolver), blended with transparency rather than a
+// solid fill, so it reads consistently in both themes against the fixed text
+// color (Brush.Text.Primary, set directly in XAML). MultiBinding:
+// [0] = the chip's VocabularyCategory, [1] = all known categories.
 using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;

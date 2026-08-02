@@ -1,6 +1,6 @@
-// ViewModel du formulaire d'ajout/modification d'une entrée.
-// La fenêtre renvoie une SavedEntry validée au MainWindowViewModel, qui décidera
-// ensuite de l'ajouter ou de remplacer l'entrée existante.
+// ViewModel for the add/edit entry form. The window hands a validated
+// SavedEntry back to MainWindowViewModel, which decides whether to add it or
+// replace the existing entry.
 using System.ComponentModel;
 using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
@@ -32,8 +32,8 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         SaveEntryCommand = new RelayCommand(SaveEntry);
         RemoveImageCommand = new RelayCommand(RemoveImage);
 
-        // Catégories optionnelles (CategoryIds peut rester vide). En création,
-        // initialCategoryId pré-coche la catégorie choisie dans l'arbre.
+        // Categories are optional (CategoryIds may stay empty). On creation,
+        // initialCategoryId pre-checks the category selected in the tree.
         CategorySelections = new ObservableCollection<CategorySelectionViewModel>(
             CategoryHierarchy.Flatten((availableCategories ?? []).ToList())
             .Select(item => new CategorySelectionViewModel(
@@ -158,7 +158,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _errorMessage, value);
     }
 
-    // Redimensionnement/compression délégués à ImageProcessor (pas de dépendance WPF ici).
+    // Resizing/compression delegated to ImageProcessor (no WPF dependency here).
     public void SetImageFromFile(string filePath)
     {
         if (ImageProcessor.TryEncodeImage(filePath, out var base64Image, out var error))
@@ -182,7 +182,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         var word = Word.Trim();
         var definition = Definition.Trim();
 
-        // Seuls le mot et la définition sont obligatoires.
+        // Only the word and definition are required.
         if (string.IsNullOrWhiteSpace(word))
         {
             ErrorMessage = "Le mot est obligatoire.";
@@ -198,7 +198,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         var now = DateTimeOffset.Now;
         SavedEntry = new VocabularyEntry
         {
-            // Id/CreatedAt conservés en édition, générés en création.
+            // Id/CreatedAt kept as-is when editing, generated when creating.
             Id = _existingEntry?.Id ?? Guid.NewGuid(),
             Word = word,
             Definition = definition,

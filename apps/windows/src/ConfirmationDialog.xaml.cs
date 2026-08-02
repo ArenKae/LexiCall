@@ -1,5 +1,5 @@
-// Boîte de confirmation Oui/Non stylée, utilisée à la place de MessageBox pour
-// les suppressions (entrée, catégorie) : voir ConfirmationDialog.xaml.
+// Themed Yes/No confirmation dialog, used instead of MessageBox for
+// deletions (entry, category) — see ConfirmationDialog.xaml.
 using System.Windows;
 using LexiCall.Desktop.Services;
 
