@@ -15,7 +15,7 @@ below).
 LexiCall started as a personal itch: reading constantly surfaces words and
 expressions worth keeping, and neither note-taking apps nor spreadsheets were
 built for that: the former have no real structure for a growing vocabulary,
-the latter fall apart past a couple hundred rows. This repository is what
+the latter lack the flexibility and performance of a dedicated solution. This repository is what
 came out of building that tool myself, end to end, from the desktop app I
 use daily to the backend that keeps it in sync.
 
