@@ -202,4 +202,4 @@ for backend setup.
 
 ## Usage
 
-_Coming soon._
+_Coming soon. (last update: 8/1/2026)_
