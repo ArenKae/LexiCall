@@ -13,12 +13,27 @@ namespace LexiCall.Desktop;
 
 public partial class MainWindow : Window
 {
+    // Sidebar collapse: the panel's own toggle shrinks CategoryColumn down to
+    // this width instead of hiding the column outright, so the toggle button
+    // itself (hosted inside that column) stays put and clickable.
+    private const double CollapsedCategoryColumnWidth = 48;
+    private const double ExpandedCategoryColumnMinWidth = 220;
+
+    private double _expandedCategoryColumnWidth = 320;
+
     public MainWindow()
     {
         InitializeComponent();
         DataContext = new MainWindowViewModel();
         ThemeService.RegisterWindow(this);
         WindowLayoutService.Apply(this, CategoryColumn, EntryListColumn);
+        _expandedCategoryColumnWidth = CategoryColumn.Width.Value;
+
+        if (SettingsStore.Load().CategoryPanelCollapsed)
+        {
+            ApplyCategoryPanelCollapsedState(isCollapsed: true);
+        }
+
         Closing += MainWindow_Closing;
 
         // Attached to the TreeView (not the DataTemplate) so the clickable
@@ -31,7 +46,61 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        var isCollapsed = CategoryPanelToggleButton.IsChecked == true;
+
+        if (isCollapsed)
+        {
+            // Only the last expanded width is persisted, never the transient
+            // collapsed sliver — CategoryPanelCollapsed below is what remembers
+            // the collapsed state itself. UpdateLayout forces ActualWidth to
+            // reflect this before Save reads it.
+            CategoryColumn.Width = new GridLength(_expandedCategoryColumnWidth);
+            UpdateLayout();
+        }
+
         WindowLayoutService.Save(this, CategoryColumn, EntryListColumn);
+
+        var settings = SettingsStore.Load();
+        settings.CategoryPanelCollapsed = isCollapsed;
+        SettingsStore.Save(settings);
+    }
+
+    private void CategoryPanelToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        var isCollapsed = CategoryPanelToggleButton.IsChecked == true;
+
+        if (isCollapsed)
+        {
+            _expandedCategoryColumnWidth = CategoryColumn.ActualWidth;
+        }
+
+        ApplyCategoryPanelCollapsedState(isCollapsed);
+    }
+
+    private void ApplyCategoryPanelCollapsedState(bool isCollapsed)
+    {
+        CategoryPanelToggleButton.IsChecked = isCollapsed;
+
+        if (isCollapsed)
+        {
+            CategoryColumn.MinWidth = CollapsedCategoryColumnWidth;
+            CategoryColumn.Width = new GridLength(CollapsedCategoryColumnWidth);
+        }
+        else
+        {
+            CategoryColumn.MinWidth = ExpandedCategoryColumnMinWidth;
+            CategoryColumn.Width = new GridLength(_expandedCategoryColumnWidth);
+        }
+
+        var contentVisibility = isCollapsed ? Visibility.Collapsed : Visibility.Visible;
+        CategoryPanelTitle.Visibility = contentVisibility;
+        AddRootCategoryButton.Visibility = contentVisibility;
+        CategoryTreeView.Visibility = contentVisibility;
+        CategoryColumnSplitter.Visibility = contentVisibility;
+        CollapsedQuickSelectPanel.Visibility = isCollapsed ? Visibility.Visible : Visibility.Collapsed;
+        CategoryPanelToggleButton.HorizontalAlignment = isCollapsed
+            ? HorizontalAlignment.Center
+            : HorizontalAlignment.Left;
     }
 
     private MainWindowViewModel ViewModel => (MainWindowViewModel)DataContext;
@@ -153,6 +222,31 @@ public partial class MainWindow : Window
     }
 
     // ─── Categories ───
+
+    // The two virtual nodes always sit first in CategoryTree (see
+    // MainWindowViewModel.RebuildCategoryTree). Setting IsSelected runs the
+    // same selection path as clicking them in the tree (CategoryNodeViewModel.
+    // IsSelected's setter calls back into OnCategoryNodeSelected).
+    private void SelectAllEntriesButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CategoryTree[0].IsSelected = true;
+    }
+
+    private void SelectUncategorizedButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CategoryTree[1].IsSelected = true;
+    }
+
+    // The swatch carries its node (CategoryNodeViewModel) as DataContext —
+    // same selection path as the two virtual-node buttons above.
+    private void CollapsedRootCategory_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: CategoryNodeViewModel node })
+        {
+            node.IsSelected = true;
+            e.Handled = true;
+        }
+    }
 
     private void AddRootCategoryButton_Click(object sender, RoutedEventArgs e)
     {

@@ -14,6 +14,11 @@ internal sealed class AppSettings
     public double? CategoryColumnWidth { get; set; }
     public double? EntryListColumnWidth { get; set; }
 
+    // Sidebar collapse toggle (see MainWindow's CategoryPanelToggleButton) —
+    // CategoryColumnWidth above always stores the last *expanded* width, so
+    // reopening collapsed still remembers what to restore to on expand.
+    public bool CategoryPanelCollapsed { get; set; }
+
     // Best-effort sync to api/ (see VocabularyApiClient) — empty by default,
     // meaning sync stays disabled until a server is configured.
     public string? ApiBaseUrl { get; set; }

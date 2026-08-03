@@ -117,7 +117,8 @@
 
             <!-- Resize handles: real category names can be long, no fixed
                  width fits every case. -->
-            <GridSplitter Grid.Column="1"
+            <GridSplitter x:Name="CategoryColumnSplitter"
+                          Grid.Column="1"
                           Width="12"
                           HorizontalAlignment="Stretch"
                           VerticalAlignment="Stretch"
@@ -140,19 +141,97 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <DockPanel Grid.Row="0" Margin="6,2,2,8">
-                        <Button DockPanel.Dock="Right"
-                                Content="＋"
-                                FontSize="15"
-                                Style="{StaticResource GhostButtonStyle}"
-                                Padding="7,2"
-                                Click="AddRootCategoryButton_Click"
-                                ToolTip="Créer une catégorie." />
-                        <TextBlock Text="Catégories"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource Brush.Text.Secondary}"
-                                   VerticalAlignment="Center" />
-                    </DockPanel>
+                    <Grid Grid.Row="0" Margin="6,2,2,8">
+                        <DockPanel>
+                            <Button x:Name="AddRootCategoryButton"
+                                    DockPanel.Dock="Right"
+                                    Content="＋"
+                                    FontSize="15"
+                                    Style="{StaticResource GhostButtonStyle}"
+                                    Padding="7,2"
+                                    Click="AddRootCategoryButton_Click"
+                                    ToolTip="Créer une catégorie." />
+
+                            <TextBlock x:Name="CategoryPanelTitle"
+                                       Text="Catégories"
+                                       Margin="22,0,0,0"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource Brush.Text.Secondary}"
+                                       VerticalAlignment="Center" />
+                        </DockPanel>
+
+                        <ToggleButton x:Name="CategoryPanelToggleButton"
+                                      Style="{StaticResource TreeExpanderStyle}"
+                                      IsChecked="False"
+                                      HorizontalAlignment="Left"
+                                      VerticalAlignment="Center"
+                                      Click="CategoryPanelToggleButton_Click"
+                                      ToolTip="Afficher/masquer les catégories." />
+                    </Grid>
+
+                    <ScrollViewer x:Name="CollapsedQuickSelectPanel"
+                                  Grid.Row="1"
+                                  Visibility="Collapsed"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Hidden">
+                        <StackPanel HorizontalAlignment="Center"
+                                    Margin="0,0,0,8">
+                            <Button Content="📚"
+                                    FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
+                                    FontSize="14"
+                                    Style="{StaticResource GhostButtonStyle}"
+                                    Width="24" Height="24"
+                                    Padding="0"
+                                    Margin="0,0,0,4"
+                                    Click="SelectAllEntriesButton_Click"
+                                    ToolTip="Toutes les entrées" />
+                            <Button Content="🏷️"
+                                    FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
+                                    FontSize="14"
+                                    Style="{StaticResource GhostButtonStyle}"
+                                    Width="24" Height="24"
+                                    Padding="0"
+                                    Click="SelectUncategorizedButton_Click"
+                                    ToolTip="Sans catégorie" />
+
+                            <Separator Margin="2,4,2,8" />
+
+                            <!-- Custom categories: CategoryTree's own top level is exactly the
+                                 virtual nodes above plus real ROOT categories (subcategories only
+                                 ever live nested under a root's Children, never here directly), so
+                                 filtering out IsVirtual is enough to get parent categories only. -->
+                            <ItemsControl ItemsSource="{Binding CategoryTree}">
+                                <ItemsControl.ItemContainerStyle>
+                                    <Style TargetType="ContentPresenter">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsVirtual}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ItemsControl.ItemContainerStyle>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type viewModels:CategoryNodeViewModel}">
+                                        <Grid Width="24" Height="24"
+                                              Margin="0,0,0,4"
+                                              Cursor="Hand"
+                                              ToolTip="{Binding DisplayName}"
+                                              MouseLeftButtonUp="CollapsedRootCategory_MouseLeftButtonUp">
+                                            <Border CornerRadius="6"
+                                                    Background="{Binding ColorBrush}"
+                                                    Opacity="{DynamicResource Opacity.CategoryHalo.Root}" />
+                                            <TextBlock Text="{Binding DisplayIcon}"
+                                                       FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
+                                                       FontSize="13"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
 
                     <TreeView Grid.Row="1"
                               x:Name="CategoryTreeView"
