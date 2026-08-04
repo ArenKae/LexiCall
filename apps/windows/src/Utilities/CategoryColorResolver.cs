@@ -2,8 +2,8 @@
 // CategoryColorStore) on itself or an ancestor if one exists, otherwise the
 // automatic hue derived from its root's index (golden-angle spacing, for
 // well-separated hues at any category count). Single entry point for the
-// tree (MainWindowViewModel.RebuildCategoryTree), category chips
-// (CategoryChipColorConverter), and the color picker preview
+// tree (MainWindowViewModel.RebuildCategoryTree), category dots
+// (CategoryDotColorConverter), and the color picker preview
 // (CategoryEditorWindowViewModel).
 using System.Windows.Media;
 using LexiCall.Desktop.Models;

@@ -1,8 +1,8 @@
-// Background color for an entry's category chips: the category's effective
-// color (CategoryColorResolver), blended with transparency rather than a
-// solid fill, so it reads consistently in both themes against the fixed text
-// color (Brush.Text.Primary, set directly in XAML). MultiBinding:
-// [0] = the chip's VocabularyCategory, [1] = all known categories.
+// Fully opaque version of a category's effective color, for the small color
+// dot next to its name (entry list, detail panel, category tree). Unlike
+// CategoryChipColorConverter's translucent chip background, a small dot needs
+// to stay saturated to read clearly. MultiBinding:
+// [0] = the VocabularyCategory, [1] = all known categories.
 using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;
@@ -12,10 +12,8 @@ using LexiCall.Desktop.Utilities;
 
 namespace LexiCall.Desktop.Converters;
 
-public sealed class CategoryChipColorConverter : IMultiValueConverter
+public sealed class CategoryDotColorConverter : IMultiValueConverter
 {
-    private const byte BackgroundAlpha = 130;
-
     public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
     {
         if (values is not [VocabularyCategory category, IEnumerable<VocabularyCategory> categoriesValue])
@@ -28,7 +26,7 @@ public sealed class CategoryChipColorConverter : IMultiValueConverter
         var colorOverrides = CategoryColorStore.LoadAll();
         var color = CategoryColorResolver.Resolve(category, categories, colorIndexes, colorOverrides);
 
-        return new SolidColorBrush(Color.FromArgb(BackgroundAlpha, color.R, color.G, color.B));
+        return new SolidColorBrush(color);
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture) =>

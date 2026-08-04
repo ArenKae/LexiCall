@@ -40,7 +40,7 @@
                     IsCancel="True" />
             <Button x:Name="ConfirmButton"
                     Width="110"
-                    Foreground="{DynamicResource Brush.Danger}"
+                    Style="{StaticResource DangerButtonStyle}"
                     IsDefault="True"
                     Click="ConfirmButton_Click" />
         </StackPanel>

@@ -189,15 +189,29 @@
                                Grid.Column="0"
                                Grid.ColumnSpan="3"
                                Margin="0,6,0,14">
-                        <Border DockPanel.Dock="Left"
+                        <Border x:Name="ImagePickerPreviewFrame"
+                                DockPanel.Dock="Left"
                                 Width="96"
                                 Height="96"
                                 Margin="0,0,16,0"
                                 BorderBrush="{DynamicResource Brush.Border.Strong}"
                                 BorderThickness="1"
                                 CornerRadius="6"
-                                Background="{DynamicResource Brush.Input.Background}"
-                                ClipToBounds="True">
+                                Background="{DynamicResource Brush.Input.Background}">
+                            <!-- CornerRadius alone only rounds the Border's own
+                                 Background/BorderBrush painting — a child Image still
+                                 clips to a plain rectangle unless the Border's own Clip
+                                 is set to a matching rounded geometry. -->
+                            <Border.Clip>
+                                <RectangleGeometry RadiusX="6" RadiusY="6">
+                                    <RectangleGeometry.Rect>
+                                        <MultiBinding Converter="{StaticResource SizeToRectConverter}">
+                                            <Binding ElementName="ImagePickerPreviewFrame" Path="ActualWidth" />
+                                            <Binding ElementName="ImagePickerPreviewFrame" Path="ActualHeight" />
+                                        </MultiBinding>
+                                    </RectangleGeometry.Rect>
+                                </RectangleGeometry>
+                            </Border.Clip>
                             <Image Source="{Binding ImageBase64, Converter={StaticResource Base64ImageConverter}}"
                                    Stretch="Uniform" />
                         </Border>

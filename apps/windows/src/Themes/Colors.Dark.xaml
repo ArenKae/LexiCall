@@ -1,43 +1,46 @@
-<!-- Dark theme: same brush keys as Colors.Light.xaml, dark values inspired by
-     Discord's palette (neutral grays, near-white text, blurple accent). -->
+<!-- Dark theme: same brush keys as Colors.Light.xaml. Warm charcoal palette
+     (values calibrated against the target mockups in Templates/) instead of
+     Discord's cold blue-gray, with a muted indigo accent. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
-    <SolidColorBrush x:Key="Brush.Window.Background" Color="#1E1F22" />
-    <SolidColorBrush x:Key="Brush.Surface" Color="#2B2D31" />
-    <SolidColorBrush x:Key="Brush.Surface.Hover" Color="#35373C" />
-    <SolidColorBrush x:Key="Brush.Border.Subtle" Color="#3A3C41" />
-    <SolidColorBrush x:Key="Brush.Border.Strong" Color="#4E5058" />
+    <SolidColorBrush x:Key="Brush.Window.Background" Color="#201E1B" />
+    <SolidColorBrush x:Key="Brush.Surface" Color="#272420" />
+    <SolidColorBrush x:Key="Brush.Surface.Hover" Color="#2E2A25" />
+    <SolidColorBrush x:Key="Brush.Border.Subtle" Color="#35312B" />
+    <SolidColorBrush x:Key="Brush.Border.Strong" Color="#564F44" />
 
-    <SolidColorBrush x:Key="Brush.Text.Primary" Color="#F2F3F5" />
-    <SolidColorBrush x:Key="Brush.Text.Secondary" Color="#949BA4" />
+    <SolidColorBrush x:Key="Brush.Text.Primary" Color="#F2EFE9" />
+    <SolidColorBrush x:Key="Brush.Text.Secondary" Color="#BDB6AC" />
+    <SolidColorBrush x:Key="Brush.Text.Muted" Color="#8E8880" />
     <SolidColorBrush x:Key="Brush.Text.OnAccent" Color="#FFFFFF" />
 
-    <SolidColorBrush x:Key="Brush.Accent" Color="#5865F2" />
-    <SolidColorBrush x:Key="Brush.Accent.Hover" Color="#707BF5" />
-    <SolidColorBrush x:Key="Brush.Accent.Pressed" Color="#4752C4" />
+    <!-- Raw Color (not a Brush): needed wherever a property isn't Brush-typed,
+         e.g. the TextBox focus glow's DropShadowEffect.Color in Styles.xaml.
+         Hue matches the app icon's "ribbon blue" (see AppIcon.ico, and the
+         near-identical light-theme Accent below) rather than the mockup's
+         own violet — same saturation/lightness as that first sample, just
+         rotated onto the icon's actual hue for brand consistency. -->
+    <Color x:Key="Color.Accent">#557EB4</Color>
+    <SolidColorBrush x:Key="Brush.Accent" Color="{StaticResource Color.Accent}" />
+    <SolidColorBrush x:Key="Brush.Accent.Hover" Color="#7194C1" />
+    <SolidColorBrush x:Key="Brush.Accent.Pressed" Color="#416695" />
 
-    <SolidColorBrush x:Key="Brush.Accent.Soft" Color="#8991F0" />
-    <SolidColorBrush x:Key="Brush.Accent.Soft.Hover" Color="#9AA1F4" />
-    <SolidColorBrush x:Key="Brush.Accent.Soft.Pressed" Color="#6D77D6" />
-    <SolidColorBrush x:Key="Brush.Text.OnAccentSoft" Color="#12142B" />
+    <SolidColorBrush x:Key="Brush.Danger" Color="#E45B58" />
+    <SolidColorBrush x:Key="Brush.Success" Color="#4FAE68" />
 
-    <SolidColorBrush x:Key="Brush.Danger" Color="#ED4245" />
-    <SolidColorBrush x:Key="Brush.Success" Color="#3BA55C" />
+    <SolidColorBrush x:Key="Brush.Chip.Neutral.Background" Color="#4A443B" />
+    <SolidColorBrush x:Key="Brush.Chip.Neutral.Foreground" Color="#BDB6AC" />
 
-    <SolidColorBrush x:Key="Brush.Chip.Neutral.Background" Color="#3A3C43" />
-    <SolidColorBrush x:Key="Brush.Chip.Neutral.Foreground" Color="#C8CDD3" />
+    <SolidColorBrush x:Key="Brush.Selection.Background" Color="#3F3A32" />
+    <SolidColorBrush x:Key="Brush.Selection.Foreground" Color="#F2EFE9" />
 
-    <SolidColorBrush x:Key="Brush.Selection.Background" Color="#404249" />
-    <SolidColorBrush x:Key="Brush.Selection.Foreground" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Brush.Input.Background" Color="#272420" />
 
-    <SolidColorBrush x:Key="Brush.Input.Background" Color="#1E1F22" />
-
-    <!-- Category color halo opacity in the tree (MainWindow.xaml): see
-         Colors.Light.xaml — the same alpha blend already reads much more
-         strongly against a dark background. -->
-    <sys:Double x:Key="Opacity.CategoryHalo">0.14</sys:Double>
-    <sys:Double x:Key="Opacity.CategoryHalo.Root">0.22</sys:Double>
+    <!-- Root category icon tint (MainWindow.xaml, both expanded tree and
+         collapsed rail): see Colors.Light.xaml — the same alpha blend
+         already reads much more strongly against a dark background. -->
+    <sys:Double x:Key="Opacity.CategoryHalo.Root">0.20</sys:Double>
 
 </ResourceDictionary>

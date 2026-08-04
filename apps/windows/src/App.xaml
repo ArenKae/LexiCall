@@ -13,7 +13,8 @@
 
             <converters:CategoryNamesConverter x:Key="CategoryNamesConverter" />
             <converters:DepthToIndentConverter x:Key="DepthToIndentConverter" />
-            <converters:CategoryChipColorConverter x:Key="CategoryChipColorConverter" />
+            <converters:CategoryDotColorConverter x:Key="CategoryDotColorConverter" />
+            <converters:SizeToRectConverter x:Key="SizeToRectConverter" />
             <converters:Base64ImageConverter x:Key="Base64ImageConverter" />
             <converters:WidthBreakpointConverter x:Key="WidthBreakpointConverter" />
         </ResourceDictionary>

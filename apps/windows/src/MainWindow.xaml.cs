@@ -15,8 +15,9 @@ public partial class MainWindow : Window
 {
     // Sidebar collapse: the panel's own toggle shrinks CategoryColumn down to
     // this width instead of hiding the column outright, so the toggle button
-    // itself (hosted inside that column) stays put and clickable.
-    private const double CollapsedCategoryColumnWidth = 48;
+    // itself (hosted inside that column) stays put and clickable. Wide enough
+    // for a 32px icon slot plus the card's own padding.
+    private const double CollapsedCategoryColumnWidth = 56;
     private const double ExpandedCategoryColumnMinWidth = 220;
 
     private double _expandedCategoryColumnWidth = 320;

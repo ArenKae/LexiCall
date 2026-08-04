@@ -94,7 +94,8 @@
 
             <StackPanel>
                 <TextBlock Text="LexiCall"
-                           FontSize="26"
+                           FontFamily="{StaticResource Font.Serif}"
+                           FontSize="28"
                            FontWeight="SemiBold" />
                 <TextBlock Text="Organisation et recherche de vocabulaire par catégorie."
                            Margin="0,2,0,0"
@@ -176,25 +177,66 @@
                                   VerticalScrollBarVisibility="Hidden">
                         <StackPanel HorizontalAlignment="Center"
                                     Margin="0,0,0,8">
-                            <Button Content="📚"
-                                    FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                    FontSize="14"
-                                    Style="{StaticResource GhostButtonStyle}"
-                                    Width="24" Height="24"
-                                    Padding="0"
+                            <!-- Same active-state language as the expanded tree/list: a neutral
+                                 fill plus an accent ring, never color alone — sized as its own
+                                 slot (not just the icon) for a comfortable click/hover target. -->
+                            <Border Width="32" Height="32"
                                     Margin="0,0,0,4"
-                                    Click="SelectAllEntriesButton_Click"
-                                    ToolTip="Toutes les entrées" />
-                            <Button Content="🏷️"
-                                    FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                    FontSize="14"
-                                    Style="{StaticResource GhostButtonStyle}"
-                                    Width="24" Height="24"
-                                    Padding="0"
-                                    Click="SelectUncategorizedButton_Click"
-                                    ToolTip="Sans catégorie" />
+                                    CornerRadius="8"
+                                    BorderThickness="1.5">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Surface.Hover}" />
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding SelectedCategoryNode.Kind}" Value="{x:Static viewModels:CategoryNodeKind.AllEntries}">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Selection.Background}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Button Content="📚"
+                                        FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
+                                        FontSize="14"
+                                        Style="{StaticResource GhostButtonStyle}"
+                                        Width="24" Height="24"
+                                        Padding="0"
+                                        Click="SelectAllEntriesButton_Click"
+                                        ToolTip="Toutes les entrées" />
+                            </Border>
+                            <Border Width="32" Height="32"
+                                    CornerRadius="8"
+                                    BorderThickness="1.5">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Surface.Hover}" />
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding SelectedCategoryNode.Kind}" Value="{x:Static viewModels:CategoryNodeKind.Uncategorized}">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Selection.Background}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Button Content="🏷️"
+                                        FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
+                                        FontSize="14"
+                                        Style="{StaticResource GhostButtonStyle}"
+                                        Width="24" Height="24"
+                                        Padding="0"
+                                        Click="SelectUncategorizedButton_Click"
+                                        ToolTip="Sans catégorie" />
+                            </Border>
 
-                            <Separator Margin="2,4,2,8" />
+                            <Separator Margin="2,8,2,8" />
 
                             <!-- Custom categories: CategoryTree's own top level is exactly the
                                  virtual nodes above plus real ROOT categories (subcategories only
@@ -213,20 +255,41 @@
                                 </ItemsControl.ItemContainerStyle>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type viewModels:CategoryNodeViewModel}">
-                                        <Grid Width="24" Height="24"
-                                              Margin="0,0,0,4"
-                                              Cursor="Hand"
-                                              ToolTip="{Binding DisplayName}"
-                                              MouseLeftButtonUp="CollapsedRootCategory_MouseLeftButtonUp">
-                                            <Border CornerRadius="6"
-                                                    Background="{Binding ColorBrush}"
-                                                    Opacity="{DynamicResource Opacity.CategoryHalo.Root}" />
-                                            <TextBlock Text="{Binding DisplayIcon}"
-                                                       FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                                       FontSize="13"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center" />
-                                        </Grid>
+                                        <Border Width="32" Height="32"
+                                                Margin="0,0,0,4"
+                                                CornerRadius="8"
+                                                BorderThickness="1.5"
+                                                Cursor="Hand"
+                                                ToolTip="{Binding DisplayName}"
+                                                MouseLeftButtonUp="CollapsedRootCategory_MouseLeftButtonUp">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                    <Setter Property="BorderBrush" Value="Transparent" />
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource Brush.Surface.Hover}" />
+                                                        </Trigger>
+                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource Brush.Selection.Background}" />
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <Grid Width="24" Height="24"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center">
+                                                <Border CornerRadius="6"
+                                                        Background="{Binding ColorBrush}"
+                                                        Opacity="{DynamicResource Opacity.CategoryHalo.Root}" />
+                                                <TextBlock Text="{Binding DisplayIcon}"
+                                                           FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
+                                                           FontSize="13"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -244,7 +307,7 @@
                                 <Grid ToolTip="{Binding DescriptionToolTip}"
                                       ContextMenuOpening="CategoryNode_ContextMenuOpening">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="4" />
+                                        <ColumnDefinition Width="24" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
@@ -311,53 +374,61 @@
                                         </ContextMenu>
                                     </Grid.ContextMenu>
 
-                                    <!-- Background halo: identifies a category's family at a glance
-                                         while scanning the list, without hurting text readability. -->
-                                    <Border Grid.Column="0" Grid.ColumnSpan="3"
-                                            CornerRadius="4"
-                                            Margin="-4,-1,-4,-1">
-                                        <Border.Style>
-                                            <Style TargetType="Border">
-                                                <Setter Property="Background" Value="{Binding ColorBrush}" />
-                                                <Setter Property="Opacity" Value="{DynamicResource Opacity.CategoryHalo}" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Depth}" Value="0">
-                                                        <Setter Property="Opacity" Value="{DynamicResource Opacity.CategoryHalo.Root}" />
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding IsVirtual}" Value="True">
-                                                        <Setter Property="Opacity" Value="0" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Border.Style>
-                                    </Border>
+                                    <!-- Leading marker: color stays confined to this one small area,
+                                         never a full-row band. Root categories (and the two virtual
+                                         nodes) get their icon on a softly tinted backdrop; a virtual
+                                         node's ColorBrush is Transparent, so its backdrop naturally
+                                         renders invisible. Sub-categories get a small dot instead. -->
+                                    <Grid Grid.Column="0"
+                                          Width="24" Height="24"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center">
+                                        <Border CornerRadius="6"
+                                                Background="{Binding ColorBrush}"
+                                                Opacity="{DynamicResource Opacity.CategoryHalo.Root}">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Depth}" Value="0">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                        </Border>
+                                        <TextBlock Text="{Binding DisplayIcon}"
+                                                   FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
+                                                   FontSize="13"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Depth}" Value="0">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <Ellipse Width="8" Height="8"
+                                                 Fill="{Binding ColorBrush}">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Depth}" Value="0">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                    </Grid>
 
-                                    <!-- Solid color marker: a subcategory reuses its root's hue, dimmed,
-                                         to show which family it belongs to. -->
-                                    <Border Grid.Column="0"
-                                            CornerRadius="2"
-                                            Margin="0,1,4,1">
-                                        <Border.Style>
-                                            <Style TargetType="Border">
-                                                <Setter Property="Background" Value="{Binding ColorBrush}" />
-                                                <Setter Property="Opacity" Value="0.5" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Depth}" Value="0">
-                                                        <Setter Property="Opacity" Value="1" />
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding IsVirtual}" Value="True">
-                                                        <Setter Property="Opacity" Value="0" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Border.Style>
-                                    </Border>
-
-                                    <Grid Grid.Column="1">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
+                                    <Grid Grid.Column="1" Margin="6,0,0,0">
                                         <Grid.Style>
                                             <Style TargetType="Grid">
                                                 <Style.Triggers>
@@ -368,26 +439,7 @@
                                             </Style>
                                         </Grid.Style>
 
-                                        <!-- Icon (emoji): a visual marker complementing the color. -->
-                                        <TextBlock Grid.Column="0"
-                                                   Text="{Binding DisplayIcon}"
-                                                   FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                                   FontSize="16"
-                                                   VerticalAlignment="Center">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Margin" Value="4,1,4,1" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Depth}" Value="0">
-                                                            <Setter Property="Margin" Value="4,3,4,3" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-
-                                        <TextBlock Grid.Column="1"
-                                                   Text="{Binding DisplayName}"
+                                        <TextBlock Text="{Binding DisplayName}"
                                                    TextWrapping="Wrap"
                                                    VerticalAlignment="Center">
                                             <TextBlock.Style>
@@ -396,6 +448,9 @@
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Depth}" Value="0">
                                                             <Setter Property="Margin" Value="0,3,0,3" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TreeViewItem}, Path=IsSelected}" Value="True">
+                                                            <Setter Property="FontWeight" Value="SemiBold" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -425,7 +480,7 @@
 
                                     <Border Grid.Column="2"
                                             Background="{DynamicResource Brush.Chip.Neutral.Background}"
-                                            CornerRadius="8"
+                                            CornerRadius="9"
                                             Padding="7,1"
                                             VerticalAlignment="Top">
                                         <Border.Style>
@@ -513,6 +568,30 @@
                               StrokeEndLineCap="Round" />
                     </Canvas>
 
+                    <!-- Placeholder text: same rest-only condition as the magnifier above,
+                         so both appear and disappear together. -->
+                    <TextBlock Text="Rechercher un mot..."
+                               Margin="36,0,0,0"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource Brush.Text.Secondary}"
+                               IsHitTestVisible="False">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding SearchQuery}" Value="" />
+                                            <Condition Binding="{Binding IsKeyboardFocusWithin, ElementName=SearchTextBox}" Value="False" />
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </MultiDataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
                     <!-- Clear cross: visible only while the search isn't empty. -->
                     <Button HorizontalAlignment="Right"
                             VerticalAlignment="Center"
@@ -573,7 +652,7 @@
                             Content="＋"
                             FontSize="18"
                             FontWeight="Bold"
-                            Style="{StaticResource SoftAccentButtonStyle}"
+                            Style="{StaticResource AccentButtonStyle}"
                             Padding="0"
                             Width="32"
                             Height="32"
@@ -589,22 +668,18 @@
                     <Grid>
                         <ListBox ItemsSource="{Binding FilteredEntries}"
                                  SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
+                                 ItemContainerStyle="{StaticResource CardListBoxItemStyle}"
+                                 Padding="0,0,8,0"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
-                            <!-- Compact layout: prioritizes how many entries are visible without scrolling. -->
-                            <ListBox.ItemContainerStyle>
-                                <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
-                                    <Setter Property="Padding" Value="8,4" />
-                                    <Setter Property="Margin" Value="0" />
-                                </Style>
-                            </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel>
                                         <TextBlock Text="{Binding Word}"
-                                                   FontSize="19"
-                                                   FontWeight="Bold" />
+                                                   FontFamily="{StaticResource Font.Serif}"
+                                                   FontSize="20"
+                                                   FontWeight="SemiBold" />
 
-                                        <ItemsControl Margin="0,2,0,0">
+                                        <ItemsControl Margin="0,4,0,0">
                                             <ItemsControl.ItemsSource>
                                                 <MultiBinding Converter="{StaticResource CategoryNamesConverter}">
                                                     <Binding Path="CategoryIds" />
@@ -620,34 +695,40 @@
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <!-- Clickable: selects this category in the left-hand
-                                                         panel (Cursor="Hand" signals the action). -->
-                                                    <Border Margin="0,0,4,2"
-                                                            Padding="7,2"
-                                                            CornerRadius="8"
-                                                            Cursor="Hand"
-                                                            ToolTip="Filtrer par cette catégorie"
-                                                            MouseLeftButtonUp="CategoryChip_MouseLeftButtonUp">
-                                                        <Border.Background>
-                                                            <MultiBinding Converter="{StaticResource CategoryChipColorConverter}">
-                                                                <Binding Path="." />
-                                                                <Binding Path="DataContext.Categories"
-                                                                         RelativeSource="{RelativeSource AncestorType=Window}" />
-                                                            </MultiBinding>
-                                                        </Border.Background>
+                                                         panel. Represented by a small color dot, not a
+                                                         filled badge — color stays a discreet accent. -->
+                                                    <StackPanel Orientation="Horizontal"
+                                                                Margin="0,0,12,0"
+                                                                Cursor="Hand"
+                                                                ToolTip="Filtrer par cette catégorie"
+                                                                MouseLeftButtonUp="CategoryChip_MouseLeftButtonUp">
+                                                        <Ellipse Width="8" Height="8"
+                                                                 VerticalAlignment="Center"
+                                                                 Margin="0,0,5,0">
+                                                            <Ellipse.RenderTransform>
+                                                                <TranslateTransform Y="1" />
+                                                            </Ellipse.RenderTransform>
+                                                            <Ellipse.Fill>
+                                                                <MultiBinding Converter="{StaticResource CategoryDotColorConverter}">
+                                                                    <Binding Path="." />
+                                                                    <Binding Path="DataContext.Categories"
+                                                                             RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                                </MultiBinding>
+                                                            </Ellipse.Fill>
+                                                        </Ellipse>
                                                         <TextBlock Text="{Binding Name}"
                                                                    FontSize="12"
-                                                                   FontWeight="SemiBold"
-                                                                   Foreground="{DynamicResource Brush.Text.Primary}" />
-                                                    </Border>
+                                                                   Foreground="{DynamicResource Brush.Text.Secondary}"
+                                                                   VerticalAlignment="Center" />
+                                                    </StackPanel>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
 
                                         <TextBlock Text="{Binding Source}"
-                                                   Margin="0,2,0,0"
+                                                   Margin="0,6,0,0"
                                                    FontSize="10"
-                                                   Foreground="{DynamicResource Brush.Text.Secondary}"
-                                                   Opacity="0.8"
+                                                   Foreground="{DynamicResource Brush.Text.Muted}"
                                                    TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                 </DataTemplate>
@@ -695,9 +776,7 @@
                         <StackPanel DockPanel.Dock="Right"
                                     Orientation="Horizontal"
                                     HorizontalAlignment="Right">
-                            <Button Content="Modifier"
-                                    Width="96"
-                                    Margin="0,0,10,0"
+                            <Button Margin="0,0,10,0"
                                     Click="EditEntryButton_Click">
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
@@ -708,13 +787,18 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE70F;"
+                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                               FontSize="13"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0" />
+                                    <TextBlock Text="Modifier" VerticalAlignment="Center" />
+                                </StackPanel>
                             </Button>
-                            <Button Content="Supprimer"
-                                    Width="96"
-                                    Foreground="{DynamicResource Brush.Danger}"
-                                    Click="DeleteEntryButton_Click">
+                            <Button Click="DeleteEntryButton_Click">
                                 <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                    <Style TargetType="Button" BasedOn="{StaticResource DangerButtonStyle}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding SelectedEntry}" Value="{x:Null}">
                                                 <Setter Property="IsEnabled" Value="False" />
@@ -722,6 +806,14 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE74D;"
+                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                               FontSize="13"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0" />
+                                    <TextBlock Text="Supprimer" VerticalAlignment="Center" />
+                                </StackPanel>
                             </Button>
                         </StackPanel>
                     </DockPanel>
@@ -743,14 +835,17 @@
                                 <DataTemplate>
                                     <StackPanel>
                                         <TextBlock Text="{Binding Word}"
-                                                   FontSize="30"
+                                                   FontFamily="{StaticResource Font.Serif}"
+                                                   FontSize="34"
                                                    FontWeight="SemiBold" />
                                         <TextBlock Text="{Binding Definition}"
                                                    Margin="0,10,0,0"
                                                    FontSize="16"
                                                    TextWrapping="Wrap" />
 
-                                        <!-- Categories come first: that's the main organizing axis. -->
+                                        <!-- Categories come first: that's the main organizing axis.
+                                             A small color dot, not a filled badge — color stays a
+                                             discreet accent, consistent with the entry list. -->
                                         <ItemsControl ItemsSource="{Binding DataContext.SelectedEntryCategories, RelativeSource={RelativeSource AncestorType=Window}}"
                                                       Margin="0,14,0,0">
                                             <ItemsControl.ItemsPanel>
@@ -762,23 +857,27 @@
                                                 <DataTemplate>
                                                     <!-- Clickable: selects this category in the left-hand
                                                          panel (Cursor="Hand" signals the action). -->
-                                                    <Border Margin="0,0,8,8"
-                                                            Padding="10,4"
-                                                            CornerRadius="12"
-                                                            Cursor="Hand"
-                                                            ToolTip="Filtrer par cette catégorie"
-                                                            MouseLeftButtonUp="CategoryChip_MouseLeftButtonUp">
-                                                        <Border.Background>
-                                                            <MultiBinding Converter="{StaticResource CategoryChipColorConverter}">
-                                                                <Binding Path="." />
-                                                                <Binding Path="DataContext.Categories"
-                                                                         RelativeSource="{RelativeSource AncestorType=Window}" />
-                                                            </MultiBinding>
-                                                        </Border.Background>
+                                                    <StackPanel Orientation="Horizontal"
+                                                                Margin="0,0,16,4"
+                                                                Cursor="Hand"
+                                                                ToolTip="Filtrer par cette catégorie"
+                                                                MouseLeftButtonUp="CategoryChip_MouseLeftButtonUp">
+                                                        <Ellipse Width="9" Height="9"
+                                                                 VerticalAlignment="Center"
+                                                                 Margin="0,0,6,0">
+                                                            <Ellipse.Fill>
+                                                                <MultiBinding Converter="{StaticResource CategoryDotColorConverter}">
+                                                                    <Binding Path="." />
+                                                                    <Binding Path="DataContext.Categories"
+                                                                             RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                                </MultiBinding>
+                                                            </Ellipse.Fill>
+                                                        </Ellipse>
                                                         <TextBlock Text="{Binding Name}"
-                                                                   FontWeight="SemiBold"
-                                                                   Foreground="{DynamicResource Brush.Text.Primary}" />
-                                                    </Border>
+                                                                   FontSize="13"
+                                                                   Foreground="{DynamicResource Brush.Text.Secondary}"
+                                                                   VerticalAlignment="Center" />
+                                                    </StackPanel>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
@@ -813,10 +912,35 @@
                                                         </Style.Triggers>
                                                     </Style>
                                                 </StackPanel.Style>
-                                                <TextBlock Text="Synonymes"
-                                                           FontWeight="SemiBold" />
+                                                <!-- Each metadata section is a header row (icon, label,
+                                                     static chevron) over a thin separator, then its
+                                                     content indented to align under the label. The
+                                                     chevron is decorative only — these sections aren't
+                                                     collapsible, so it never toggles. -->
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="📖"
+                                                               FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
+                                                               FontSize="14"
+                                                               Foreground="{DynamicResource Brush.Text.Muted}"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,10,0" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="Synonymes"
+                                                               FontWeight="SemiBold"
+                                                               VerticalAlignment="Center" />
+                                                    <Path Grid.Column="2"
+                                                          Style="{StaticResource StaticChevronPathStyle}"
+                                                          VerticalAlignment="Center" />
+                                                </Grid>
+                                                <Separator Margin="0,10,0,14" />
                                                 <ItemsControl ItemsSource="{Binding Synonyms}"
-                                                              Margin="0,8,0,0">
+                                                              Margin="24,0,0,0">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate>
                                                             <WrapPanel />
@@ -835,11 +959,30 @@
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
 
-                                                <TextBlock Text="Exemples"
-                                                           Margin="0,16,0,0"
-                                                           FontWeight="SemiBold" />
+                                                <Grid Margin="0,20,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="💬"
+                                                               FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
+                                                               FontSize="14"
+                                                               Foreground="{DynamicResource Brush.Text.Muted}"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,10,0" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="Exemples"
+                                                               FontWeight="SemiBold"
+                                                               VerticalAlignment="Center" />
+                                                    <Path Grid.Column="2"
+                                                          Style="{StaticResource StaticChevronPathStyle}"
+                                                          VerticalAlignment="Center" />
+                                                </Grid>
+                                                <Separator Margin="0,10,0,14" />
                                                 <ItemsControl ItemsSource="{Binding ExampleSentences}"
-                                                              Margin="0,8,0,0">
+                                                              Margin="24,0,0,0">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
                                                             <TextBlock Text="{Binding}"
@@ -850,28 +993,67 @@
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
 
-                                                <TextBlock Text="Notes personnelles"
-                                                           Margin="0,16,0,0"
-                                                           FontWeight="SemiBold" />
+                                                <Grid Margin="0,20,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="📝"
+                                                               FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
+                                                               FontSize="14"
+                                                               Foreground="{DynamicResource Brush.Text.Muted}"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,10,0" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="Notes personnelles"
+                                                               FontWeight="SemiBold"
+                                                               VerticalAlignment="Center" />
+                                                    <Path Grid.Column="2"
+                                                          Style="{StaticResource StaticChevronPathStyle}"
+                                                          VerticalAlignment="Center" />
+                                                </Grid>
+                                                <Separator Margin="0,10,0,14" />
                                                 <TextBlock Text="{Binding Notes}"
-                                                           Margin="0,8,0,0"
+                                                           Margin="24,0,0,0"
                                                            TextWrapping="Wrap" />
 
-                                                <TextBlock Text="Source"
-                                                           Margin="0,16,0,0"
-                                                           FontWeight="SemiBold" />
+                                                <Grid Margin="0,20,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="📄"
+                                                               FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
+                                                               FontSize="14"
+                                                               Foreground="{DynamicResource Brush.Text.Muted}"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,10,0" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="Source"
+                                                               FontWeight="SemiBold"
+                                                               VerticalAlignment="Center" />
+                                                    <Path Grid.Column="2"
+                                                          Style="{StaticResource StaticChevronPathStyle}"
+                                                          VerticalAlignment="Center" />
+                                                </Grid>
+                                                <Separator Margin="0,10,0,14" />
                                                 <TextBlock Text="{Binding Source}"
-                                                           Margin="0,8,0,0"
+                                                           Margin="24,0,0,0"
                                                            TextWrapping="Wrap"
                                                            Foreground="{DynamicResource Brush.Text.Secondary}" />
                                             </StackPanel>
 
-                                            <Border MaxWidth="260"
+                                            <Border x:Name="DetailImageFrame"
+                                                    MaxWidth="260"
                                                     MaxHeight="220"
                                                     VerticalAlignment="Top"
                                                     HorizontalAlignment="Left"
+                                                    Background="{DynamicResource Brush.Surface.Hover}"
                                                     CornerRadius="8"
-                                                    ClipToBounds="True"
                                                     Cursor="Hand"
                                                     MouseLeftButtonUp="DetailImage_MouseLeftButtonUp">
                                                 <Border.Style>
@@ -895,6 +1077,24 @@
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Border.Style>
+
+                                                <!-- CornerRadius alone only rounds the Border's own
+                                                     Background/BorderBrush painting — a child Image still
+                                                     clips to a plain rectangle unless the Border's own Clip
+                                                     is set to a matching rounded geometry. ElementName (not
+                                                     RelativeSource=Self): Geometry isn't a FrameworkElement,
+                                                     so it has no "self" to resolve against. -->
+                                                <Border.Clip>
+                                                    <RectangleGeometry RadiusX="8" RadiusY="8">
+                                                        <RectangleGeometry.Rect>
+                                                            <MultiBinding Converter="{StaticResource SizeToRectConverter}">
+                                                                <Binding ElementName="DetailImageFrame" Path="ActualWidth" />
+                                                                <Binding ElementName="DetailImageFrame" Path="ActualHeight" />
+                                                            </MultiBinding>
+                                                        </RectangleGeometry.Rect>
+                                                    </RectangleGeometry>
+                                                </Border.Clip>
+
                                                 <Image Source="{Binding ImageBase64, Converter={StaticResource Base64ImageConverter}}"
                                                        MaxWidth="260"
                                                        MaxHeight="220"
