@@ -95,8 +95,7 @@
             <StackPanel>
                 <TextBlock Text="LexiCall"
                            FontFamily="{StaticResource Font.Serif}"
-                           FontSize="28"
-                           FontWeight="SemiBold" />
+                           FontSize="28" />
                 <TextBlock Text="Organisation et recherche de vocabulaire par catégorie."
                            Margin="0,2,0,0"
                            Foreground="{DynamicResource Brush.Text.Secondary}" />
@@ -676,8 +675,7 @@
                                     <StackPanel>
                                         <TextBlock Text="{Binding Word}"
                                                    FontFamily="{StaticResource Font.Serif}"
-                                                   FontSize="20"
-                                                   FontWeight="SemiBold" />
+                                                   FontSize="20" />
 
                                         <ItemsControl Margin="0,4,0,0">
                                             <ItemsControl.ItemsSource>
@@ -836,9 +834,9 @@
                                     <StackPanel>
                                         <TextBlock Text="{Binding Word}"
                                                    FontFamily="{StaticResource Font.Serif}"
-                                                   FontSize="34"
-                                                   FontWeight="SemiBold" />
+                                                   FontSize="34" />
                                         <TextBlock Text="{Binding Definition}"
+                                                   FontFamily="{StaticResource Font.Serif}"
                                                    Margin="0,10,0,0"
                                                    FontSize="16"
                                                    TextWrapping="Wrap" />
@@ -912,16 +910,13 @@
                                                         </Style.Triggers>
                                                     </Style>
                                                 </StackPanel.Style>
-                                                <!-- Each metadata section is a header row (icon, label,
-                                                     static chevron) over a thin separator, then its
-                                                     content indented to align under the label. The
-                                                     chevron is decorative only — these sections aren't
-                                                     collapsible, so it never toggles. -->
+                                                <!-- Each metadata section is a header row (icon, label)
+                                                     over a thin separator, then its content indented to
+                                                     align under the label. -->
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0"
                                                                Text="📖"
@@ -934,9 +929,6 @@
                                                                Text="Synonymes"
                                                                FontWeight="SemiBold"
                                                                VerticalAlignment="Center" />
-                                                    <Path Grid.Column="2"
-                                                          Style="{StaticResource StaticChevronPathStyle}"
-                                                          VerticalAlignment="Center" />
                                                 </Grid>
                                                 <Separator Margin="0,10,0,14" />
                                                 <ItemsControl ItemsSource="{Binding Synonyms}"
@@ -963,7 +955,6 @@
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0"
                                                                Text="💬"
@@ -976,9 +967,6 @@
                                                                Text="Exemples"
                                                                FontWeight="SemiBold"
                                                                VerticalAlignment="Center" />
-                                                    <Path Grid.Column="2"
-                                                          Style="{StaticResource StaticChevronPathStyle}"
-                                                          VerticalAlignment="Center" />
                                                 </Grid>
                                                 <Separator Margin="0,10,0,14" />
                                                 <ItemsControl ItemsSource="{Binding ExampleSentences}"
@@ -997,7 +985,6 @@
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0"
                                                                Text="📝"
@@ -1010,9 +997,6 @@
                                                                Text="Notes personnelles"
                                                                FontWeight="SemiBold"
                                                                VerticalAlignment="Center" />
-                                                    <Path Grid.Column="2"
-                                                          Style="{StaticResource StaticChevronPathStyle}"
-                                                          VerticalAlignment="Center" />
                                                 </Grid>
                                                 <Separator Margin="0,10,0,14" />
                                                 <TextBlock Text="{Binding Notes}"
@@ -1023,7 +1007,6 @@
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0"
                                                                Text="📄"
@@ -1036,9 +1019,6 @@
                                                                Text="Source"
                                                                FontWeight="SemiBold"
                                                                VerticalAlignment="Center" />
-                                                    <Path Grid.Column="2"
-                                                          Style="{StaticResource StaticChevronPathStyle}"
-                                                          VerticalAlignment="Center" />
                                                 </Grid>
                                                 <Separator Margin="0,10,0,14" />
                                                 <TextBlock Text="{Binding Source}"
@@ -1072,7 +1052,7 @@
                                                                 <Setter Property="Grid.Row" Value="1" />
                                                                 <Setter Property="Grid.Column" Value="0" />
                                                                 <Setter Property="Grid.ColumnSpan" Value="2" />
-                                                                <Setter Property="Margin" Value="0,16,8,0" />
+                                                                <Setter Property="Margin" Value="0,106,8,0" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
