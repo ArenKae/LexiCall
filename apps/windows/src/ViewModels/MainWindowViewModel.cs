@@ -1126,7 +1126,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (string.IsNullOrWhiteSpace(SearchQuery))
         {
-            return $"{FilteredEntries.Count} mot(s)";
+            var count = FilteredEntries.Count;
+            return $"{count} mot{(count > 1 ? "s" : "")}";
         }
 
         return FilteredEntries.Count == 0
