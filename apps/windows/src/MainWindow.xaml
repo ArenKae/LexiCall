@@ -12,6 +12,14 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
+    <Window.Resources>
+        <!-- Icon-set prototype geometries (throwaway, see TestIconPanel below). -->
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/TestIcons.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
     <!-- Main window: category tree on the left (contextual CRUD), category +
          search filtered list in the center, detail on the right. -->
     <Grid Margin="20">
@@ -295,8 +303,69 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <TreeView Grid.Row="1"
-                              x:Name="CategoryTreeView"
+                    <DockPanel Grid.Row="1">
+                    <!-- ═══ Icon-set prototype (throwaway): colored vector
+                         icons vs. the halo+emoji pattern above. Delete this
+                         StackPanel, TestIcons.xaml and the Test.* brushes in
+                         Colors.Light/Dark.xaml once the icon set is decided. -->
+                    <StackPanel x:Name="TestIconPanel"
+                                DockPanel.Dock="Bottom"
+                                Margin="6,4,6,2">
+                        <Separator Margin="0,2,0,6" />
+                        <TextBlock Text="Icon test"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Brush.Text.Muted}"
+                                   Margin="2,0,0,4" />
+
+                        <StackPanel Orientation="Horizontal" Margin="2,5,2,5">
+                            <Path Data="{StaticResource Icon.Test.Bottle}"
+                                  Fill="{DynamicResource Brush.Test.Icon.Bottle}"
+                                  Width="22" Height="22" Stretch="Uniform"
+                                  VerticalAlignment="Center" Margin="1,0,10,0" />
+                            <TextBlock Text="Test 1" FontSize="13"
+                                       Foreground="{DynamicResource Brush.Text.Primary}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="2,5,2,5">
+                            <Path Data="{StaticResource Icon.Test.Buildings}"
+                                  Fill="{DynamicResource Brush.Test.Icon.Buildings}"
+                                  Width="22" Height="22" Stretch="Uniform"
+                                  VerticalAlignment="Center" Margin="1,0,10,0" />
+                            <TextBlock Text="Test 2" FontSize="13"
+                                       Foreground="{DynamicResource Brush.Text.Primary}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="2,5,2,5">
+                            <Path Data="{StaticResource Icon.Test.Bus}"
+                                  Fill="{DynamicResource Brush.Test.Icon.Bus}"
+                                  Width="22" Height="22" Stretch="Uniform"
+                                  VerticalAlignment="Center" Margin="1,0,10,0" />
+                            <TextBlock Text="Test 3" FontSize="13"
+                                       Foreground="{DynamicResource Brush.Text.Primary}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="2,5,2,5">
+                            <Path Data="{StaticResource Icon.Test.Cat}"
+                                  Fill="{DynamicResource Brush.Test.Icon.Cat}"
+                                  Width="22" Height="22" Stretch="Uniform"
+                                  VerticalAlignment="Center" Margin="1,0,10,0" />
+                            <TextBlock Text="Test 4" FontSize="13"
+                                       Foreground="{DynamicResource Brush.Text.Primary}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="2,5,2,5">
+                            <Path Data="{StaticResource Icon.Test.CheckSquare}"
+                                  Fill="{DynamicResource Brush.Test.Icon.CheckSquare}"
+                                  Width="22" Height="22" Stretch="Uniform"
+                                  VerticalAlignment="Center" Margin="1,0,10,0" />
+                            <TextBlock Text="Test 5" FontSize="13"
+                                       Foreground="{DynamicResource Brush.Text.Primary}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <TreeView x:Name="CategoryTreeView"
                               ItemsSource="{Binding CategoryTree}"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
                               PreviewKeyDown="CategoryTreeView_KeyDown">
@@ -500,6 +569,7 @@
                             </HierarchicalDataTemplate>
                         </TreeView.ItemTemplate>
                     </TreeView>
+                    </DockPanel>
                 </Grid>
             </Border>
 

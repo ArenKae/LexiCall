@@ -43,4 +43,15 @@
          already reads much more strongly against a dark background. -->
     <sys:Double x:Key="Opacity.CategoryHalo.Root">0.20</sys:Double>
 
+    <!-- Icon-fill prototype swatches (MainWindow.xaml test rows): same OKLCH
+         method as Colors.Light.xaml, retargeted for this background
+         (L=0.70, C=0.10) — contrast stays uniform (~5.9-6.5:1) across every
+         hue instead of swinging with HSL's perceived-brightness bias. Delete
+         alongside TestIcons.xaml. -->
+    <SolidColorBrush x:Key="Brush.Test.Icon.Bottle" Color="#D2849C" />
+    <SolidColorBrush x:Key="Brush.Test.Icon.Buildings" Color="#80AD6F" />
+    <SolidColorBrush x:Key="Brush.Test.Icon.Bus" Color="#8C99DD" />
+    <SolidColorBrush x:Key="Brush.Test.Icon.Cat" Color="#D08D62" />
+    <SolidColorBrush x:Key="Brush.Test.Icon.CheckSquare" Color="#43B2AC" />
+
 </ResourceDictionary>

@@ -37,4 +37,17 @@
          blend fades out much faster against a near-white background. -->
     <sys:Double x:Key="Opacity.CategoryHalo.Root">0.42</sys:Double>
 
+    <!-- Icon-fill prototype swatches (MainWindow.xaml test rows): generated
+         in OKLCH at fixed perceptual lightness/chroma (L=0.54, C=0.09) rather
+         than the HSL formula CategoryColorResolver uses elsewhere, because
+         HSL's L doesn't track perceived brightness — at the resolver's fixed
+         S/L, green/yellow hues read ~2:1 against this background while
+         red/purple read ~4.5:1. OKLCH keeps contrast uniform (~4.2-4.7:1)
+         across every hue instead. Delete alongside TestIcons.xaml. -->
+    <SolidColorBrush x:Key="Brush.Test.Icon.Bottle" Color="#99576C" />
+    <SolidColorBrush x:Key="Brush.Test.Icon.Buildings" Color="#547B46" />
+    <SolidColorBrush x:Key="Brush.Test.Icon.Bus" Color="#5F6AA3" />
+    <SolidColorBrush x:Key="Brush.Test.Icon.Cat" Color="#985F3A" />
+    <SolidColorBrush x:Key="Brush.Test.Icon.CheckSquare" Color="#107F7A" />
+
 </ResourceDictionary>
