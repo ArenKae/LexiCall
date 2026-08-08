@@ -1,7 +1,6 @@
 <!-- Light theme: same brush keys as Colors.Dark.xaml, light values. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <SolidColorBrush x:Key="Brush.Window.Background" Color="#F5EFE4" />
     <SolidColorBrush x:Key="Brush.Surface" Color="#FCFAF4" />
@@ -32,22 +31,11 @@
 
     <SolidColorBrush x:Key="Brush.Input.Background" Color="#FFFFFF" />
 
-    <!-- Root category icon tint (MainWindow.xaml, both expanded tree and
-         collapsed rail): stronger than in dark theme, since the same alpha
-         blend fades out much faster against a near-white background. -->
-    <sys:Double x:Key="Opacity.CategoryHalo.Root">0.42</sys:Double>
-
-    <!-- Icon-fill prototype swatches (MainWindow.xaml test rows): generated
-         in OKLCH at fixed perceptual lightness/chroma (L=0.54, C=0.09) rather
-         than the HSL formula CategoryColorResolver uses elsewhere, because
-         HSL's L doesn't track perceived brightness — at the resolver's fixed
-         S/L, green/yellow hues read ~2:1 against this background while
-         red/purple read ~4.5:1. OKLCH keeps contrast uniform (~4.2-4.7:1)
-         across every hue instead. Delete alongside TestIcons.xaml. -->
-    <SolidColorBrush x:Key="Brush.Test.Icon.Bottle" Color="#99576C" />
-    <SolidColorBrush x:Key="Brush.Test.Icon.Buildings" Color="#547B46" />
-    <SolidColorBrush x:Key="Brush.Test.Icon.Bus" Color="#5F6AA3" />
-    <SolidColorBrush x:Key="Brush.Test.Icon.Cat" Color="#985F3A" />
-    <SolidColorBrush x:Key="Brush.Test.Icon.CheckSquare" Color="#107F7A" />
+    <!-- Fixed neutral grey for non-colorable vector icons (virtual category
+         nodes, "All entries"/"Uncategorized"): same value in both themes, an
+         OKLCH grey (L=0.58, C=0) chosen for roughly equal contrast against
+         both backgrounds, since category colors themselves aren't
+         theme-aware either (see CategoryColorResolver). -->
+    <SolidColorBrush x:Key="Brush.Icon.Neutral" Color="#7A7A7A" />
 
 </ResourceDictionary>

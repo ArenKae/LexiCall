@@ -51,12 +51,12 @@
                                         <Button Width="44" Height="44"
                                                 Margin="0,0,6,6"
                                                 Padding="0"
-                                                Tag="{Binding Glyph}"
+                                                Tag="{Binding IconKey}"
                                                 ToolTip="{Binding Keywords}"
                                                 Click="IconButton_Click">
-                                            <TextBlock Text="{Binding Glyph}"
-                                                       FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                                       FontSize="20" />
+                                            <Path Data="{Binding IconKey, Converter={StaticResource IconKeyToGeometryConverter}}"
+                                                  Fill="{DynamicResource Brush.Text.Primary}"
+                                                  Width="20" Height="20" Stretch="Uniform" />
                                         </Button>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

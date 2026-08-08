@@ -12,14 +12,6 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <Window.Resources>
-        <!-- Icon-set prototype geometries (throwaway, see TestIconPanel below). -->
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Themes/TestIcons.xaml" />
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-    </Window.Resources>
     <!-- Main window: category tree on the left (contextual CRUD), category +
          search filtered list in the center, detail on the right. -->
     <Grid Margin="20">
@@ -94,9 +86,9 @@
                         Padding="9,7"
                         Click="OptionsButton_Click"
                         ToolTip="Options">
-                    <TextBlock Text="&#xE713;"
-                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                               FontSize="15" />
+                    <Path Data="{StaticResource Icon.Phosphor.gear}"
+                          Fill="{DynamicResource Brush.Text.Primary}"
+                          Width="15" Height="15" Stretch="Uniform" />
                 </Button>
             </StackPanel>
 
@@ -206,14 +198,15 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Border.Style>
-                                <Button Content="📚"
-                                        FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                        FontSize="14"
-                                        Style="{StaticResource GhostButtonStyle}"
+                                <Button Style="{StaticResource GhostButtonStyle}"
                                         Width="24" Height="24"
                                         Padding="0"
                                         Click="SelectAllEntriesButton_Click"
-                                        ToolTip="Toutes les entrées" />
+                                        ToolTip="Toutes les entrées">
+                                    <Path Data="{StaticResource Icon.Phosphor.books}"
+                                          Fill="{DynamicResource Brush.Icon.Neutral}"
+                                          Width="14" Height="14" Stretch="Uniform" />
+                                </Button>
                             </Border>
                             <Border Width="32" Height="32"
                                     CornerRadius="8"
@@ -233,14 +226,15 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Border.Style>
-                                <Button Content="🏷️"
-                                        FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                        FontSize="14"
-                                        Style="{StaticResource GhostButtonStyle}"
+                                <Button Style="{StaticResource GhostButtonStyle}"
                                         Width="24" Height="24"
                                         Padding="0"
                                         Click="SelectUncategorizedButton_Click"
-                                        ToolTip="Sans catégorie" />
+                                        ToolTip="Sans catégorie">
+                                    <Path Data="{StaticResource Icon.Solar.tag}"
+                                          Fill="{DynamicResource Brush.Icon.Neutral}"
+                                          Width="14" Height="14" Stretch="Uniform" />
+                                </Button>
                             </Border>
 
                             <Separator Margin="2,8,2,8" />
@@ -287,14 +281,32 @@
                                             <Grid Width="24" Height="24"
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center">
-                                                <Border CornerRadius="6"
-                                                        Background="{Binding ColorBrush}"
-                                                        Opacity="{DynamicResource Opacity.CategoryHalo.Root}" />
+                                                <!-- Vector icons resolve through IconKeyToGeometryConverter and
+                                                     fill solid with the category's own color, no halo backdrop
+                                                     behind them: the icon itself carries the color. A legacy
+                                                     emoji (or a virtual node's hardcoded glyph) falls back to
+                                                     the TextBlock. -->
+                                                <Path Data="{Binding DisplayIcon, Converter={StaticResource IconKeyToGeometryConverter}}"
+                                                      Fill="{Binding ColorBrush}"
+                                                      Width="14" Height="14" Stretch="Uniform"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center" />
                                                 <TextBlock Text="{Binding DisplayIcon}"
                                                            FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
                                                            FontSize="13"
                                                            HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center" />
+                                                           VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding DisplayIcon, Converter={StaticResource IconKeyToGeometryConverter}}" Value="{x:Null}">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
@@ -303,69 +315,8 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <DockPanel Grid.Row="1">
-                    <!-- ═══ Icon-set prototype (throwaway): colored vector
-                         icons vs. the halo+emoji pattern above. Delete this
-                         StackPanel, TestIcons.xaml and the Test.* brushes in
-                         Colors.Light/Dark.xaml once the icon set is decided. -->
-                    <StackPanel x:Name="TestIconPanel"
-                                DockPanel.Dock="Bottom"
-                                Margin="6,4,6,2">
-                        <Separator Margin="0,2,0,6" />
-                        <TextBlock Text="Icon test"
-                                   FontSize="11"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource Brush.Text.Muted}"
-                                   Margin="2,0,0,4" />
-
-                        <StackPanel Orientation="Horizontal" Margin="2,5,2,5">
-                            <Path Data="{StaticResource Icon.Test.Bottle}"
-                                  Fill="{DynamicResource Brush.Test.Icon.Bottle}"
-                                  Width="22" Height="22" Stretch="Uniform"
-                                  VerticalAlignment="Center" Margin="1,0,10,0" />
-                            <TextBlock Text="Test 1" FontSize="13"
-                                       Foreground="{DynamicResource Brush.Text.Primary}"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="2,5,2,5">
-                            <Path Data="{StaticResource Icon.Test.Buildings}"
-                                  Fill="{DynamicResource Brush.Test.Icon.Buildings}"
-                                  Width="22" Height="22" Stretch="Uniform"
-                                  VerticalAlignment="Center" Margin="1,0,10,0" />
-                            <TextBlock Text="Test 2" FontSize="13"
-                                       Foreground="{DynamicResource Brush.Text.Primary}"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="2,5,2,5">
-                            <Path Data="{StaticResource Icon.Test.Bus}"
-                                  Fill="{DynamicResource Brush.Test.Icon.Bus}"
-                                  Width="22" Height="22" Stretch="Uniform"
-                                  VerticalAlignment="Center" Margin="1,0,10,0" />
-                            <TextBlock Text="Test 3" FontSize="13"
-                                       Foreground="{DynamicResource Brush.Text.Primary}"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="2,5,2,5">
-                            <Path Data="{StaticResource Icon.Test.Cat}"
-                                  Fill="{DynamicResource Brush.Test.Icon.Cat}"
-                                  Width="22" Height="22" Stretch="Uniform"
-                                  VerticalAlignment="Center" Margin="1,0,10,0" />
-                            <TextBlock Text="Test 4" FontSize="13"
-                                       Foreground="{DynamicResource Brush.Text.Primary}"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="2,5,2,5">
-                            <Path Data="{StaticResource Icon.Test.CheckSquare}"
-                                  Fill="{DynamicResource Brush.Test.Icon.CheckSquare}"
-                                  Width="22" Height="22" Stretch="Uniform"
-                                  VerticalAlignment="Center" Margin="1,0,10,0" />
-                            <TextBlock Text="Test 5" FontSize="13"
-                                       Foreground="{DynamicResource Brush.Text.Primary}"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </StackPanel>
-
-                    <TreeView x:Name="CategoryTreeView"
+                    <TreeView Grid.Row="1"
+                              x:Name="CategoryTreeView"
                               ItemsSource="{Binding CategoryTree}"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
                               PreviewKeyDown="CategoryTreeView_KeyDown">
@@ -444,18 +395,20 @@
 
                                     <!-- Leading marker: color stays confined to this one small area,
                                          never a full-row band. Root categories (and the two virtual
-                                         nodes) get their icon on a softly tinted backdrop; a virtual
-                                         node's ColorBrush is Transparent, so its backdrop naturally
-                                         renders invisible. Sub-categories get a small dot instead. -->
+                                         nodes) get a colored icon: the vector fills solid with
+                                         ColorBrush, no halo backdrop needed. Sub-categories get a
+                                         small dot instead. -->
                                     <Grid Grid.Column="0"
                                           Width="24" Height="24"
                                           HorizontalAlignment="Center"
                                           VerticalAlignment="Center">
-                                        <Border CornerRadius="6"
-                                                Background="{Binding ColorBrush}"
-                                                Opacity="{DynamicResource Opacity.CategoryHalo.Root}">
-                                            <Border.Style>
-                                                <Style TargetType="Border">
+                                        <!-- Vector icons resolve through IconKeyToGeometryConverter;
+                                             a legacy emoji falls back to the TextBlock. The outer
+                                             Grid keeps the existing Depth==0 gating; Path/TextBlock
+                                             toggle between themselves based on icon resolution. -->
+                                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
                                                     <Setter Property="Visibility" Value="Collapsed" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Depth}" Value="0">
@@ -463,24 +416,40 @@
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
-                                            </Border.Style>
-                                        </Border>
-                                        <TextBlock Text="{Binding DisplayIcon}"
-                                                   FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                                   FontSize="13"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Depth}" Value="0">
-                                                            <Setter Property="Visibility" Value="Visible" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
+                                            </Grid.Style>
+                                            <!-- Virtual nodes' Fill is overridden to the same live
+                                                 DynamicResource the collapsed rail buttons use, instead
+                                                 of ColorBrush (a SolidColorBrush snapshot taken once at
+                                                 tree-build time, which would otherwise go stale relative
+                                                 to the rail after a theme toggle without a rebuild). -->
+                                            <Path Data="{Binding DisplayIcon, Converter={StaticResource IconKeyToGeometryConverter}}"
+                                                  Width="14" Height="14" Stretch="Uniform">
+                                                <Path.Style>
+                                                    <Style TargetType="Path">
+                                                        <Setter Property="Fill" Value="{Binding ColorBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsVirtual}" Value="True">
+                                                                <Setter Property="Fill" Value="{DynamicResource Brush.Icon.Neutral}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Path.Style>
+                                            </Path>
+                                            <TextBlock Text="{Binding DisplayIcon}"
+                                                       FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
+                                                       FontSize="13">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DisplayIcon, Converter={StaticResource IconKeyToGeometryConverter}}" Value="{x:Null}">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
                                         <Ellipse Width="8" Height="8"
                                                  Fill="{Binding ColorBrush}">
                                             <Ellipse.Style>
@@ -569,7 +538,6 @@
                             </HierarchicalDataTemplate>
                         </TreeView.ItemTemplate>
                     </TreeView>
-                    </DockPanel>
                 </Grid>
             </Border>
 
@@ -988,13 +956,12 @@
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0"
-                                                               Text="📖"
-                                                               FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                                               FontSize="14"
-                                                               Foreground="{DynamicResource Brush.Text.Muted}"
-                                                               VerticalAlignment="Center"
-                                                               Margin="0,0,10,0" />
+                                                    <Path Grid.Column="0"
+                                                          Data="{StaticResource Icon.Phosphor.book-open}"
+                                                          Fill="{DynamicResource Brush.Text.Muted}"
+                                                          Width="14" Height="14" Stretch="Uniform"
+                                                          VerticalAlignment="Center"
+                                                          Margin="0,0,10,0" />
                                                     <TextBlock Grid.Column="1"
                                                                Text="Synonymes"
                                                                FontWeight="SemiBold"
@@ -1026,13 +993,12 @@
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0"
-                                                               Text="💬"
-                                                               FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                                               FontSize="14"
-                                                               Foreground="{DynamicResource Brush.Text.Muted}"
-                                                               VerticalAlignment="Center"
-                                                               Margin="0,0,10,0" />
+                                                    <Path Grid.Column="0"
+                                                          Data="{StaticResource Icon.Phosphor.quotes}"
+                                                          Fill="{DynamicResource Brush.Text.Muted}"
+                                                          Width="14" Height="14" Stretch="Uniform"
+                                                          VerticalAlignment="Center"
+                                                          Margin="0,0,10,0" />
                                                     <TextBlock Grid.Column="1"
                                                                Text="Exemples"
                                                                FontWeight="SemiBold"
@@ -1056,13 +1022,12 @@
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0"
-                                                               Text="📝"
-                                                               FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                                               FontSize="14"
-                                                               Foreground="{DynamicResource Brush.Text.Muted}"
-                                                               VerticalAlignment="Center"
-                                                               Margin="0,0,10,0" />
+                                                    <Path Grid.Column="0"
+                                                          Data="{StaticResource Icon.Phosphor.note-pencil}"
+                                                          Fill="{DynamicResource Brush.Text.Muted}"
+                                                          Width="14" Height="14" Stretch="Uniform"
+                                                          VerticalAlignment="Center"
+                                                          Margin="0,0,10,0" />
                                                     <TextBlock Grid.Column="1"
                                                                Text="Notes personnelles"
                                                                FontWeight="SemiBold"
@@ -1078,13 +1043,12 @@
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0"
-                                                               Text="📄"
-                                                               FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                                               FontSize="14"
-                                                               Foreground="{DynamicResource Brush.Text.Muted}"
-                                                               VerticalAlignment="Center"
-                                                               Margin="0,0,10,0" />
+                                                    <Path Grid.Column="0"
+                                                          Data="{StaticResource Icon.Solar.document}"
+                                                          Fill="{DynamicResource Brush.Text.Muted}"
+                                                          Width="14" Height="14" Stretch="Uniform"
+                                                          VerticalAlignment="Center"
+                                                          Margin="0,0,10,0" />
                                                     <TextBlock Grid.Column="1"
                                                                Text="Source"
                                                                FontWeight="SemiBold"

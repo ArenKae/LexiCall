@@ -97,7 +97,6 @@ public partial class MainWindow : Window
         CategoryPanelTitle.Visibility = contentVisibility;
         AddRootCategoryButton.Visibility = contentVisibility;
         CategoryTreeView.Visibility = contentVisibility;
-        TestIconPanel.Visibility = contentVisibility;
         CategoryColumnSplitter.Visibility = contentVisibility;
         CollapsedQuickSelectPanel.Visibility = isCollapsed ? Visibility.Visible : Visibility.Collapsed;
         CategoryPanelToggleButton.HorizontalAlignment = isCollapsed

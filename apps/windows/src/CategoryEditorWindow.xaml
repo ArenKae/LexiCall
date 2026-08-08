@@ -46,15 +46,34 @@
 
                     <!-- Icon picker: opens IconPickerWindow, which closes
                          itself as soon as an icon is chosen. -->
+                    <!-- Vector icons resolve through IconKeyToGeometryConverter; a legacy
+                         emoji (or the default "no icon" tag) falls back to the TextBlock,
+                         since the converter returns null for anything it can't resolve. -->
                     <Button Grid.Column="1"
                             Width="44" Height="36"
                             Padding="0"
                             Margin="8,0,0,0"
                             Click="ChooseIconButton_Click"
                             ToolTip="Choisir une icône pour cette catégorie.">
-                        <TextBlock Text="{Binding IconDisplayGlyph}"
-                                   FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                   FontSize="18" />
+                        <Grid>
+                            <Path Data="{Binding IconDisplayGlyph, Converter={StaticResource IconKeyToGeometryConverter}}"
+                                  Fill="{DynamicResource Brush.Text.Primary}"
+                                  Width="18" Height="18" Stretch="Uniform" />
+                            <TextBlock Text="{Binding IconDisplayGlyph}"
+                                       FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
+                                       FontSize="18">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IconDisplayGlyph, Converter={StaticResource IconKeyToGeometryConverter}}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
                     </Button>
 
                     <Button Grid.Column="2"

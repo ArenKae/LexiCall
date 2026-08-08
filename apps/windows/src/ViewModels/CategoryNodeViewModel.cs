@@ -66,13 +66,15 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
         _ => Category!.Name
     };
 
-    // Icon shown before the name: the category's chosen emoji, or a default
-    // glyph (virtual nodes, or a category with no icon).
+    // Icon shown before the name: the category's chosen icon (a vector
+    // IconKey, or a legacy emoji -- IconKeyToGeometryConverter falls back to
+    // rendering the raw string when it isn't a known key), or a default
+    // vector glyph (virtual nodes, or a category with no icon).
     public string DisplayIcon => Kind switch
     {
-        CategoryNodeKind.AllEntries => "📚",
-        CategoryNodeKind.Uncategorized => "🏷️",
-        _ => string.IsNullOrEmpty(Category!.IconGlyph) ? "🏷️" : Category.IconGlyph
+        CategoryNodeKind.AllEntries => "Phosphor.books",
+        CategoryNodeKind.Uncategorized => "Solar.tag",
+        _ => string.IsNullOrEmpty(Category!.IconGlyph) ? "Solar.tag" : Category.IconGlyph
     };
 
     // Null when empty so WPF doesn't render a tooltip at all.
