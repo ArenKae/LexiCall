@@ -22,6 +22,11 @@ run-win:
 build-win:
     just --justfile apps/windows/justfile --working-directory apps/windows build
 
+# Build and run in debug mode.
+[group('app : windows')]
+launch-win:
+    just --justfile apps/windows/justfile --working-directory apps/windows launch
+
 # Build in release mode.
 [group('app : windows')]
 release-win:
