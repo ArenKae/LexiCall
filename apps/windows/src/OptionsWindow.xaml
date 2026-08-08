@@ -92,7 +92,7 @@
                             Style="{StaticResource GhostButtonStyle}"
                             Margin="12,0,0,0"
                             Click="TestApiConnectionButton_Click"
-                            ToolTip="Enregistre l'URL/la clé ci-dessus puis vérifie que l'API est joignable." />
+                            ToolTip="Vérifie que l'API est joignable avec l'URL/la clé ci-dessus." />
                 </Grid>
             </StackPanel>
         </Border>

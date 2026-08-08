@@ -239,7 +239,7 @@
          its Opacity toggling never shifts the content. -->
     <Style x:Key="CardListBoxItemStyle" TargetType="ListBoxItem">
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        <Setter Property="Padding" Value="16,10,12,10" />
+        <Setter Property="Padding" Value="16,8,12,8" />
         <Setter Property="Margin" Value="0,0,0,6" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="Template">

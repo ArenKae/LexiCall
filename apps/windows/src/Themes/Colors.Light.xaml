@@ -26,6 +26,9 @@
     <SolidColorBrush x:Key="Brush.Chip.Neutral.Background" Color="#EDE6D6" />
     <SolidColorBrush x:Key="Brush.Chip.Neutral.Foreground" Color="#5C5546" />
 
+    <!-- Synonym chips: Surface + 5% (subtle overlay, not a distinct "surface" tone). -->
+    <SolidColorBrush x:Key="Brush.Chip.Synonym.Background" Color="#EFEEE8" />
+
     <SolidColorBrush x:Key="Brush.Selection.Background" Color="#DCE7F8" />
     <SolidColorBrush x:Key="Brush.Selection.Foreground" Color="#16213D" />
 

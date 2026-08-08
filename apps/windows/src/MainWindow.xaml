@@ -20,87 +20,14 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <DockPanel Grid.Row="0" Margin="4,0,4,18">
-            <StackPanel DockPanel.Dock="Right"
-                        Orientation="Horizontal"
-                        VerticalAlignment="Center">
-                <!-- Global sync status: connectivity dot + icon reflecting
-                     the last periodic resync cycle. Hidden entirely when
-                     sync isn't configured. -->
-                <StackPanel Orientation="Horizontal"
-                            VerticalAlignment="Center"
-                            Margin="0,0,10,0">
-                    <StackPanel.Style>
-                        <Style TargetType="StackPanel">
-                            <Setter Property="Visibility" Value="Visible" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.NotConfigured}">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </StackPanel.Style>
-
-                    <Ellipse Width="7"
-                             Height="7"
-                             VerticalAlignment="Center"
-                             ToolTip="Connexion à l’API">
-                        <Ellipse.Style>
-                            <Style TargetType="Ellipse">
-                                <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Ok}">
-                                        <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Syncing}">
-                                        <Setter Property="Fill" Value="{DynamicResource Brush.Text.Secondary}" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Ellipse.Style>
-                    </Ellipse>
-
-                    <TextBlock Text="&#xE895;"
-                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                               FontSize="13"
-                               Margin="5,0,0,0"
-                               VerticalAlignment="Center"
-                               ToolTip="Dernier cycle de synchronisation">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Ok}">
-                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Syncing}">
-                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                </StackPanel>
-
-                <Button Style="{StaticResource GhostButtonStyle}"
-                        Padding="9,7"
-                        Click="OptionsButton_Click"
-                        ToolTip="Options">
-                    <Path Data="{StaticResource Icon.Phosphor.gear}"
-                          Fill="{DynamicResource Brush.Text.Primary}"
-                          Width="15" Height="15" Stretch="Uniform" />
-                </Button>
-            </StackPanel>
-
-            <StackPanel>
-                <TextBlock Text="LexiCall"
-                           FontFamily="{StaticResource Font.Serif}"
-                           FontSize="28" />
-                <TextBlock Text="Organisation et recherche de vocabulaire par catégorie."
-                           Margin="0,2,0,0"
-                           Foreground="{DynamicResource Brush.Text.Secondary}" />
-            </StackPanel>
-        </DockPanel>
+        <StackPanel Grid.Row="0" Margin="4,0,4,18">
+            <TextBlock Text="LexiCall"
+                       FontFamily="{StaticResource Font.Serif}"
+                       FontSize="28" />
+            <TextBlock Text="Organisation et recherche de vocabulaire par catégorie."
+                       Margin="0,2,0,0"
+                       Foreground="{DynamicResource Brush.Text.Secondary}" />
+        </StackPanel>
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
@@ -139,6 +66,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <Grid Grid.Row="0" Margin="6,2,2,8">
@@ -379,19 +307,78 @@
                                                 </MenuItem.Header>
                                             </MenuItem>
                                             <Separator />
-                                            <MenuItem Header="✏️  Renommer"
-                                                      FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                                      InputGestureText="F2"
-                                                      Click="RenameCategoryMenuItem_Click" />
-                                            <MenuItem Header="⚙️  Modifier…"
-                                                      FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                                      Click="EditCategoryMenuItem_Click" />
+                                            <MenuItem InputGestureText="F2"
+                                                      Click="RenameCategoryMenuItem_Click">
+                                                <MenuItem.Header>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Grid Width="20">
+                                                            <Path Data="{StaticResource Icon.Phosphor.pencil}"
+                                                                  Fill="{DynamicResource Brush.Text.Primary}"
+                                                                  Width="13" Height="13"
+                                                                  Stretch="Uniform"
+                                                                  HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center" />
+                                                        </Grid>
+                                                        <TextBlock Text="Renommer"
+                                                                   Margin="6,0,0,0"
+                                                                   VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </MenuItem.Header>
+                                            </MenuItem>
+                                            <MenuItem Click="EditCategoryMenuItem_Click">
+                                                <MenuItem.Header>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Grid Width="20">
+                                                            <Path Data="{StaticResource Icon.Phosphor.gear}"
+                                                                  Fill="{DynamicResource Brush.Text.Primary}"
+                                                                  Width="13" Height="13"
+                                                                  Stretch="Uniform"
+                                                                  HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center" />
+                                                        </Grid>
+                                                        <TextBlock Text="Modifier…"
+                                                                   Margin="6,0,0,0"
+                                                                   VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </MenuItem.Header>
+                                            </MenuItem>
                                             <Separator />
-                                            <MenuItem Header="🗑️  Supprimer"
-                                                      FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                                      Click="DeleteCategoryMenuItem_Click" />
+                                            <MenuItem Click="DeleteCategoryMenuItem_Click">
+                                                <MenuItem.Header>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="&#xE74D;"
+                                                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                                   FontSize="13"
+                                                                   Width="20"
+                                                                   TextAlignment="Center"
+                                                                   VerticalAlignment="Center" />
+                                                        <TextBlock Text="Supprimer"
+                                                                   Margin="6,0,0,0"
+                                                                   VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </MenuItem.Header>
+                                            </MenuItem>
                                         </ContextMenu>
                                     </Grid.ContextMenu>
+
+                                    <!-- Separates the two virtual nodes (Toutes les entrées /
+                                         Sans catégorie) from the real categories below. -->
+                                    <Border Grid.Column="0" Grid.ColumnSpan="3"
+                                            BorderThickness="0,0,0,1"
+                                            BorderBrush="{DynamicResource Brush.Border.Strong}"
+                                            VerticalAlignment="Bottom"
+                                            Margin="0,0,0,-10">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Kind}" Value="{x:Static viewModels:CategoryNodeKind.Uncategorized}">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                    </Border>
 
                                     <!-- Leading marker: color stays confined to this one small area,
                                          never a full-row band. Root categories (and the two virtual
@@ -539,6 +526,182 @@
                             </HierarchicalDataTemplate>
                         </TreeView.ItemTemplate>
                     </TreeView>
+
+                    <!-- Footer: sync status + settings, pinned below the tree
+                         (its own Grid row, outside the ScrollViewer/TreeView)
+                         so it never scrolls with the category list. -->
+                    <Grid Grid.Row="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Separator Grid.Row="0"
+                                   Background="{DynamicResource Brush.Border.Strong}"
+                                   Margin="4,8,4,8" />
+
+                        <!-- Collapsed (rail): centered 32px icon tiles, the exact
+                             same recipe as CollapsedQuickSelectPanel above. -->
+                        <StackPanel x:Name="FooterCollapsedPanel"
+                                    Grid.Row="1"
+                                    Visibility="Collapsed"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,0,0,4">
+                            <Border Width="32" Height="32"
+                                    Margin="0,0,0,4"
+                                    CornerRadius="8"
+                                    ToolTip="{Binding LastSyncedAtTooltip}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.NotConfigured}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Path Width="14" Height="14" Stretch="Uniform"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Data="{StaticResource Icon.Phosphor.dot}">
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Ok}">
+                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Syncing}">
+                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Text.Secondary}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                            </Border>
+
+                            <Border Width="32" Height="32"
+                                    CornerRadius="8"
+                                    Cursor="Hand"
+                                    ToolTip="Options"
+                                    MouseLeftButtonUp="OptionsRow_MouseLeftButtonUp">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Surface.Hover}" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Path Data="{StaticResource Icon.Phosphor.gear}"
+                                      Fill="{DynamicResource Brush.Text.Secondary}"
+                                      Width="15" Height="15" Stretch="Uniform"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Expanded: same icon-column(24) + label(margin 6)
+                             rhythm as a category tree row. -->
+                        <StackPanel x:Name="FooterExpandedPanel"
+                                    Grid.Row="1"
+                                    Margin="6,0,2,2">
+                            <Grid Margin="0,0,0,12"
+                                  ToolTip="{Binding LastSyncedAtTooltip}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="24" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.NotConfigured}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+
+                                <Path Grid.Column="0"
+                                      Width="14" Height="14" Stretch="Uniform"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Data="{StaticResource Icon.Phosphor.dot}">
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Ok}">
+                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Syncing}">
+                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Text.Secondary}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+
+                                <TextBlock Grid.Column="1"
+                                           Margin="6,0,0,0"
+                                           FontSize="14"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource Brush.Text.Secondary}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Erreur de synchronisation" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Ok}">
+                                                    <Setter Property="Text" Value="Connecté" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Syncing}">
+                                                    <Setter Property="Text" Value="Synchronisation…" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+
+                            <Border CornerRadius="6"
+                                    Padding="0,5"
+                                    Cursor="Hand"
+                                    ToolTip="Options"
+                                    MouseLeftButtonUp="OptionsRow_MouseLeftButtonUp">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Surface.Hover}" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="24" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Path Grid.Column="0"
+                                          Data="{StaticResource Icon.Phosphor.gear}"
+                                          Fill="{DynamicResource Brush.Text.Secondary}"
+                                          Width="15" Height="15" Stretch="Uniform"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="Paramètres"
+                                               Margin="6,0,0,0"
+                                               FontSize="14"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
                 </Grid>
             </Border>
 
@@ -761,12 +924,6 @@
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
-
-                                        <TextBlock Text="{Binding Source}"
-                                                   Margin="0,6,0,0"
-                                                   FontSize="10"
-                                                   Foreground="{DynamicResource Brush.Text.Muted}"
-                                                   TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
@@ -825,11 +982,12 @@
                                     </Style>
                                 </Button.Style>
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE70F;"
-                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                               FontSize="13"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,8,0" />
+                                    <Path Data="{StaticResource Icon.Phosphor.pencil}"
+                                          Fill="{DynamicResource Brush.Text.Secondary}"
+                                          Width="13" Height="13"
+                                          Stretch="Uniform"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,8,0" />
                                     <TextBlock Text="Modifier" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
@@ -876,6 +1034,7 @@
                                                    FontSize="34" />
                                         <TextBlock Text="{Binding Definition}"
                                                    FontFamily="{StaticResource Font.Serif}"
+                                                   FontWeight="Normal"
                                                    Margin="0,10,0,0"
                                                    FontSize="16"
                                                    TextWrapping="Wrap" />
@@ -884,7 +1043,7 @@
                                              A small color dot, not a filled badge — color stays a
                                              discreet accent, consistent with the entry list. -->
                                         <ItemsControl ItemsSource="{Binding DataContext.SelectedEntryCategories, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                      Margin="0,14,0,0">
+                                                      Margin="0,30,0,0">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
                                                     <WrapPanel />
@@ -959,7 +1118,7 @@
                                                     </Grid.ColumnDefinitions>
                                                     <Path Grid.Column="0"
                                                           Data="{StaticResource Icon.Phosphor.book-open}"
-                                                          Fill="{DynamicResource Brush.Text.Muted}"
+                                                          Fill="{DynamicResource Brush.Text.Secondary}"
                                                           Width="14" Height="14" Stretch="Uniform"
                                                           VerticalAlignment="Center"
                                                           Margin="0,0,10,0" />
@@ -970,7 +1129,7 @@
                                                 </Grid>
                                                 <Separator Margin="0,10,0,14" />
                                                 <ItemsControl ItemsSource="{Binding Synonyms}"
-                                                              Margin="24,0,0,0">
+                                                              Margin="15,0,0,0">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate>
                                                             <WrapPanel />
@@ -980,10 +1139,10 @@
                                                         <DataTemplate>
                                                             <Border Margin="0,0,8,8"
                                                                     Padding="9,4"
-                                                                    Background="{DynamicResource Brush.Chip.Neutral.Background}"
+                                                                    Background="{DynamicResource Brush.Chip.Synonym.Background}"
                                                                     CornerRadius="12">
                                                                 <TextBlock Text="{Binding}"
-                                                                           Foreground="{DynamicResource Brush.Chip.Neutral.Foreground}" />
+                                                                           Foreground="{DynamicResource Brush.Text.Secondary}" />
                                                             </Border>
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
@@ -996,7 +1155,7 @@
                                                     </Grid.ColumnDefinitions>
                                                     <Path Grid.Column="0"
                                                           Data="{StaticResource Icon.Phosphor.quotes}"
-                                                          Fill="{DynamicResource Brush.Text.Muted}"
+                                                          Fill="{DynamicResource Brush.Text.Secondary}"
                                                           Width="14" Height="14" Stretch="Uniform"
                                                           VerticalAlignment="Center"
                                                           Margin="0,0,10,0" />
@@ -1025,7 +1184,7 @@
                                                     </Grid.ColumnDefinitions>
                                                     <Path Grid.Column="0"
                                                           Data="{StaticResource Icon.Phosphor.note-pencil}"
-                                                          Fill="{DynamicResource Brush.Text.Muted}"
+                                                          Fill="{DynamicResource Brush.Text.Secondary}"
                                                           Width="14" Height="14" Stretch="Uniform"
                                                           VerticalAlignment="Center"
                                                           Margin="0,0,10,0" />
@@ -1046,7 +1205,7 @@
                                                     </Grid.ColumnDefinitions>
                                                     <Path Grid.Column="0"
                                                           Data="{StaticResource Icon.Solar.document}"
-                                                          Fill="{DynamicResource Brush.Text.Muted}"
+                                                          Fill="{DynamicResource Brush.Text.Secondary}"
                                                           Width="14" Height="14" Stretch="Uniform"
                                                           VerticalAlignment="Center"
                                                           Margin="0,0,10,0" />

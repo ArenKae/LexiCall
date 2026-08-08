@@ -45,6 +45,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly DispatcherTimer _periodicSyncTimer;
     private bool _isSyncing;
     private GlobalSyncStatus _globalSyncStatus = GlobalSyncStatus.NotConfigured;
+    private DateTimeOffset? _lastSyncedAt;
 
     public MainWindowViewModel(VocabularyRepository? repository = null, VocabularyApiClient? apiClient = null)
     {
@@ -175,6 +176,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _globalSyncStatus, value);
     }
 
+    // Local time of the last successful resync cycle — shown in the
+    // footer's sync status tooltip.
+    public DateTimeOffset? LastSyncedAt
+    {
+        get => _lastSyncedAt;
+        private set => SetProperty(ref _lastSyncedAt, value);
+    }
+
+    public string LastSyncedAtTooltip => LastSyncedAt is { } lastSyncedAt
+        ? $"Dernière synchronisation le : {lastSyncedAt:dd/MM/yyyy à HH:mm:ss}"
+        : "Pas encore synchronisé";
+
     public string EmptyListMessage
     {
         get
@@ -268,7 +281,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedEntrySyncIsSynced));
     }
 
-    public Task<ApiConnectionStatus> TestApiConnectionAsync() => _apiClient.TestConnectionAsync();
+    // Called from OptionsWindow's "Tester la connexion" button — reflects the
+    // manual test result on GlobalSyncStatus immediately, rather than leaving
+    // the sidebar footer stuck on its previous state until the next periodic
+    // resync (up to 60s later).
+    public async Task<ApiConnectionStatus> TestApiConnectionAsync()
+    {
+        // No ConfigureAwait(false): the only caller is a UI-thread async void
+        // handler (OptionsWindow), and GlobalSyncStatus must be set back on
+        // that thread for the bound footer to update safely.
+        var status = await _apiClient.TestConnectionAsync();
+
+        GlobalSyncStatus = status switch
+        {
+            ApiConnectionStatus.Ok => GlobalSyncStatus.Ok,
+            ApiConnectionStatus.NotConfigured => GlobalSyncStatus.NotConfigured,
+            _ => GlobalSyncStatus.Problem
+        };
+
+        return status;
+    }
 
     // Shared entry point for startup and the periodic timer — re-entrancy
     // guard (a resync already running skips a second one) and edit guard
@@ -416,6 +448,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             RefreshFilteredEntries();
             SaveDatabase();
             GlobalSyncStatus = GlobalSyncStatus.Ok;
+            LastSyncedAt = DateTimeOffset.Now;
+            OnPropertyChanged(nameof(LastSyncedAtTooltip));
 
             // Unconditional rather than scoped to the selected entry: cheap
             // (one cycle per minute), and covers both a batched push

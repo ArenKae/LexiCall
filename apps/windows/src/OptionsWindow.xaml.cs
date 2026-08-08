@@ -4,6 +4,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using LexiCall.Desktop.Services;
 using LexiCall.Desktop.ViewModels;
 
@@ -17,8 +18,14 @@ public partial class OptionsWindow : Window
         DataContext = viewModel;
         ThemeService.RegisterWindow(this);
 
+        // Set both fields before wiring TextChanged: attaching it first would
+        // have this fire on the ApiBaseUrlTextBox assignment below while
+        // ApiKeyTextBox is still empty, saving an empty key over the real one.
         ApiBaseUrlTextBox.Text = viewModel.ApiBaseUrl;
         ApiKeyTextBox.Text = viewModel.ApiKey;
+
+        ApiBaseUrlTextBox.TextChanged += ApiSettingsTextBox_TextChanged;
+        ApiKeyTextBox.TextChanged += ApiSettingsTextBox_TextChanged;
     }
 
     private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
@@ -26,10 +33,17 @@ public partial class OptionsWindow : Window
         ((MainWindowViewModel)DataContext).ToggleTheme();
     }
 
+    // Saves on every keystroke rather than only when "Tester la connexion" is
+    // pressed — leaving the fields edited but unsaved was confusing (looked
+    // like a form with no save action of its own).
+    private void ApiSettingsTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        ((MainWindowViewModel)DataContext).UpdateApiSettings(ApiBaseUrlTextBox.Text.Trim(), ApiKeyTextBox.Text.Trim());
+    }
+
     private async void TestApiConnectionButton_Click(object sender, RoutedEventArgs e)
     {
         var viewModel = (MainWindowViewModel)DataContext;
-        viewModel.UpdateApiSettings(ApiBaseUrlTextBox.Text.Trim(), ApiKeyTextBox.Text.Trim());
 
         ApiConnectionStatusText.Text = "Test en cours…";
 

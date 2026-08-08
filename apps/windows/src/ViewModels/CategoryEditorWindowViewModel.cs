@@ -23,6 +23,7 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
 {
     private readonly List<VocabularyCategory> _allCategories;
     private readonly VocabularyCategory? _existingCategory;
+    private readonly Guid _pendingCategoryId = Guid.NewGuid();
     private string _name = string.Empty;
     private string _description = string.Empty;
     private string _iconGlyph = string.Empty;
@@ -135,11 +136,6 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
 
     public bool HasCustomColor => !string.IsNullOrEmpty(ColorHex);
 
-    // Picker button preview: the chosen color, or the existing category's
-    // automatic color (computed ignoring its own override, to correctly
-    // preview a revert to "Automatique"), or a neutral glyph for a category
-    // not yet created — its automatic color index only exists after the
-    // first save.
     public SolidColorBrush ColorPreviewBrush
     {
         get
@@ -149,18 +145,24 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
                 return new SolidColorBrush(chosenColor);
             }
 
-            if (_existingCategory is null)
+            var previewCategory = _existingCategory ?? new VocabularyCategory
             {
-                return new SolidColorBrush(Colors.Transparent);
-            }
+                Id = _pendingCategoryId,
+                Name = string.Empty,
+                ParentId = SelectedParentOption.Id
+            };
+
+            var categoriesForPreview = _existingCategory is null
+                ? _allCategories.Append(previewCategory).ToList()
+                : _allCategories;
 
             var overridesExcludingSelf = CategoryColorStore.LoadAll()
-                .Where(pair => pair.Key != _existingCategory.Id)
+                .Where(pair => pair.Key != previewCategory.Id)
                 .ToDictionary(pair => pair.Key, pair => pair.Value);
-            var colorIndexes = CategoryHierarchy.ComputeColorIndexes(_allCategories);
+            var colorIndexes = CategoryHierarchy.ComputeColorIndexes(categoriesForPreview);
 
             return new SolidColorBrush(
-                CategoryColorResolver.Resolve(_existingCategory, _allCategories, colorIndexes, overridesExcludingSelf));
+                CategoryColorResolver.Resolve(previewCategory, categoriesForPreview, colorIndexes, overridesExcludingSelf));
         }
     }
 
@@ -172,6 +174,7 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _selectedParentOption, value))
             {
                 ClearError();
+                OnPropertyChanged(nameof(ColorPreviewBrush));
             }
         }
     }
@@ -237,7 +240,7 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
 
         SavedCategory = new VocabularyCategory
         {
-            Id = _existingCategory?.Id ?? Guid.NewGuid(),
+            Id = _existingCategory?.Id ?? _pendingCategoryId,
             Name = name,
             ParentId = parentId,
             Description = Description.Trim(),

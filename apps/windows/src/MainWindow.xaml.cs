@@ -102,6 +102,12 @@ public partial class MainWindow : Window
         CategoryPanelToggleButton.HorizontalAlignment = isCollapsed
             ? HorizontalAlignment.Center
             : HorizontalAlignment.Left;
+        CategoryPanelToggleButton.Margin = isCollapsed
+            ? new Thickness(-2, 0, 0, 0)
+            : new Thickness(0);
+
+        FooterExpandedPanel.Visibility = contentVisibility;
+        FooterCollapsedPanel.Visibility = isCollapsed ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private MainWindowViewModel ViewModel => (MainWindowViewModel)DataContext;
@@ -109,6 +115,13 @@ public partial class MainWindow : Window
     private void OptionsButton_Click(object sender, RoutedEventArgs e)
     {
         new OptionsWindow(ViewModel) { Owner = this }.ShowDialog();
+    }
+
+    // The footer's settings row is a Border (matching the tree row/rail tile
+    // recipe), not a Button, so it's wired via click instead of Command.
+    private void OptionsRow_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        OptionsButton_Click(sender, e);
     }
 
     private void ClearSearchButton_Click(object sender, RoutedEventArgs e)
