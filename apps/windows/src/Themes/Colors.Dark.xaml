@@ -28,6 +28,7 @@
 
     <SolidColorBrush x:Key="Brush.Danger" Color="#E45B58" />
     <SolidColorBrush x:Key="Brush.Success" Color="#4FAE68" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="#E0952F" />
 
     <SolidColorBrush x:Key="Brush.Chip.Neutral.Background" Color="#4A443B" />
     <SolidColorBrush x:Key="Brush.Chip.Neutral.Foreground" Color="#BDB6AC" />

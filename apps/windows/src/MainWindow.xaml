@@ -527,9 +527,6 @@
                         </TreeView.ItemTemplate>
                     </TreeView>
 
-                    <!-- Footer: sync status + settings, pinned below the tree
-                         (its own Grid row, outside the ScrollViewer/TreeView)
-                         so it never scrolls with the category list. -->
                     <Grid Grid.Row="2">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -538,7 +535,7 @@
 
                         <Separator Grid.Row="0"
                                    Background="{DynamicResource Brush.Border.Strong}"
-                                   Margin="4,8,4,8" />
+                                   Margin="4,14,4,14" />
 
                         <!-- Collapsed (rail): centered 32px icon tiles, the exact
                              same recipe as CollapsedQuickSelectPanel above. -->
@@ -561,24 +558,23 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Border.Style>
-                                <Path Width="14" Height="14" Stretch="Uniform"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center"
-                                      Data="{StaticResource Icon.Phosphor.dot}">
-                                    <Path.Style>
-                                        <Style TargetType="Path">
+                                <Ellipse Width="13" Height="13"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
                                             <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Ok}">
                                                     <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Syncing}">
-                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Text.Secondary}" />
+                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Warning}" />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
-                                    </Path.Style>
-                                </Path>
+                                    </Ellipse.Style>
+                                </Ellipse>
                             </Border>
 
                             <Border Width="32" Height="32"
@@ -626,25 +622,24 @@
                                     </Style>
                                 </Grid.Style>
 
-                                <Path Grid.Column="0"
-                                      Width="14" Height="14" Stretch="Uniform"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center"
-                                      Data="{StaticResource Icon.Phosphor.dot}">
-                                    <Path.Style>
-                                        <Style TargetType="Path">
+                                <Ellipse Grid.Column="0"
+                                         Width="13" Height="13"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
                                             <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Ok}">
                                                     <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Syncing}">
-                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Text.Secondary}" />
+                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Warning}" />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
-                                    </Path.Style>
-                                </Path>
+                                    </Ellipse.Style>
+                                </Ellipse>
 
                                 <TextBlock Grid.Column="1"
                                            Margin="6,0,0,0"
@@ -1035,7 +1030,7 @@
                                         <TextBlock Text="{Binding Definition}"
                                                    FontFamily="{StaticResource Font.Serif}"
                                                    FontWeight="Normal"
-                                                   Margin="0,10,0,0"
+                                                   Margin="0,20,0,0"
                                                    FontSize="16"
                                                    TextWrapping="Wrap" />
 
