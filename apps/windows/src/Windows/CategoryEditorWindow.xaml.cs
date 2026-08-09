@@ -6,7 +6,7 @@ using LexiCall.Desktop.Models;
 using LexiCall.Desktop.Services;
 using LexiCall.Desktop.ViewModels;
 
-namespace LexiCall.Desktop;
+namespace LexiCall.Desktop.Windows;
 
 public partial class CategoryEditorWindow : Window
 {

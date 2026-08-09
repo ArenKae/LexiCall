@@ -3,7 +3,7 @@
 using System.Windows;
 using LexiCall.Desktop.Services;
 
-namespace LexiCall.Desktop;
+namespace LexiCall.Desktop.Windows;
 
 public partial class ConfirmationDialog : Window
 {
