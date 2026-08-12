@@ -136,6 +136,14 @@ in practice with a few supporting mechanisms:
   metadata already went through. That keeps the two collections in sync
   without relying on the client to make a second request that could fail,
   get skipped, or race against the first.
+- **A visible, persisted operation log on the client.** Every push, pull, and
+  delete the client attempts — success or failure — is recorded to a small
+  capped log (200 entries), surfaced through a history view opened from the
+  app's own connection indicator. LWW sync is opaque by nature: a record can
+  be quietly overwritten or removed by something that happened on another
+  device, with no prompt and no confirmation dialog. Being able to see
+  exactly what happened to a given word or category, and when, matters more
+  here than it would for a system where a human reviews every write.
 
 ## Tech stack
 

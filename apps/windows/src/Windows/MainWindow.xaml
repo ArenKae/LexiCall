@@ -547,14 +547,20 @@
                             <Border Width="32" Height="32"
                                     Margin="0,0,0,4"
                                     CornerRadius="8"
-                                    ToolTip="{Binding LastSyncedAtTooltip}">
+                                    Cursor="Hand"
+                                    ToolTip="{Binding LastSyncedAtTooltip}"
+                                    MouseLeftButtonUp="SyncStatusRow_MouseLeftButtonUp">
                                 <Border.Style>
                                     <Style TargetType="Border">
                                         <Setter Property="Visibility" Value="Visible" />
+                                        <Setter Property="Background" Value="Transparent" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.NotConfigured}">
                                                 <Setter Property="Visibility" Value="Collapsed" />
                                             </DataTrigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Surface.Hover}" />
+                                            </Trigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Border.Style>
@@ -605,62 +611,72 @@
                         <StackPanel x:Name="FooterExpandedPanel"
                                     Grid.Row="1"
                                     Margin="6,0,2,2">
-                            <Grid Margin="0,0,0,12"
-                                  ToolTip="{Binding LastSyncedAtTooltip}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="24" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Grid.Style>
-                                    <Style TargetType="Grid">
+                            <Border CornerRadius="6"
+                                    Padding="0,5"
+                                    Margin="0,0,0,12"
+                                    Cursor="Hand"
+                                    ToolTip="{Binding LastSyncedAtTooltip}"
+                                    MouseLeftButtonUp="SyncStatusRow_MouseLeftButtonUp">
+                                <Border.Style>
+                                    <Style TargetType="Border">
                                         <Setter Property="Visibility" Value="Visible" />
+                                        <Setter Property="Background" Value="Transparent" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.NotConfigured}">
                                                 <Setter Property="Visibility" Value="Collapsed" />
                                             </DataTrigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Surface.Hover}" />
+                                            </Trigger>
                                         </Style.Triggers>
                                     </Style>
-                                </Grid.Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="24" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
 
-                                <Ellipse Grid.Column="0"
-                                         Width="13" Height="13"
-                                         HorizontalAlignment="Center"
-                                         VerticalAlignment="Center">
-                                    <Ellipse.Style>
-                                        <Style TargetType="Ellipse">
-                                            <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Ok}">
-                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Syncing}">
-                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Warning}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Ellipse.Style>
-                                </Ellipse>
+                                    <Ellipse Grid.Column="0"
+                                             Width="13" Height="13"
+                                             HorizontalAlignment="Center"
+                                             VerticalAlignment="Center">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Ok}">
+                                                        <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Syncing}">
+                                                        <Setter Property="Fill" Value="{DynamicResource Brush.Warning}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
 
-                                <TextBlock Grid.Column="1"
-                                           Margin="6,0,0,0"
-                                           FontSize="14"
-                                           VerticalAlignment="Center"
-                                           Foreground="{DynamicResource Brush.Text.Secondary}">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Erreur de synchronisation" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Ok}">
-                                                    <Setter Property="Text" Value="Connecté" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Syncing}">
-                                                    <Setter Property="Text" Value="Synchronisation…" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </Grid>
+                                    <TextBlock Grid.Column="1"
+                                               Margin="6,0,0,0"
+                                               FontSize="14"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource Brush.Text.Secondary}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="Erreur de synchronisation" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Ok}">
+                                                        <Setter Property="Text" Value="Connecté" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding GlobalSyncStatus}" Value="{x:Static viewModels:GlobalSyncStatus.Syncing}">
+                                                        <Setter Property="Text" Value="Synchronisation…" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+                            </Border>
 
                             <Border CornerRadius="6"
                                     Padding="0,5"

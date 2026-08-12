@@ -59,6 +59,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Categories = new ObservableCollection<VocabularyCategory>(database.Categories);
         _pendingEntryDeletions = database.PendingEntryDeletions;
         _pendingCategoryDeletions = database.PendingCategoryDeletions;
+        SyncHistory = new ObservableCollection<SyncHistoryEntry>(SyncHistoryStore.Load());
         FilteredEntries = [];
         CategoryTree = [];
         RebuildCategoryTree();
@@ -91,6 +92,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<VocabularyEntry> Entries { get; }
 
     public ObservableCollection<VocabularyCategory> Categories { get; }
+
+    // Newest-first log of push/pull/delete operations, for SyncHistoryWindow.
+    // See RecordSyncHistory.
+    public ObservableCollection<SyncHistoryEntry> SyncHistory { get; }
 
     // List shown by the UI, rebuilt from Entries on every search or mutation.
     public ObservableCollection<VocabularyEntry> FilteredEntries { get; }
@@ -359,17 +364,27 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         // server's count_entries_using_category guard still counts an entry
         // until it's tombstoned, so a pending category deletion would 409
         // if the entry that used it isn't already gone server-side.
+        var entryDeletionResults = new List<(PendingDeletion Pending, bool Success)>();
+
         foreach (var pending in _pendingEntryDeletions.ToList())
         {
-            if (await _apiClient.TryDeleteEntryAsync(pending.Id, pending.DeletedAt).ConfigureAwait(false))
+            var success = await _apiClient.TryDeleteEntryAsync(pending.Id, pending.DeletedAt).ConfigureAwait(false);
+            entryDeletionResults.Add((pending, success));
+
+            if (success)
             {
                 _pendingEntryDeletions.Remove(pending);
             }
         }
 
+        var categoryDeletionResults = new List<(PendingDeletion Pending, bool Success)>();
+
         foreach (var pending in _pendingCategoryDeletions.ToList())
         {
-            if (await _apiClient.TryDeleteCategoryAsync(pending.Id, pending.DeletedAt).ConfigureAwait(false))
+            var success = await _apiClient.TryDeleteCategoryAsync(pending.Id, pending.DeletedAt).ConfigureAwait(false);
+            categoryDeletionResults.Add((pending, success));
+
+            if (success)
             {
                 _pendingCategoryDeletions.Remove(pending);
             }
@@ -381,10 +396,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         // == null for everyone).
         var categoriesToPush = Categories.Where(c => c.SyncedAt is null || c.SyncedAt < c.UpdatedAt).ToList();
         var syncedCategories = new List<VocabularyCategory>();
+        var categoryPushResults = new List<(VocabularyCategory Category, bool Success)>();
 
         foreach (var category in categoriesToPush)
         {
-            if (await _apiClient.TryUpsertCategoryAsync(category).ConfigureAwait(false))
+            var success = await _apiClient.TryUpsertCategoryAsync(category).ConfigureAwait(false);
+            categoryPushResults.Add((category, success));
+
+            if (success)
             {
                 syncedCategories.Add(category);
             }
@@ -392,10 +411,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         var entriesToPush = Entries.Where(e => e.SyncedAt is null || e.SyncedAt < e.UpdatedAt).ToList();
         var syncedEntries = new List<VocabularyEntry>();
+        var entryPushResults = new List<(VocabularyEntry Entry, bool Success)>();
 
         foreach (var entry in entriesToPush)
         {
-            if (await _apiClient.TryUpsertEntryAsync(entry).ConfigureAwait(false))
+            var success = await _apiClient.TryUpsertEntryAsync(entry).ConfigureAwait(false);
+            entryPushResults.Add((entry, success));
+
+            if (success)
             {
                 syncedEntries.Add(entry);
             }
@@ -442,8 +465,34 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 entry.SyncedAt = entry.UpdatedAt;
             }
 
-            MergePulled(Categories, categoriesPull.Items, FindCategoryIndex, c => c.Id, c => c.UpdatedAt, c => c.IsDeleted, (c, t) => c.SyncedAt = t);
-            MergePulled(Entries, entriesPull.Items, FindEntryIndex, e => e.Id, e => e.UpdatedAt, e => e.IsDeleted, (e, t) => e.SyncedAt = t);
+            foreach (var (pending, success) in entryDeletionResults)
+            {
+                RecordSyncHistory(SyncHistoryEntityType.Entry, pending.Id,
+                    string.IsNullOrEmpty(pending.Label) ? pending.Id.ToString()[..8] : pending.Label,
+                    SyncHistoryOperation.Delete, success ? SyncHistoryOutcome.Success : SyncHistoryOutcome.Failure);
+            }
+
+            foreach (var (pending, success) in categoryDeletionResults)
+            {
+                RecordSyncHistory(SyncHistoryEntityType.Category, pending.Id,
+                    string.IsNullOrEmpty(pending.Label) ? pending.Id.ToString()[..8] : pending.Label,
+                    SyncHistoryOperation.Delete, success ? SyncHistoryOutcome.Success : SyncHistoryOutcome.Failure);
+            }
+
+            foreach (var (category, success) in categoryPushResults)
+            {
+                RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name,
+                    SyncHistoryOperation.Push, success ? SyncHistoryOutcome.Success : SyncHistoryOutcome.Failure);
+            }
+
+            foreach (var (entry, success) in entryPushResults)
+            {
+                RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word,
+                    SyncHistoryOperation.Push, success ? SyncHistoryOutcome.Success : SyncHistoryOutcome.Failure);
+            }
+
+            MergePulled(Categories, categoriesPull.Items, FindCategoryIndex, c => c.Id, c => c.UpdatedAt, c => c.IsDeleted, (c, t) => c.SyncedAt = t, SyncHistoryEntityType.Category, c => c.Name);
+            MergePulled(Entries, entriesPull.Items, FindEntryIndex, e => e.Id, e => e.UpdatedAt, e => e.IsDeleted, (e, t) => e.SyncedAt = t, SyncHistoryEntityType.Entry, e => e.Word);
             RebuildCategoryTree();
             RefreshFilteredEntries();
             SaveDatabase();
@@ -474,14 +523,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     // than the checkpoint). Generic over VocabularyEntry and
     // VocabularyCategory via small delegate accessors, since the two models
     // share no common interface.
-    private static void MergePulled<T>(
+    private void MergePulled<T>(
         ObservableCollection<T> collection,
         IReadOnlyList<T> pulled,
         Func<Guid, int> findIndex,
         Func<T, Guid> getId,
         Func<T, DateTimeOffset> getUpdatedAt,
         Func<T, bool> getIsDeleted,
-        Action<T, DateTimeOffset> setSyncedAt)
+        Action<T, DateTimeOffset> setSyncedAt,
+        SyncHistoryEntityType entityType,
+        Func<T, string> getLabel)
     {
         foreach (var item in pulled)
         {
@@ -491,6 +542,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 if (index >= 0)
                 {
+                    // The transport is a pull, but what actually happened to
+                    // this record is a deletion — logged as Delete so the
+                    // history reads by effect, not by mechanism.
+                    RecordSyncHistory(entityType, getId(item), getLabel(collection[index]), SyncHistoryOperation.Delete, SyncHistoryOutcome.Success);
                     collection.RemoveAt(index);
                 }
 
@@ -506,13 +561,45 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 setSyncedAt(item, getUpdatedAt(item));
                 collection.Add(item);
+                RecordSyncHistory(entityType, getId(item), getLabel(item), SyncHistoryOperation.Pull, SyncHistoryOutcome.Success);
             }
             else if (getUpdatedAt(item) > getUpdatedAt(collection[index]))
             {
                 setSyncedAt(item, getUpdatedAt(item));
                 collection[index] = item;
+                RecordSyncHistory(entityType, getId(item), getLabel(item), SyncHistoryOperation.Pull, SyncHistoryOutcome.Success);
             }
         }
+    }
+
+    // Must only be called on the UI thread: mutates the UI-bound SyncHistory
+    // collection directly.
+    private void RecordSyncHistory(SyncHistoryEntityType entityType, Guid entityId, string entityLabel,
+        SyncHistoryOperation operation, SyncHistoryOutcome outcome)
+    {
+        SyncHistory.Insert(0, new SyncHistoryEntry
+        {
+            Timestamp = DateTimeOffset.Now,
+            EntityType = entityType,
+            EntityId = entityId,
+            EntityLabel = entityLabel,
+            Operation = operation,
+            Outcome = outcome
+        });
+
+        while (SyncHistory.Count > SyncHistoryStore.MaxEntries)
+        {
+            SyncHistory.RemoveAt(SyncHistory.Count - 1);
+        }
+
+        SyncHistoryStore.Save(SyncHistory.ToList());
+    }
+
+    // Called from SyncHistoryWindow after user confirmation.
+    public void ClearSyncHistory()
+    {
+        SyncHistory.Clear();
+        SyncHistoryStore.Save(SyncHistory.ToList());
     }
 
     // Immediate push per mutation: confirms SyncedAt on success rather than
@@ -522,6 +609,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (!await _apiClient.TryUpsertEntryAsync(entry).ConfigureAwait(false))
         {
+            Application.Current.Dispatcher.Invoke(() =>
+                RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word, SyncHistoryOperation.Push, SyncHistoryOutcome.Failure));
             return;
         }
 
@@ -536,6 +625,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 Entries[index].SyncedAt = entry.UpdatedAt;
                 SaveDatabase();
+                RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word, SyncHistoryOperation.Push, SyncHistoryOutcome.Success);
 
                 // In-place mutation: SelectedEntry isn't reassigned on this
                 // path (unlike MergePulled), so its setter doesn't notify on
@@ -554,6 +644,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (!await _apiClient.TryUpsertCategoryAsync(category).ConfigureAwait(false))
         {
+            Application.Current.Dispatcher.Invoke(() =>
+                RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name, SyncHistoryOperation.Push, SyncHistoryOutcome.Failure));
             return;
         }
 
@@ -565,6 +657,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 Categories[index].SyncedAt = category.UpdatedAt;
                 SaveDatabase();
+                RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name, SyncHistoryOperation.Push, SyncHistoryOutcome.Success);
             }
         });
     }
@@ -573,10 +666,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     // confirmation. If the push fails (offline), the record stays in
     // _pendingEntryDeletions/_pendingCategoryDeletions (persisted in
     // vocabulary.json), retried on the next ResyncWithApiAsync.
-    private async Task PushEntryDeletionAsync(Guid id, DateTimeOffset deletedAt)
+    private async Task PushEntryDeletionAsync(Guid id, string label, DateTimeOffset deletedAt)
     {
         if (!await _apiClient.TryDeleteEntryAsync(id, deletedAt).ConfigureAwait(false))
         {
+            Application.Current.Dispatcher.Invoke(() =>
+                RecordSyncHistory(SyncHistoryEntityType.Entry, id, label, SyncHistoryOperation.Delete, SyncHistoryOutcome.Failure));
             return;
         }
 
@@ -584,13 +679,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             _pendingEntryDeletions.RemoveAll(p => p.Id == id);
             SaveDatabase();
+            RecordSyncHistory(SyncHistoryEntityType.Entry, id, label, SyncHistoryOperation.Delete, SyncHistoryOutcome.Success);
         });
     }
 
-    private async Task PushCategoryDeletionAsync(Guid id, DateTimeOffset deletedAt)
+    private async Task PushCategoryDeletionAsync(Guid id, string label, DateTimeOffset deletedAt)
     {
         if (!await _apiClient.TryDeleteCategoryAsync(id, deletedAt).ConfigureAwait(false))
         {
+            Application.Current.Dispatcher.Invoke(() =>
+                RecordSyncHistory(SyncHistoryEntityType.Category, id, label, SyncHistoryOperation.Delete, SyncHistoryOutcome.Failure));
             return;
         }
 
@@ -598,6 +696,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             _pendingCategoryDeletions.RemoveAll(p => p.Id == id);
             SaveDatabase();
+            RecordSyncHistory(SyncHistoryEntityType.Category, id, label, SyncHistoryOperation.Delete, SyncHistoryOutcome.Success);
         });
     }
 
@@ -661,9 +760,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             : FilteredEntries[Math.Min(index, FilteredEntries.Count - 1)];
 
         var deletedAt = DateTimeOffset.Now;
-        _pendingEntryDeletions.Add(new PendingDeletion { Id = entry.Id, DeletedAt = deletedAt });
+        _pendingEntryDeletions.Add(new PendingDeletion { Id = entry.Id, DeletedAt = deletedAt, Label = entry.Word });
         SaveDatabase();
-        _ = PushEntryDeletionAsync(entry.Id, deletedAt);
+        _ = PushEntryDeletionAsync(entry.Id, entry.Word, deletedAt);
     }
 
     // Adds or replaces a category validated by CategoryEditorWindow. Returns
@@ -769,17 +868,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return $"Impossible de supprimer : cette catégorie est utilisée par {usageCount} mot(s).";
         }
 
+        var categoryName = Categories[index].Name;
         Categories.RemoveAt(index);
         CategoryColorStore.ClearColor(categoryId);
         CategoryOrderStore.ClearOrder(categoryId);
 
         var deletedAt = DateTimeOffset.Now;
-        _pendingCategoryDeletions.Add(new PendingDeletion { Id = categoryId, DeletedAt = deletedAt });
+        _pendingCategoryDeletions.Add(new PendingDeletion { Id = categoryId, DeletedAt = deletedAt, Label = categoryName });
 
         // OnCategoriesChanged() already saves — one SaveDatabase() call for
         // both the deletion and the pending-deletion record, not two separate calls.
         OnCategoriesChanged();
-        _ = PushCategoryDeletionAsync(categoryId, deletedAt);
+        _ = PushCategoryDeletionAsync(categoryId, categoryName, deletedAt);
         return null;
     }
 

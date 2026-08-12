@@ -124,6 +124,11 @@ public partial class MainWindow : Window
         OptionsButton_Click(sender, e);
     }
 
+    private void SyncStatusRow_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        new SyncHistoryWindow(ViewModel) { Owner = this }.ShowDialog();
+    }
+
     private void ClearSearchButton_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.SearchQuery = string.Empty;
