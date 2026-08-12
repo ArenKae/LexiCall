@@ -31,7 +31,8 @@
                 Margin="0,18,0,18"
                 Padding="20"
                 Style="{StaticResource CardBorderStyle}">
-            <StackPanel>
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,12,0">
                 <TextBlock Text="Nom *"
                            FontWeight="SemiBold" />
                 <Grid Margin="0,6,0,0">
@@ -177,6 +178,7 @@
                            Foreground="{DynamicResource Brush.Danger}"
                            FontWeight="SemiBold" />
             </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <StackPanel Grid.Row="2"
