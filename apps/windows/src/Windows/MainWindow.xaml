@@ -1008,7 +1008,8 @@
                         </StackPanel>
                     </DockPanel>
 
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                                  FocusVisualStyle="{x:Null}">
                         <ScrollViewer.Style>
                             <Style TargetType="ScrollViewer">
                                 <Setter Property="Visibility" Value="Visible" />
