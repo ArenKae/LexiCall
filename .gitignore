@@ -39,6 +39,9 @@ venv/
 .coverage
 htmlcov/
 
+# MongoDB dumps written by api/deploy/backup.sh — never committed
+api/backups/
+
 # Node.js / Expo / React Native (phase 3)
 node_modules/
 .expo/
