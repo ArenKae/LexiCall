@@ -1,6 +1,6 @@
-// Nœud de l'arbre latéral des catégories : une vraie catégorie ou un nœud
-// virtuel filtre ("Toutes les entrées", "Sans catégorie"). La sélection
-// remonte au MainWindowViewModel via callback, jamais via le TreeView.
+// A node in the sidebar category tree: a real category or a virtual filter
+// node ("Toutes les entrées", "Sans catégorie"). Selection flows up to
+// MainWindowViewModel via callback, never through the TreeView directly.
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -66,16 +66,18 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
         _ => Category!.Name
     };
 
-    // Icône affichée devant le nom : emoji choisi pour la catégorie, ou un
-    // repère par défaut (nœuds virtuels, ou catégorie sans icône).
+    // Icon shown before the name: the category's chosen icon (a vector
+    // IconKey, or a legacy emoji -- IconKeyToGeometryConverter falls back to
+    // rendering the raw string when it isn't a known key), or a default
+    // vector glyph (virtual nodes, or a category with no icon).
     public string DisplayIcon => Kind switch
     {
-        CategoryNodeKind.AllEntries => "📚",
-        CategoryNodeKind.Uncategorized => "🏷️",
-        _ => string.IsNullOrEmpty(Category!.IconGlyph) ? "🏷️" : Category.IconGlyph
+        CategoryNodeKind.AllEntries => "Phosphor.books",
+        CategoryNodeKind.Uncategorized => "Solar.tag",
+        _ => string.IsNullOrEmpty(Category!.IconGlyph) ? "Solar.tag" : Category.IconGlyph
     };
 
-    // Null quand vide pour que WPF n'affiche pas d'infobulle.
+    // Null when empty so WPF doesn't render a tooltip at all.
     public string? DescriptionToolTip =>
         string.IsNullOrWhiteSpace(Category?.Description) ? null : Category.Description;
 
@@ -85,12 +87,12 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
         set => SetProperty(ref _entryCount, value);
     }
 
-    // Profondeur dans la hiérarchie (0 = racine ou nœud virtuel) : pilote
-    // l'épaisseur des séparateurs et l'opacité du repère de couleur.
+    // Depth in the hierarchy (0 = root or virtual node): drives separator
+    // thickness and the color marker's opacity.
     public int Depth { get; set; }
 
-    // Couleur effective de la catégorie (choisie manuellement ou dérivée
-    // automatiquement de sa racine) : voir CategoryColorResolver.
+    // Effective category color (manually chosen, or derived automatically
+    // from its root) — see CategoryColorResolver.
     public SolidColorBrush ColorBrush
     {
         get => _colorBrush;
@@ -103,8 +105,9 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
         set => SetProperty(ref _isExpanded, value);
     }
 
-    // Dépli/repli décidé uniquement par le clic (MainWindow.xaml.cs) ; la
-    // sélection ne force pas IsExpanded, pour ne pas écraser un repli volontaire.
+    // Expand/collapse is driven only by the click (MainWindow.xaml.cs);
+    // selection never forces IsExpanded, so it doesn't override a
+    // deliberate collapse.
     public bool IsSelected
     {
         get => _isSelected;
@@ -135,8 +138,9 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
         IsEditing = true;
     }
 
-    // Recalculés à l'ouverture du menu contextuel (MainWindow.xaml.cs), pour
-    // désactiver "Monter"/"Descendre" en bout de groupe de frères.
+    // Recomputed when the context menu opens (MainWindow.xaml.cs), to
+    // disable "Monter"/"Descendre" (Move up/down) at either end of a
+    // sibling group.
     public bool CanMoveUp
     {
         get => _canMoveUp;

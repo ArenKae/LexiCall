@@ -1,5 +1,5 @@
-// Convertit la chaîne base64 stockée sur une entrée en BitmapImage affichable.
-// Une chaîne vide ou invalide produit null (utilisé aussi pour la visibilité).
+// Converts an entry's stored base64 string into a displayable BitmapImage.
+// An empty or invalid string yields null (also used to drive visibility).
 using System.Globalization;
 using System.IO;
 using System.Windows.Data;
@@ -15,7 +15,7 @@ public sealed class Base64ImageConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 
-    // Exposé en static pour être réutilisé hors binding (ex. ImagePreviewWindow).
+    // Exposed as static so it can be reused outside a binding (e.g. ImagePreviewWindow).
     public static BitmapImage? ToBitmapImage(string base64)
     {
         if (string.IsNullOrWhiteSpace(base64))

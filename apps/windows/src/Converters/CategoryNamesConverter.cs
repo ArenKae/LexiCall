@@ -1,7 +1,7 @@
-// Convertit les CategoryIds d'une entrée en catégories affichables (chips).
-// MultiBinding : [0] = List<Guid> de l'entrée, [1] = collection des catégories
-// connues. Retourne les catégories elles-mêmes (pas juste leur nom) pour que
-// les chips portent l'Id nécessaire au clic (sélection dans le panneau gauche).
+// Converts an entry's CategoryIds into displayable category chips.
+// MultiBinding: [0] = the entry's List<Guid>, [1] = all known categories.
+// Returns the categories themselves, not just their names, so chips carry
+// the Id needed for their click handler (selection in the sidebar).
 using System.Globalization;
 using System.Windows.Data;
 using LexiCall.Desktop.Models;

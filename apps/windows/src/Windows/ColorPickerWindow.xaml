@@ -1,4 +1,4 @@
-<Window x:Class="LexiCall.Desktop.ColorPickerWindow"
+<Window x:Class="LexiCall.Desktop.Windows.ColorPickerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Choisir une couleur"
@@ -8,10 +8,10 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!-- Sélecteur de couleur de catégorie : palette fixe (CategoryColorPalette),
-         calée sur les mêmes teintes que les couleurs automatiques pour que le
-         choix manuel s'y fonde. Cliquer une pastille la sélectionne immédiatement
-         (pas de bouton Valider séparé), comme IconPickerWindow. -->
+    <!-- Category color picker: a fixed palette (CategoryColorPalette), tuned
+         to the same hues as the automatic colors so a manual pick blends in.
+         Clicking a swatch selects it immediately (no separate confirm
+         button), same as IconPickerWindow. -->
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

@@ -1,6 +1,7 @@
-// ViewModel du sélecteur de couleur de catégorie : une palette fixe
-// (CategoryColorPalette) plus une option "Automatique" qui efface le choix
-// manuel. Même principe que IconPickerWindowViewModel (ColorSelected au clic).
+// ViewModel for the category color picker: a fixed palette
+// (CategoryColorPalette) plus an "Automatique" (Automatic) option that clears
+// the manual override. Same pattern as IconPickerWindowViewModel
+// (ColorSelected fires on click).
 using LexiCall.Desktop.Utilities;
 
 namespace LexiCall.Desktop.ViewModels;
@@ -18,7 +19,7 @@ public sealed class ColorPickerWindowViewModel
 
     public string? SelectedColorHex { get; private set; }
 
-    // colorHex null = "Automatique" (efface l'override).
+    // colorHex null = "Automatique" (clears the override).
     public void SelectColor(string? colorHex)
     {
         SelectedColorHex = colorHex;

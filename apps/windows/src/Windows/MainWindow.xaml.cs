@@ -1,6 +1,5 @@
-// Code-behind de la fenêtre principale : ouvre les fenêtres modales, relaie les
-// interactions de l'arbre de catégories au MainWindowViewModel, et affiche les
-// confirmations/erreurs en MessageBox.
+// Code-behind for the main window: opens modal windows, relays category-tree
+// interactions to MainWindowViewModel, and shows confirmations/errors via MessageBox.
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -10,20 +9,36 @@ using System.Windows.Threading;
 using LexiCall.Desktop.Services;
 using LexiCall.Desktop.ViewModels;
 
-namespace LexiCall.Desktop;
+namespace LexiCall.Desktop.Windows;
 
 public partial class MainWindow : Window
 {
+    // Sidebar collapse: the panel's own toggle shrinks CategoryColumn down to
+    // this width instead of hiding the column outright, so the toggle button
+    // itself (hosted inside that column) stays put and clickable. Wide enough
+    // for a 32px icon slot plus the card's own padding.
+    private const double CollapsedCategoryColumnWidth = 56;
+    private const double ExpandedCategoryColumnMinWidth = 220;
+
+    private double _expandedCategoryColumnWidth = 320;
+
     public MainWindow()
     {
         InitializeComponent();
         DataContext = new MainWindowViewModel();
         ThemeService.RegisterWindow(this);
         WindowLayoutService.Apply(this, CategoryColumn, EntryListColumn);
+        _expandedCategoryColumnWidth = CategoryColumn.Width.Value;
+
+        if (SettingsStore.Load().CategoryPanelCollapsed)
+        {
+            ApplyCategoryPanelCollapsedState(isCollapsed: true);
+        }
+
         Closing += MainWindow_Closing;
 
-        // Attaché au TreeView (pas au DataTemplate) pour que la zone cliquable
-        // corresponde au halo de sélection du TreeViewItem.
+        // Attached to the TreeView (not the DataTemplate) so the clickable
+        // area matches the TreeViewItem's selection highlight.
         CategoryTreeView.AddHandler(
             PreviewMouseLeftButtonDownEvent,
             new MouseButtonEventHandler(CategoryNode_MouseLeftButtonDown),
@@ -32,7 +47,67 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        var isCollapsed = CategoryPanelToggleButton.IsChecked == true;
+
+        if (isCollapsed)
+        {
+            // Only the last expanded width is persisted, never the transient
+            // collapsed sliver — CategoryPanelCollapsed below is what remembers
+            // the collapsed state itself. UpdateLayout forces ActualWidth to
+            // reflect this before Save reads it.
+            CategoryColumn.Width = new GridLength(_expandedCategoryColumnWidth);
+            UpdateLayout();
+        }
+
         WindowLayoutService.Save(this, CategoryColumn, EntryListColumn);
+
+        var settings = SettingsStore.Load();
+        settings.CategoryPanelCollapsed = isCollapsed;
+        SettingsStore.Save(settings);
+    }
+
+    private void CategoryPanelToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        var isCollapsed = CategoryPanelToggleButton.IsChecked == true;
+
+        if (isCollapsed)
+        {
+            _expandedCategoryColumnWidth = CategoryColumn.ActualWidth;
+        }
+
+        ApplyCategoryPanelCollapsedState(isCollapsed);
+    }
+
+    private void ApplyCategoryPanelCollapsedState(bool isCollapsed)
+    {
+        CategoryPanelToggleButton.IsChecked = isCollapsed;
+
+        if (isCollapsed)
+        {
+            CategoryColumn.MinWidth = CollapsedCategoryColumnWidth;
+            CategoryColumn.Width = new GridLength(CollapsedCategoryColumnWidth);
+        }
+        else
+        {
+            CategoryColumn.MinWidth = ExpandedCategoryColumnMinWidth;
+            CategoryColumn.Width = new GridLength(_expandedCategoryColumnWidth);
+        }
+
+        var contentVisibility = isCollapsed ? Visibility.Collapsed : Visibility.Visible;
+        CategoryPanelTitle.Visibility = contentVisibility;
+        AddRootCategoryButton.Visibility = contentVisibility;
+        CategoryTreeView.Visibility = contentVisibility;
+        CategoryColumnSplitter.Visibility = contentVisibility;
+        CollapsedQuickSelectPanel.Visibility = isCollapsed ? Visibility.Visible : Visibility.Collapsed;
+        CategoryPanelToggleButton.HorizontalAlignment = isCollapsed
+            ? HorizontalAlignment.Center
+            : HorizontalAlignment.Left;
+        CategoryPanelToggleButton.Margin = isCollapsed
+            ? new Thickness(-2, 0, 0, 0)
+            : new Thickness(0);
+
+        FooterExpandedPanel.Visibility = contentVisibility;
+        FooterCollapsedPanel.Visibility = isCollapsed ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private MainWindowViewModel ViewModel => (MainWindowViewModel)DataContext;
@@ -42,17 +117,30 @@ public partial class MainWindow : Window
         new OptionsWindow(ViewModel) { Owner = this }.ShowDialog();
     }
 
+    // The footer's settings row is a Border (matching the tree row/rail tile
+    // recipe), not a Button, so it's wired via click instead of Command.
+    private void OptionsRow_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        OptionsButton_Click(sender, e);
+    }
+
+    private void SyncStatusRow_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        new SyncHistoryWindow(ViewModel) { Owner = this }.ShowDialog();
+    }
+
     private void ClearSearchButton_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.SearchQuery = string.Empty;
         SearchTextBox.Focus();
     }
 
-    // ─── Entrées ───
+    // ─── Entries ───
 
     private void AddEntryButton_Click(object sender, RoutedEventArgs e)
     {
-        // Pré-sélectionne la catégorie active de l'arbre : ajout probable dans le contexte courant.
+        // Pre-selects the tree's active category: the new entry is likely
+        // meant for the current context.
         var dialog = new EntryEditorWindow(
             availableCategories: ViewModel.Categories,
             initialCategoryId: ViewModel.SelectedCategoryNode?.Category?.Id)
@@ -60,8 +148,8 @@ public partial class MainWindow : Window
             Owner = this
         };
 
-        // Empêche la synchro périodique de fusionner un pull pendant que
-        // cette fenêtre est ouverte (voir MainWindowViewModel.TryResyncAsync).
+        // Stops the periodic sync from merging a pull while this window is
+        // open (see MainWindowViewModel.TryResyncAsync).
         ViewModel.IsEditorDialogOpen = true;
         try
         {
@@ -123,8 +211,8 @@ public partial class MainWindow : Window
         }
     }
 
-    // Redécode le base64 plutôt que de réutiliser le Source de l'Image, pour ne
-    // pas dépendre de l'ordre binding/évènement.
+    // Re-decodes the base64 rather than reusing the Image's Source, so this
+    // doesn't depend on binding/event ordering.
     private void DetailImage_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: Models.VocabularyEntry entry })
@@ -142,7 +230,7 @@ public partial class MainWindow : Window
         new ImagePreviewWindow(this, image).ShowDialog();
     }
 
-    // Le chip porte la catégorie (VocabularyCategory) en DataContext.
+    // The chip carries its category (VocabularyCategory) as DataContext.
     private void CategoryChip_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (sender is FrameworkElement { DataContext: Models.VocabularyCategory category })
@@ -152,7 +240,32 @@ public partial class MainWindow : Window
         }
     }
 
-    // ─── Catégories ───
+    // ─── Categories ───
+
+    // The two virtual nodes always sit first in CategoryTree (see
+    // MainWindowViewModel.RebuildCategoryTree). Setting IsSelected runs the
+    // same selection path as clicking them in the tree (CategoryNodeViewModel.
+    // IsSelected's setter calls back into OnCategoryNodeSelected).
+    private void SelectAllEntriesButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CategoryTree[0].IsSelected = true;
+    }
+
+    private void SelectUncategorizedButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CategoryTree[1].IsSelected = true;
+    }
+
+    // The swatch carries its node (CategoryNodeViewModel) as DataContext —
+    // same selection path as the two virtual-node buttons above.
+    private void CollapsedRootCategory_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: CategoryNodeViewModel node })
+        {
+            node.IsSelected = true;
+            e.Handled = true;
+        }
+    }
 
     private void AddRootCategoryButton_Click(object sender, RoutedEventArgs e)
     {
@@ -256,8 +369,8 @@ public partial class MainWindow : Window
         }
     }
 
-    // Le DataContext du MenuItem est le nœud sur lequel le menu contextuel
-    // a été ouvert (hérité du PlacementTarget).
+    // The MenuItem's DataContext is the node the context menu was opened on
+    // (inherited from PlacementTarget).
     private static CategoryNodeViewModel? GetNodeFromMenuItem(object sender)
     {
         return sender is MenuItem { DataContext: CategoryNodeViewModel node }
@@ -265,8 +378,8 @@ public partial class MainWindow : Window
             : null;
     }
 
-    // Frères d'un nœud dans l'arbre déjà affiché (racines si Depth == 0, sinon
-    // Children de son parent) : utilisé pour activer/désactiver "Monter"/"Descendre".
+    // A node's siblings in the already-displayed tree (roots if Depth == 0,
+    // otherwise its parent's Children) — used to enable/disable "Monter"/"Descendre".
     private List<CategoryNodeViewModel> FindSiblingNodes(CategoryNodeViewModel node)
     {
         if (node.Depth == 0)
@@ -298,11 +411,11 @@ public partial class MainWindow : Window
         return null;
     }
 
-    // Les nœuds virtuels ("Toutes les entrées", "Sans catégorie") ne sont pas
-    // des catégories : aucun menu contextuel pour eux. Pour les autres, on
-    // recalcule ici CanMoveUp/CanMoveDown à partir de la position actuelle du
-    // nœud parmi ses frères dans l'arbre déjà affiché (déjà dans le bon ordre :
-    // pas besoin de relire CategoryOrderStore ici).
+    // Virtual nodes ("Toutes les entrées", "Sans catégorie") aren't
+    // categories: no context menu for them. For real ones, CanMoveUp/
+    // CanMoveDown are recomputed here from the node's current position among
+    // its siblings in the already-displayed tree (already in the right
+    // order — no need to re-read CategoryOrderStore here).
     private void CategoryNode_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: CategoryNodeViewModel node })
@@ -322,9 +435,10 @@ public partial class MainWindow : Window
         node.CanMoveDown = index >= 0 && index < siblings.Count - 1;
     }
 
-    // Gère nous-mêmes le clic (sélection + dépli) pour éviter un conflit avec le
-    // double-clic natif de TreeViewItem ; on remonte au TreeViewItem depuis le
-    // point de clic pour matcher le halo de sélection, plus large que la Grid.
+    // Handles the click (selection + expand) ourselves to avoid conflicting
+    // with TreeViewItem's native double-click behavior; walks up to the
+    // TreeViewItem from the click point to match its selection highlight,
+    // which is wider than the Grid.
     private void CategoryNode_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         var element = e.OriginalSource as DependencyObject;
@@ -332,7 +446,7 @@ public partial class MainWindow : Window
         {
             if (element is ToggleButton)
             {
-                // La flèche d'expansion gère déjà elle-même l'ouverture/fermeture.
+                // The expand arrow already handles its own open/close.
                 return;
             }
 
@@ -357,11 +471,11 @@ public partial class MainWindow : Window
         }
     }
 
-    // Câblé sur PreviewKeyDown (pas KeyDown) : la navigation clavier native du
-    // TreeView consomme déjà Haut/Bas dans sa propre gestion de KeyDown avant
-    // que l'évènement ne remonte jusqu'ici, donc Ctrl+Haut/Ctrl+Bas n'auraient
-    // jamais atteint un handler posé en aval (bulle). En tunneling, on les
-    // intercepte avant cette navigation native.
+    // Wired to PreviewKeyDown (not KeyDown): the TreeView's native keyboard
+    // navigation already consumes Up/Down in its own KeyDown handling before
+    // the event would bubble up here, so Ctrl+Up/Ctrl+Down would never reach
+    // a bubbling handler. Tunneling intercepts them before that native
+    // navigation runs.
     private void CategoryTreeView_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.F2 &&
@@ -390,10 +504,10 @@ public partial class MainWindow : Window
         }
     }
 
-    // ─── Renommage inline ───
+    // ─── Inline rename ───
 
-    // Loaded ne se déclenche qu'une fois (à la création du conteneur), bien avant
-    // le premier BeginEdit() : on réagit donc à Visible à chaque édition.
+    // Loaded only fires once (when the container is created), well before
+    // the first BeginEdit() — so this reacts to Visible on every edit instead.
     private void RenameTextBox_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (sender is not TextBox { DataContext: CategoryNodeViewModel { IsEditing: true } } textBox ||
@@ -432,8 +546,8 @@ public partial class MainWindow : Window
     {
         if (sender is TextBox { DataContext: CategoryNodeViewModel node })
         {
-            // Perte de focus : on tente de valider, mais sans bloquer l'utilisateur
-            // avec une erreur — un nom invalide est simplement abandonné.
+            // On focus loss, try to commit but never block the user with an
+            // error — an invalid name is simply discarded.
             CommitRename(node, interactive: false);
         }
     }
@@ -447,8 +561,9 @@ public partial class MainWindow : Window
 
         var newName = node.EditName.Trim();
 
-        // IsEditing repasse à false avant l'appel au ViewModel pour éviter que le
-        // LostFocus déclenché par le masquage du TextBox ne revalide une 2e fois.
+        // IsEditing flips back to false before calling the ViewModel, so the
+        // LostFocus triggered by hiding the TextBox doesn't re-commit a
+        // second time.
         node.IsEditing = false;
 
         if (string.IsNullOrWhiteSpace(newName) || newName == node.Category.Name)

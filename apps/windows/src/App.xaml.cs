@@ -1,6 +1,5 @@
-// Point d'entrée WPF de l'application.
-// Charge le thème sauvegardé (clair par défaut) avant l'ouverture de la
-// fenêtre principale déclarée dans App.xaml.
+// WPF entry point for the application. Loads the saved theme (light by
+// default) before the main window declared in App.xaml opens.
 using System.Windows;
 using LexiCall.Desktop.Services;
 

@@ -1,6 +1,6 @@
-// Aide à la navigation dans la hiérarchie des catégories (ParentId).
-// Le JSON pouvant être édité à la main, on tolère parents manquants
-// (traités comme racines) et cycles (rattachés à la racine).
+// Helpers for navigating the category hierarchy (ParentId). Since the JSON
+// can be hand-edited, dangling parents (treated as roots) and cycles
+// (reattached to the root) are both tolerated.
 using LexiCall.Desktop.Models;
 
 namespace LexiCall.Desktop.Utilities;
@@ -9,11 +9,11 @@ public static class CategoryHierarchy
 {
     private static readonly IReadOnlyDictionary<Guid, int> NoOrder = new Dictionary<Guid, int>();
 
-    // Parcours en profondeur : racines puis enfants récursivement, chaque
-    // groupe de frères trié via SortSiblings (ordre manuel s'il existe, sinon
-    // alphabétique). Le Depth retourné permet aux listes plates d'indenter
-    // sans arbre réel. order vient de CategoryOrderStore (menu contextuel
-    // "Monter"/"Descendre") ; omis, l'ordre reste purement alphabétique.
+    // Depth-first walk: roots then children recursively, each sibling group
+    // sorted via SortSiblings (manual order if any, otherwise alphabetical).
+    // The returned Depth lets flat lists indent without a real tree. order
+    // comes from CategoryOrderStore (context menu "Monter"/"Descendre" —
+    // Move up/down); omitted, the order stays purely alphabetical.
     public static IReadOnlyList<(VocabularyCategory Category, int Depth)> Flatten(
         IReadOnlyCollection<VocabularyCategory> categories,
         IReadOnlyDictionary<Guid, int>? order = null)
@@ -45,8 +45,8 @@ public static class CategoryHierarchy
             Visit(root, 0);
         }
 
-        // Catégories jamais atteintes depuis une racine : cycle de parenté,
-        // on les remonte à la racine pour rester visibles.
+        // Categories never reached from a root: a parenting cycle — bump
+        // them up to the root so they stay visible.
         foreach (var category in categories.OrderBy(category => category.Name, StringComparer.CurrentCultureIgnoreCase))
         {
             Visit(category, 0);
@@ -55,13 +55,12 @@ public static class CategoryHierarchy
         return result;
     }
 
-    // Attribue à chaque catégorie l'index de couleur de sa racine ; les
-    // descendantes héritent de l'index de leur racine. Sert de repli
-    // automatique à CategoryColorResolver quand aucune couleur n'a été
-    // choisie manuellement (voir CategoryColorStore). L'index d'une racine
-    // est dérivé de son Id (stable), pas de sa position parmi les autres
-    // racines : réordonner les catégories (Monter/Descendre) ne doit jamais
-    // changer leur couleur automatique.
+    // Assigns each category its root's color index; descendants inherit
+    // their root's index. Backs CategoryColorResolver's automatic fallback
+    // when no color was manually chosen (see CategoryColorStore). A root's
+    // index is derived from its Id (stable), not its position among other
+    // roots: reordering categories (Move up/down) must never change their
+    // automatic color.
     public static IReadOnlyDictionary<Guid, int> ComputeColorIndexes(IReadOnlyCollection<VocabularyCategory> categories)
     {
         var colorIndexes = new Dictionary<Guid, int>();
@@ -87,8 +86,8 @@ public static class CategoryHierarchy
         return colorIndexes;
     }
 
-    // & int.MaxValue plutôt que Math.Abs : évite l'OverflowException sur
-    // int.MinValue (Math.Abs(int.MinValue) n'a pas de représentation positive).
+    // & int.MaxValue rather than Math.Abs: avoids the OverflowException on
+    // int.MinValue (Math.Abs(int.MinValue) has no positive representation).
     private static int GetStableIndex(Guid categoryId) => categoryId.GetHashCode() & int.MaxValue;
 
     public static HashSet<Guid> GetDescendantIds(
@@ -118,9 +117,9 @@ public static class CategoryHierarchy
         return descendants;
     }
 
-    // Frères d'ordre (même parent effectif que category, elle comprise) dans
-    // l'ordre d'affichage actuel : utilisé pour déplacer une catégorie vers le
-    // haut/bas parmi ses frères (MainWindowViewModel.MoveCategoryUp/Down).
+    // Siblings (same effective parent as category, itself included) in the
+    // current display order — used to move a category up/down among its
+    // siblings (MainWindowViewModel.MoveCategoryUp/Down).
     public static IReadOnlyList<VocabularyCategory> GetSiblingsInOrder(
         IReadOnlyCollection<VocabularyCategory> categories,
         VocabularyCategory category,
@@ -168,11 +167,10 @@ public static class CategoryHierarchy
         return (roots, childrenByParent);
     }
 
-    // Rang manuel (CategoryOrderStore) d'abord si au moins une des deux
-    // catégories comparées en a un, sinon ordre alphabétique — une catégorie
-    // ajoutée après coup dans un groupe déjà réordonné se retrouve donc triée
-    // alphabétiquement après les catégories déjà positionnées manuellement,
-    // jusqu'à ce qu'on la déplace à son tour.
+    // Manual rank (CategoryOrderStore) takes priority if either compared
+    // category has one, otherwise alphabetical — a category added later to
+    // an already-reordered group sorts alphabetically after the manually
+    // positioned ones, until it's moved in turn.
     private static void SortSiblings(List<VocabularyCategory> siblings, IReadOnlyDictionary<Guid, int> order)
     {
         siblings.Sort((a, b) =>

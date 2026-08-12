@@ -1,8 +1,7 @@
-// Couleurs de catégorie choisies manuellement : une préférence de présentation
-// locale à l'app Windows (comme le thème ou la disposition des colonnes),
-// stockée dans settings.json — jamais dans vocabulary.json ni synchronisée
-// vers api/. Voir CategoryColorResolver pour la résolution effective
-// (override ici, sinon teinte automatique dérivée de la hiérarchie).
+// Manually assigned category colors: a local presentation preference (like
+// theme or column layout), stored in settings.json — never in vocabulary.json
+// or synced to api/. See CategoryColorResolver for the actual resolution
+// (override here, otherwise an automatic hue derived from the hierarchy).
 namespace LexiCall.Desktop.Services;
 
 public static class CategoryColorStore

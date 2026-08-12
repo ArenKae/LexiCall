@@ -1,6 +1,6 @@
-// ViewModel du formulaire d'ajout/modification d'une catégorie : validation
-// locale puis événement CategorySaved avec le résultat dans SavedCategory.
-// Le sélecteur de parent exclut la catégorie éditée et ses descendantes.
+// ViewModel for the add/edit category form: local validation, then a
+// CategorySaved event with the result in SavedCategory. The parent picker
+// excludes the edited category and its descendants.
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -23,6 +23,7 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
 {
     private readonly List<VocabularyCategory> _allCategories;
     private readonly VocabularyCategory? _existingCategory;
+    private readonly Guid _pendingCategoryId = Guid.NewGuid();
     private string _name = string.Empty;
     private string _description = string.Empty;
     private string _iconGlyph = string.Empty;
@@ -64,9 +65,9 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
 
     public VocabularyCategory? SavedCategory { get; private set; }
 
-    // Couleur choisie au moment de l'enregistrement (null = automatique) :
-    // séparée de SavedCategory, car ce n'est pas un champ du modèle de
-    // catégorie — voir CategoryColorStore.
+    // Color chosen at save time (null = automatic) — kept separate from
+    // SavedCategory since it isn't a field on the category model, see
+    // CategoryColorStore.
     public string? SavedColorHex { get; private set; }
 
     public string WindowTitle => _existingCategory is null
@@ -116,11 +117,10 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
 
     public bool HasIcon => !string.IsNullOrEmpty(IconGlyph);
 
-    // Repère neutre tant qu'aucune icône n'a été choisie, pour que le bouton
-    // du sélecteur ne soit jamais vide.
+    // Neutral glyph until an icon is chosen, so the picker button is never empty.
     public string IconDisplayGlyph => HasIcon ? IconGlyph : "🏷️";
 
-    // Null = pas de couleur choisie manuellement (couleur automatique).
+    // Null = no manually chosen color (automatic).
     public string? ColorHex
     {
         get => _colorHex;
@@ -136,11 +136,6 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
 
     public bool HasCustomColor => !string.IsNullOrEmpty(ColorHex);
 
-    // Aperçu du bouton de sélection : la couleur choisie, ou la couleur
-    // automatique de la catégorie existante (calculée en ignorant son propre
-    // override, pour prévisualiser correctement un retour à "Automatique"),
-    // ou un repère neutre pour une catégorie pas encore créée — son index de
-    // couleur automatique n'existe qu'après le premier enregistrement.
     public SolidColorBrush ColorPreviewBrush
     {
         get
@@ -150,18 +145,24 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
                 return new SolidColorBrush(chosenColor);
             }
 
-            if (_existingCategory is null)
+            var previewCategory = _existingCategory ?? new VocabularyCategory
             {
-                return new SolidColorBrush(Colors.Transparent);
-            }
+                Id = _pendingCategoryId,
+                Name = string.Empty,
+                ParentId = SelectedParentOption.Id
+            };
+
+            var categoriesForPreview = _existingCategory is null
+                ? _allCategories.Append(previewCategory).ToList()
+                : _allCategories;
 
             var overridesExcludingSelf = CategoryColorStore.LoadAll()
-                .Where(pair => pair.Key != _existingCategory.Id)
+                .Where(pair => pair.Key != previewCategory.Id)
                 .ToDictionary(pair => pair.Key, pair => pair.Value);
-            var colorIndexes = CategoryHierarchy.ComputeColorIndexes(_allCategories);
+            var colorIndexes = CategoryHierarchy.ComputeColorIndexes(categoriesForPreview);
 
             return new SolidColorBrush(
-                CategoryColorResolver.Resolve(_existingCategory, _allCategories, colorIndexes, overridesExcludingSelf));
+                CategoryColorResolver.Resolve(previewCategory, categoriesForPreview, colorIndexes, overridesExcludingSelf));
         }
     }
 
@@ -173,6 +174,7 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _selectedParentOption, value))
             {
                 ClearError();
+                OnPropertyChanged(nameof(ColorPreviewBrush));
             }
         }
     }
@@ -185,8 +187,8 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
 
     private List<CategoryParentOption> BuildParentOptions()
     {
-        // Une catégorie ne peut pas devenir son propre parent ni celui d'une de
-        // ses descendantes : on retire tout son sous-arbre des options.
+        // A category can't become its own parent or one of its descendants':
+        // its whole subtree is removed from the options.
         var excludedIds = new HashSet<Guid>();
 
         if (_existingCategory is not null)
@@ -238,7 +240,7 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
 
         SavedCategory = new VocabularyCategory
         {
-            Id = _existingCategory?.Id ?? Guid.NewGuid(),
+            Id = _existingCategory?.Id ?? _pendingCategoryId,
             Name = name,
             ParentId = parentId,
             Description = Description.Trim(),

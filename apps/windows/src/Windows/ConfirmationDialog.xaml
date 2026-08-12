@@ -1,4 +1,4 @@
-<Window x:Class="LexiCall.Desktop.ConfirmationDialog"
+<Window x:Class="LexiCall.Desktop.Windows.ConfirmationDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         SizeToContent="WidthAndHeight"
@@ -9,8 +9,8 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!-- Confirmation Oui/Non aux couleurs du thème : remplace MessageBox, une
-         boîte Win32 native non reskinable en XAML. -->
+    <!-- Themed Yes/No confirmation: replaces MessageBox, a native Win32 box
+         that can't be reskinned in XAML. -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -40,7 +40,7 @@
                     IsCancel="True" />
             <Button x:Name="ConfirmButton"
                     Width="110"
-                    Foreground="{DynamicResource Brush.Danger}"
+                    Style="{StaticResource DangerButtonStyle}"
                     IsDefault="True"
                     Click="ConfirmButton_Click" />
         </StackPanel>

@@ -1,6 +1,5 @@
-// Service responsable de la persistance locale.
-// Pour la Phase 1, LexiCall sauvegarde toute sa base dans un unique fichier JSON
-// placé dans %LOCALAPPDATA%\LexiCall\vocabulary.json.
+// Local persistence layer: loads/saves the whole database as one JSON file at
+// %LOCALAPPDATA%\LexiCall\vocabulary.json.
 using System.IO;
 using System.Text.Json;
 using LexiCall.Desktop.Models;
@@ -42,9 +41,8 @@ public sealed class VocabularyRepository
 
         using var document = JsonDocument.Parse(json);
 
-        // Les premières versions sauvegardaient directement un tableau d'entrées.
-        // Ce switch conserve la compatibilité en migrant ce format vers le
-        // nouveau document racine { Entries, Categories }.
+        // Earlier versions saved a plain array of entries; migrate that legacy
+        // format to the current root document { Entries, Categories }.
         return document.RootElement.ValueKind switch
         {
             JsonValueKind.Array => MigrateLegacyDatabase(json),
@@ -121,8 +119,8 @@ public sealed class VocabularyRepository
 
     private static VocabularyDatabase SanitizeDatabase(VocabularyDatabase database)
     {
-        // Si une catégorie a été supprimée ou si le JSON est incohérent, on retire
-        // les références orphelines côté entrées pour éviter des erreurs d'affichage.
+        // Strip CategoryIds referencing a category that no longer exists
+        // (deleted category, or hand-edited/inconsistent JSON).
         var categoryIds = database.Categories
             .Select(category => category.Id)
             .ToHashSet();

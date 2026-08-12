@@ -1,7 +1,7 @@
-// Client HTTP vers l'API LexiCall (FastAPI + MongoDB, api/). Chaque méthode
-// Try* est best-effort : elle ne lève jamais, retourne juste un indicateur de
-// succès — le JSON local (VocabularyRepository) reste la source de vérité,
-// ce client ne fait que pousser une synchronisation en tâche de fond.
+// HTTP client for the LexiCall API (FastAPI + MongoDB, api/). Every Try*
+// method is best-effort — it never throws, only returns a success flag. The
+// local JSON (VocabularyRepository) stays the source of truth; this client
+// only pushes a best-effort background sync.
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -18,10 +18,9 @@ public enum ApiConnectionStatus
     Ok
 }
 
-// Résultat d'un pull différentiel : les enregistrements reçus, et
-// l'horodatage serveur (X-Sync-Timestamp) à utiliser comme prochain
-// updatedSince — jamais recalculé depuis l'horloge locale, voir
-// AppSettings.LastPulledAt.
+// Result of a delta pull: the received records, plus the server timestamp
+// (X-Sync-Timestamp) to use as the next updatedSince — never recomputed from
+// the local clock, see AppSettings.LastPulledAt.
 public sealed record SyncPullResult<T>(IReadOnlyList<T> Items, string? ServerTimestamp);
 
 public sealed class VocabularyApiClient
@@ -50,8 +49,8 @@ public sealed class VocabularyApiClient
         }
         catch (UriFormatException)
         {
-            // URL mal formée dans les réglages : synchro désactivée plutôt
-            // que de bloquer le démarrage de l'application.
+            // Malformed URL in settings: disable sync rather than block
+            // app startup.
             _httpClient = null;
             return;
         }
@@ -64,8 +63,8 @@ public sealed class VocabularyApiClient
 
     public bool IsConfigured => _httpClient is not null;
 
-    // Utilisé par le bouton « Tester la connexion » d'OptionsWindow : distingue
-    // une API injoignable d'une clé invalide, pour un message d'erreur utile.
+    // Used by OptionsWindow's "Test connection" button: distinguishes an
+    // unreachable API from an invalid key, for a useful error message.
     public async Task<ApiConnectionStatus> TestConnectionAsync()
     {
         if (_httpClient is null)
@@ -82,9 +81,9 @@ public sealed class VocabularyApiClient
                 return ApiConnectionStatus.Unreachable;
             }
 
-            // /auth : simple vérification de la clé API, sans requête Mongo
-            // (contrairement à /entries, qui scannerait toute la collection
-            // pour un test de connexion qui n'a besoin d'aucune donnée).
+            // /auth: a plain API key check with no Mongo query (unlike
+            // /entries, which would scan the whole collection for a
+            // connectivity test that needs no data at all).
             using var authResponse = await _httpClient.GetAsync(
                 "/auth", HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
 
@@ -98,16 +97,16 @@ public sealed class VocabularyApiClient
         }
     }
 
-    // L'entrée entière (ImageBase64 compris) part dans le même PUT/POST :
-    // c'est l'API qui décide côté serveur de répercuter ou non l'image dans
-    // entry_images (voir routers/entries.py), en un seul aller-retour réseau.
+    // The whole entry (ImageBase64 included) goes in one PUT — the API
+    // decides server-side whether to mirror the image into entry_images
+    // (see routers/entries.py), in a single network round trip.
     public Task<bool> TryUpsertEntryAsync(VocabularyEntry entry) =>
         TryUpsertAsync(entry.Id, "/entries", entry);
 
-    // deletedAt : heure réelle de la suppression locale (pas de la synchro,
-    // qui peut survenir bien plus tard si hors-ligne) — même principe que
-    // l'UpdatedAt déjà tamponné à l'édition, nécessaire pour que le tombstone
-    // côté API porte le bon horodatage LWW.
+    // deletedAt is the real local deletion time (not the sync time, which can
+    // happen much later if offline) — same principle as UpdatedAt being
+    // stamped at edit time, needed so the API's tombstone carries the correct
+    // LWW timestamp.
     public Task<bool> TryDeleteEntryAsync(Guid id, DateTimeOffset deletedAt) =>
         TryDeleteAsync($"/entries/{id}?deleted_at={Uri.EscapeDataString(deletedAt.UtcDateTime.ToString("o"))}");
 
@@ -155,11 +154,10 @@ public sealed class VocabularyApiClient
         }
     }
 
-    // PUT fait un vrai upsert côté serveur (voir entries_repo.put_entry/
-    // categories_repo.put_category côté api/) : crée l'enregistrement s'il
-    // n'existe pas encore, le met à jour sinon (avec le même Id des deux
-    // côtés, l'API respecte l'Id fourni dans l'URL). Un seul appel, jamais
-    // de repli sur POST — la décision revient entièrement au serveur.
+    // PUT is a true upsert server-side (see entries_repo.put_entry/
+    // categories_repo.put_category in api/): creates the record if it
+    // doesn't exist yet, updates it otherwise. A single call, never a POST
+    // fallback — the create-or-update decision belongs entirely to the server.
     private async Task<bool> TryUpsertAsync<T>(Guid id, string resourcePath, T payload)
     {
         if (_httpClient is null)
@@ -188,8 +186,8 @@ public sealed class VocabularyApiClient
         try
         {
             using var response = await _httpClient.DeleteAsync(resourcePath).ConfigureAwait(false);
-            // 404 = jamais synchronisée : rien à supprimer côté serveur, ce
-            // n'est pas un échec du point de vue de l'appelant.
+            // 404 = never synced: nothing to delete server-side, not a
+            // failure from the caller's point of view.
             return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotFound;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)

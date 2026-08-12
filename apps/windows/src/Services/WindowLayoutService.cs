@@ -1,6 +1,6 @@
-// Persiste taille/position de la fenêtre principale et largeur des deux colonnes
-// redimensionnables (catégories, liste des mots) dans settings.json. La 3e
-// colonne (détail) reste élastique et n'est volontairement pas sauvegardée.
+// Persists the main window's size/position and the two resizable columns'
+// widths (categories, entry list) to settings.json. The 3rd column (detail)
+// stays elastic and is deliberately not saved.
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -35,10 +35,10 @@ public static class WindowLayoutService
         var width = settings.WindowWidth.Value;
         var height = settings.WindowHeight.Value;
 
-        // Avant la création du HWND, WPF ne peut pas résoudre le DPI cible et se
-        // rabat sur le moniteur sous le curseur (position instable au lancement).
-        // On attend donc SourceInitialized puis on positionne en pixels physiques
-        // via Win32, plutôt que Window.Left/Top/Width/Height.
+        // Before the HWND exists, WPF can't resolve the target DPI and falls
+        // back to the monitor under the cursor (unstable startup position).
+        // Wait for SourceInitialized and position in physical pixels via
+        // Win32 instead of Window.Left/Top/Width/Height.
         window.WindowStartupLocation = WindowStartupLocation.Manual;
         window.SourceInitialized += (_, _) =>
         {
@@ -57,9 +57,9 @@ public static class WindowLayoutService
         var settings = SettingsStore.Load();
         var handle = new WindowInteropHelper(window).Handle;
 
-        // NormalPosition donne la géométrie "restaurée" en pixels physiques même
-        // si la fenêtre est maximisée/réduite, contrairement à Window.Left/Top/
-        // Width/Height qui restent en unités logiques dépendantes du DPI courant.
+        // NormalPosition gives the "restored" geometry in physical pixels even
+        // while the window is maximized/minimized, unlike Window.Left/Top/
+        // Width/Height, which stay in DPI-dependent logical units.
         if (handle != IntPtr.Zero && TryGetNormalBounds(handle, out var bounds))
         {
             settings.WindowLeft = bounds.Left;
@@ -73,8 +73,8 @@ public static class WindowLayoutService
         SettingsStore.Save(settings);
     }
 
-    // Ignore la position sauvegardée si l'écran a été déconnecté ou la résolution
-    // changée, pour éviter que la fenêtre apparaisse hors de vue.
+    // Ignores the saved position if the monitor was disconnected or the
+    // resolution changed, so the window never lands off-screen.
     private static bool IsOnScreen(double left, double top, double width, double height)
     {
         const double margin = 50;

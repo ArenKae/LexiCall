@@ -1,10 +1,10 @@
-// Modale d'aperçu agrandi pour l'image d'une entrée : voir ImagePreviewWindow.xaml.
+// Enlarged preview modal for an entry's image — see ImagePreviewWindow.xaml.
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using LexiCall.Desktop.Services;
 
-namespace LexiCall.Desktop;
+namespace LexiCall.Desktop.Windows;
 
 public partial class ImagePreviewWindow : Window
 {

@@ -1,6 +1,6 @@
-// Lecture/écriture brute de settings.json. Toujours charger-fusionner-sauvegarder
-// plutôt qu'écraser : ThemeService et WindowLayoutService se partagent le même
-// fichier, chacun ne modifiant que ses propres champs.
+// Raw read/write for settings.json. Always load-merge-save rather than
+// overwrite: ThemeService and WindowLayoutService share this file, each only
+// touching its own fields.
 using System.IO;
 using System.Text.Json;
 
@@ -27,7 +27,7 @@ internal static class SettingsStore
         }
         catch (Exception exception) when (exception is IOException or JsonException)
         {
-            // Un fichier de préférences corrompu ne doit jamais empêcher le démarrage.
+            // A corrupted preferences file must never block startup.
             return new AppSettings();
         }
     }
@@ -41,7 +41,7 @@ internal static class SettingsStore
         }
         catch (IOException)
         {
-            // Préférence non sauvegardée : sans gravité, elle reste active pour la session.
+            // Preference not saved: harmless, it stays active for the session.
         }
     }
 }

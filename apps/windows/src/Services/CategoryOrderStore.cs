@@ -1,15 +1,15 @@
-// Ordre d'affichage des catégories choisi manuellement (menu contextuel
-// "Monter"/"Descendre") : une préférence de présentation locale à l'app
-// Windows (comme les couleurs, voir CategoryColorStore), stockée dans
-// settings.json — jamais dans vocabulary.json ni synchronisée vers api/.
+// Manually assigned category display order (context menu "Monter"/"Descendre"
+// — Move up/down): a local presentation preference (like colors, see
+// CategoryColorStore), stored in settings.json — never in vocabulary.json or
+// synced to api/.
 namespace LexiCall.Desktop.Services;
 
 public static class CategoryOrderStore
 {
     public static IReadOnlyDictionary<Guid, int> LoadAll() => SettingsStore.Load().CategoryOrder;
 
-    // Fige l'ordre d'un groupe de frères : leur assigne des rangs 0..N-1 dans
-    // l'ordre donné, remplaçant tout rang déjà stocké pour ces catégories.
+    // Fixes the order of a sibling group: assigns ranks 0..N-1 in the given
+    // order, replacing any rank already stored for these categories.
     public static void SetOrder(IEnumerable<Guid> orderedCategoryIds)
     {
         var settings = SettingsStore.Load();

@@ -1,6 +1,5 @@
-// Représente un mot enregistré dans LexiCall.
-// Une entrée peut exister sans catégorie : les catégories servent seulement au tri
-// et à l'organisation visuelle, elles ne sont pas obligatoires.
+// A vocabulary entry: a word or expression with its definition and metadata.
+// Categories are optional — CategoryIds may be empty.
 namespace LexiCall.Desktop.Models;
 
 public sealed class VocabularyEntry
@@ -23,22 +22,19 @@ public sealed class VocabularyEntry
 
     public List<string> Tags { get; init; } = [];
 
-    // Image encodée en JPEG puis en base64 (déjà redimensionnée/compressée à
-    // l'upload) ; chaîne vide si l'entrée n'a pas d'image.
+    // JPEG re-encoded to base64 (already resized/compressed on upload); empty
+    // string when the entry has no image.
     public string ImageBase64 { get; set; } = string.Empty;
 
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.Now;
 
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
 
-    // Tombstone reçu d'un pull API (voir VocabularyApiClient.TryPullEntriesAsync) :
-    // jamais vrai localement en dehors de la fusion, qui supprime aussitôt
-    // l'entrée plutôt que de conserver ce champ à true dans Entries.
+    // Tombstone flag from an API pull (see VocabularyApiClient.TryPullEntriesAsync).
+    // Never stays true locally outside the merge, which removes the entry instead.
     public bool IsDeleted { get; init; }
 
-    // Valeur d'UpdatedAt au moment du dernier push confirmé par l'API pour
-    // cette entrée précise (voir MainWindowViewModel.ResyncWithApiAsync).
-    // Null tant que jamais synchronisée. Pure métadonnée locale, jamais lue
-    // ni écrite par l'API.
+    // UpdatedAt as of the last confirmed push for this entry (see
+    // MainWindowViewModel.ResyncWithApiAsync). Null until ever synced.
     public DateTimeOffset? SyncedAt { get; set; }
 }

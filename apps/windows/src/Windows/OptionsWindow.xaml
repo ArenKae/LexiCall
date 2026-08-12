@@ -1,4 +1,4 @@
-<Window x:Class="LexiCall.Desktop.OptionsWindow"
+<Window x:Class="LexiCall.Desktop.Windows.OptionsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Options"
@@ -10,8 +10,8 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!-- Fenêtre d'options (ouverte depuis le bouton rouage de la fenêtre principale) :
-         bascule de thème et accès au dossier de données. -->
+    <!-- Options window (opened from the main window's gear button): theme
+         toggle, API sync settings, and data folder access. -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -92,7 +92,7 @@
                             Style="{StaticResource GhostButtonStyle}"
                             Margin="12,0,0,0"
                             Click="TestApiConnectionButton_Click"
-                            ToolTip="Enregistre l'URL/la clé ci-dessus puis vérifie que l'API est joignable." />
+                            ToolTip="Vérifie que l'API est joignable avec l'URL/la clé ci-dessus." />
                 </Grid>
             </StackPanel>
         </Border>

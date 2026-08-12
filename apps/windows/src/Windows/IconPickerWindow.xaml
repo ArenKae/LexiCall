@@ -1,4 +1,4 @@
-<Window x:Class="LexiCall.Desktop.IconPickerWindow"
+<Window x:Class="LexiCall.Desktop.Windows.IconPickerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:viewModels="clr-namespace:LexiCall.Desktop.ViewModels"
@@ -9,9 +9,9 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!-- Sélecteur d'icône : collections thématiques (CategoryIconCatalog) filtrables
-         par mot-clé. Cliquer une icône la sélectionne immédiatement (pas de bouton
-         Valider séparé). -->
+    <!-- Icon picker: themed collections (CategoryIconCatalog) filterable by
+         keyword. Clicking an icon selects it immediately (no separate
+         confirm button). -->
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -51,12 +51,12 @@
                                         <Button Width="44" Height="44"
                                                 Margin="0,0,6,6"
                                                 Padding="0"
-                                                Tag="{Binding Glyph}"
+                                                Tag="{Binding IconKey}"
                                                 ToolTip="{Binding Keywords}"
                                                 Click="IconButton_Click">
-                                            <TextBlock Text="{Binding Glyph}"
-                                                       FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                                       FontSize="20" />
+                                            <Path Data="{Binding IconKey, Converter={StaticResource IconKeyToGeometryConverter}}"
+                                                  Fill="{DynamicResource Brush.Text.Primary}"
+                                                  Width="20" Height="20" Stretch="Uniform" />
                                         </Button>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

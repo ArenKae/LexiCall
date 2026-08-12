@@ -23,6 +23,16 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
           VPS_USER: ${{ secrets.VPS_USER }}
+        # Secrets arrive above as env vars, but ssh needs actual files on
+        # disk (-i and UserKnownHostsFile below take paths, not values) —
+        # this step writes them out. `install -m 600 /dev/null <file>`
+        # creates an empty file with owner-only read/write permissions in
+        # one atomic step (ssh refuses a key file that's more permissive
+        # than that); `printf ... > <file>` then fills it with the real
+        # secret without changing those permissions. This whole job runs on
+        # a brand-new GitHub-hosted VM for every deploy — nothing from a
+        # previous run is reused, so these files are rebuilt from scratch
+        # each time and discarded with the VM once the job ends.
         run: |
           set -euo pipefail
           install -m 600 /dev/null key.pem

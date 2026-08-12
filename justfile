@@ -17,19 +17,29 @@ default:
 run-win:
     just --justfile apps/windows/justfile --working-directory apps/windows run
 
-# Build the WPF solution.
+# Build in debug mode.
 [group('app : windows')]
 build-win:
     just --justfile apps/windows/justfile --working-directory apps/windows build
+
+# Build and run in debug mode.
+[group('app : windows')]
+launch-win:
+    just --justfile apps/windows/justfile --working-directory apps/windows launch
+
+# Build in release mode.
+[group('app : windows')]
+release-win:
+	just --justfile apps/windows/justfile --working-directory apps/windows release
 
 # Remove build artifacts (bin/obj).
 [group('app : windows')]
 clean-win:
     just --justfile apps/windows/justfile --working-directory apps/windows clean
 
-# -----------------------------------------------------------------------
+# -------------------------------------------------------------------------
 # --- api : dev (docker-compose.yml, local Mongo + uvicorn with reload) ---
-# -----------------------------------------------------------------------
+# -------------------------------------------------------------------------
 
 # Create the venv and install Python dependencies.
 [group('api : dev')]
@@ -58,9 +68,9 @@ run HOST="0.0.0.0":
 stop:
     just --justfile api/justfile --working-directory api dev-stop
 
-# -----------------------------------------------------------------
-# --- api : prod (docker-compose.prod.yml, run these on the VPS) ---
-# -----------------------------------------------------------------
+# --------------------------------------------
+# --- api : prod (docker-compose.prod.yml) ---
+# --------------------------------------------
 
 # Build (if needed) and bring the full stack up.
 [group('api : prod')]

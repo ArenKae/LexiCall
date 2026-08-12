@@ -1,6 +1,10 @@
 # .NET / WPF
 **/bin/
 **/obj/
+# WPF's temporary markup-compile project — normally lives in obj/ and is
+# auto-deleted after a successful build, but an interrupted build (killed
+# mid-compile) can leave one sitting next to the real .csproj instead.
+*_wpftmp.csproj
 artifacts/
 publish/
 TestResults/

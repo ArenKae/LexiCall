@@ -2,18 +2,21 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="clr-namespace:LexiCall.Desktop.Converters"
-             StartupUri="MainWindow.xaml">
-    <!-- Déclaration de l'application : dictionnaires de thème et converters partagés. -->
+             StartupUri="Windows/MainWindow.xaml">
+    <!-- Application-wide declaration: theme dictionaries and shared converters. -->
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Themes/Colors.Light.xaml" />
                 <ResourceDictionary Source="Themes/Styles.xaml" />
+                <ResourceDictionary Source="Themes/Icons.Generated.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <converters:CategoryNamesConverter x:Key="CategoryNamesConverter" />
             <converters:DepthToIndentConverter x:Key="DepthToIndentConverter" />
-            <converters:CategoryChipColorConverter x:Key="CategoryChipColorConverter" />
+            <converters:CategoryDotColorConverter x:Key="CategoryDotColorConverter" />
+            <converters:IconKeyToGeometryConverter x:Key="IconKeyToGeometryConverter" />
+            <converters:SizeToRectConverter x:Key="SizeToRectConverter" />
             <converters:Base64ImageConverter x:Key="Base64ImageConverter" />
             <converters:WidthBreakpointConverter x:Key="WidthBreakpointConverter" />
         </ResourceDictionary>

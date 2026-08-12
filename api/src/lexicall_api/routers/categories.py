@@ -22,18 +22,16 @@ def _validate_parent(category_id: str | None, parent_id: str | None) -> None:
 
 @router.get("", response_model=list[VocabularyCategory])
 def list_categories(response: Response, updated_since: datetime | None = None) -> list[dict]:
-    # See routers/entries.py:list_entries for the rationale behind the header.
+    # Captured before the query runs, so a write that lands in between gets
+    # picked up on the next pull instead of being missed by the checkpoint.
     response.headers["X-Sync-Timestamp"] = timestamps.now_iso()
     return categories_repo.list_categories(updated_since=updated_since)
 
 
 @router.put("/{category_id}", response_model=VocabularyCategory)
 def upsert_category(category_id: str, payload: VocabularyCategoryWrite) -> dict:
-    # True upsert (see categories_repo.put_category) — the client always
-    # PUTs, whether category_id is brand new or already exists. This is the
-    # only write path for categories; there's no separate POST/create-only
-    # endpoint (see entries_repo.put_entry's docstring for why PUT alone is
-    # enough).
+    # The only write route for categories — PUT always upserts, so the
+    # client never needs to know in advance whether category_id already exists.
     _validate_parent(category_id, payload.parent_id)
     return categories_repo.put_category(category_id, payload.model_dump(by_alias=True))
 

@@ -1,4 +1,4 @@
-<Window x:Class="LexiCall.Desktop.CategoryEditorWindow"
+<Window x:Class="LexiCall.Desktop.Windows.CategoryEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{Binding WindowTitle}"
@@ -8,8 +8,8 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!-- Formulaire modal d'ajout/modification d'une catégorie (le renommage
-         rapide se fait directement dans l'arbre de la fenêtre principale). -->
+    <!-- Modal add/edit category form (quick rename happens directly in the
+         main window's tree instead). -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -31,7 +31,8 @@
                 Margin="0,18,0,18"
                 Padding="20"
                 Style="{StaticResource CardBorderStyle}">
-            <StackPanel>
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,12,0">
                 <TextBlock Text="Nom *"
                            FontWeight="SemiBold" />
                 <Grid Margin="0,6,0,0">
@@ -44,17 +45,36 @@
                              Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                              VerticalAlignment="Center" />
 
-                    <!-- Sélecteur d'icône : ouvre IconPickerWindow, qui referme
-                         aussitôt qu'une icône est choisie. -->
+                    <!-- Icon picker: opens IconPickerWindow, which closes
+                         itself as soon as an icon is chosen. -->
+                    <!-- Vector icons resolve through IconKeyToGeometryConverter; a legacy
+                         emoji (or the default "no icon" tag) falls back to the TextBlock,
+                         since the converter returns null for anything it can't resolve. -->
                     <Button Grid.Column="1"
                             Width="44" Height="36"
                             Padding="0"
                             Margin="8,0,0,0"
                             Click="ChooseIconButton_Click"
                             ToolTip="Choisir une icône pour cette catégorie.">
-                        <TextBlock Text="{Binding IconDisplayGlyph}"
-                                   FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                   FontSize="18" />
+                        <Grid>
+                            <Path Data="{Binding IconDisplayGlyph, Converter={StaticResource IconKeyToGeometryConverter}}"
+                                  Fill="{DynamicResource Brush.Text.Primary}"
+                                  Width="18" Height="18" Stretch="Uniform" />
+                            <TextBlock Text="{Binding IconDisplayGlyph}"
+                                       FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
+                                       FontSize="18">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IconDisplayGlyph, Converter={StaticResource IconKeyToGeometryConverter}}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
                     </Button>
 
                     <Button Grid.Column="2"
@@ -82,8 +102,8 @@
                            FontWeight="SemiBold" />
                 <StackPanel Orientation="Horizontal"
                             Margin="0,6,0,0">
-                    <!-- Sélecteur de couleur : ouvre ColorPickerWindow, qui referme
-                         aussitôt qu'une couleur (ou "Automatique") est choisie. -->
+                    <!-- Color picker: opens ColorPickerWindow, which closes
+                         itself as soon as a color (or "Automatique") is chosen. -->
                     <Button Width="36" Height="36"
                             Padding="0"
                             Click="ChooseColorButton_Click"
@@ -158,6 +178,7 @@
                            Foreground="{DynamicResource Brush.Danger}"
                            FontWeight="SemiBold" />
             </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <StackPanel Grid.Row="2"

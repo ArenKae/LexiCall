@@ -1,6 +1,5 @@
-// Représente une catégorie de vocabulaire.
-// Les entrées référencent les catégories par Id pour permettre de renommer une
-// catégorie sans modifier toutes les entrées qui l'utilisent.
+// A vocabulary category. Entries reference categories by Id so a category can
+// be renamed without touching every entry that uses it.
 namespace LexiCall.Desktop.Models;
 
 public sealed class VocabularyCategory
@@ -13,16 +12,15 @@ public sealed class VocabularyCategory
 
     public string Description { get; set; } = string.Empty;
 
-    // Emoji choisi via IconPickerWindow. Vide = aucune icône (un repère par
-    // défaut est affiché à la place, voir CategoryNodeViewModel.DisplayIcon).
+    // Emoji picked via IconPickerWindow. Empty = no icon (a default glyph is
+    // shown instead, see CategoryNodeViewModel.DisplayIcon).
     public string IconGlyph { get; set; } = string.Empty;
 
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.Now;
 
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
 
-    // Voir VocabularyEntry.IsDeleted / SyncedAt — même rôle, pour les
-    // catégories.
+    // See VocabularyEntry.IsDeleted / SyncedAt — same role, for categories.
     public bool IsDeleted { get; init; }
 
     public DateTimeOffset? SyncedAt { get; set; }

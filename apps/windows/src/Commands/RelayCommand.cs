@@ -1,5 +1,5 @@
-// Implémentation générique de ICommand, pour connecter un bouton XAML
-// à une méthode du ViewModel sans logique dans le code-behind.
+// Generic ICommand implementation, wiring an XAML button to a ViewModel
+// method with no logic in the code-behind.
 using System.Windows.Input;
 
 namespace LexiCall.Desktop.Commands;

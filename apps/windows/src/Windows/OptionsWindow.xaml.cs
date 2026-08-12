@@ -1,13 +1,14 @@
-// Code-behind de la fenêtre Options : réutilise MainWindowViewModel comme
-// DataContext (pas de ViewModel dédié) puisque ThemeToggleText/DataFilePath y
-// vivent déjà.
+// Code-behind for the Options window: reuses MainWindowViewModel as
+// DataContext (no dedicated ViewModel) since ThemeToggleText/DataFilePath
+// already live there.
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using LexiCall.Desktop.Services;
 using LexiCall.Desktop.ViewModels;
 
-namespace LexiCall.Desktop;
+namespace LexiCall.Desktop.Windows;
 
 public partial class OptionsWindow : Window
 {
@@ -17,8 +18,14 @@ public partial class OptionsWindow : Window
         DataContext = viewModel;
         ThemeService.RegisterWindow(this);
 
+        // Set both fields before wiring TextChanged: attaching it first would
+        // have this fire on the ApiBaseUrlTextBox assignment below while
+        // ApiKeyTextBox is still empty, saving an empty key over the real one.
         ApiBaseUrlTextBox.Text = viewModel.ApiBaseUrl;
         ApiKeyTextBox.Text = viewModel.ApiKey;
+
+        ApiBaseUrlTextBox.TextChanged += ApiSettingsTextBox_TextChanged;
+        ApiKeyTextBox.TextChanged += ApiSettingsTextBox_TextChanged;
     }
 
     private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
@@ -26,10 +33,17 @@ public partial class OptionsWindow : Window
         ((MainWindowViewModel)DataContext).ToggleTheme();
     }
 
+    // Saves on every keystroke rather than only when "Tester la connexion" is
+    // pressed — leaving the fields edited but unsaved was confusing (looked
+    // like a form with no save action of its own).
+    private void ApiSettingsTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        ((MainWindowViewModel)DataContext).UpdateApiSettings(ApiBaseUrlTextBox.Text.Trim(), ApiKeyTextBox.Text.Trim());
+    }
+
     private async void TestApiConnectionButton_Click(object sender, RoutedEventArgs e)
     {
         var viewModel = (MainWindowViewModel)DataContext;
-        viewModel.UpdateApiSettings(ApiBaseUrlTextBox.Text.Trim(), ApiKeyTextBox.Text.Trim());
 
         ApiConnectionStatusText.Text = "Test en cours…";
 
@@ -46,8 +60,8 @@ public partial class OptionsWindow : Window
 
     private void OpenDataFolderButton_Click(object sender, RoutedEventArgs e)
     {
-        // Le dossier n'existe pas forcément encore (aucune sauvegarde effectuée) :
-        // on le crée pour que l'Explorateur ait toujours quelque chose à ouvrir.
+        // The folder may not exist yet (no save has happened): create it so
+        // Explorer always has something to open.
         var folderPath = Path.GetDirectoryName(((MainWindowViewModel)DataContext).DataFilePath);
 
         if (string.IsNullOrEmpty(folderPath))

@@ -1,6 +1,6 @@
-// Palette de swatches proposée par ColorPickerWindow : teintes régulièrement
-// espacées à la même saturation/luminosité que CategoryColorResolver.FromIndex,
-// pour qu'une couleur choisie à la main se fonde avec les couleurs automatiques.
+// Swatch palette offered by ColorPickerWindow: hues evenly spaced at the same
+// saturation/lightness as CategoryColorResolver.FromIndex, so a manually
+// picked color blends in with the automatic ones.
 namespace LexiCall.Desktop.Utilities;
 
 public static class CategoryColorPalette

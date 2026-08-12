@@ -1,12 +1,12 @@
-// Code-behind de la fenêtre d'édition de catégorie.
-// Même pattern que EntryEditorWindow : SavedCategory est exposée au parent et
-// la fenêtre se ferme quand le ViewModel signale une catégorie valide.
+// Code-behind for the category editor window. Same pattern as
+// EntryEditorWindow: SavedCategory is exposed to the caller, and the window
+// closes when the ViewModel signals a valid category.
 using System.Windows;
 using LexiCall.Desktop.Models;
 using LexiCall.Desktop.Services;
 using LexiCall.Desktop.ViewModels;
 
-namespace LexiCall.Desktop;
+namespace LexiCall.Desktop.Windows;
 
 public partial class CategoryEditorWindow : Window
 {

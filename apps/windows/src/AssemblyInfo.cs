@@ -1,5 +1,5 @@
-// Métadonnées d'assembly générées par le template WPF (non utilisées : le thème
-// clair/sombre de l'app passe par ThemeService, pas par ce mécanisme WPF).
+// Assembly metadata from the WPF project template (unused: the app's
+// light/dark theme goes through ThemeService, not this WPF mechanism).
 using System.Windows;
 
 [assembly: ThemeInfo(

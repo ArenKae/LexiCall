@@ -14,6 +14,12 @@ run:
 build:
     dotnet build LexiCall.sln
 
+# Build and run in debug mode.
+launch: build run
+
+release:
+	dotnet publish src/LexiCall.Desktop.csproj -c Release -r win-x64 --self-contained false
+
 # Remove build artifacts (bin/obj).
 clean:
     dotnet clean LexiCall.sln

@@ -1,6 +1,6 @@
-// Bascule clair/sombre : remplace le dictionnaire de couleurs de l'app et
-// persiste le choix dans settings.json. Les styles utilisent DynamicResource,
-// donc le changement s'applique à chaud sans recharger les fenêtres.
+// Light/dark toggle: swaps the app's color ResourceDictionary and persists the
+// choice to settings.json. Styles use DynamicResource, so the change applies
+// live without reloading any window.
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
@@ -27,8 +27,8 @@ public static class ThemeService
         Apply(CurrentTheme == AppTheme.Light ? AppTheme.Dark : AppTheme.Light, persist: true);
     }
 
-    // La barre de titre Windows ne suit pas les ressources WPF : on demande
-    // explicitement le mode sombre à DWM pour chaque fenêtre.
+    // The Windows title bar doesn't follow WPF resources — explicitly request
+    // dark mode from DWM for each window.
     public static void RegisterWindow(Window window)
     {
         if (window.IsLoaded)
@@ -50,7 +50,7 @@ public static class ThemeService
             Source = new Uri($"Themes/Colors.{theme}.xaml", UriKind.Relative)
         };
 
-        // Le dictionnaire de couleurs occupe toujours l'index 0 (voir App.xaml).
+        // The color dictionary always sits at index 0 (see App.xaml).
         Application.Current.Resources.MergedDictionaries[0] = dictionary;
 
         foreach (Window window in Application.Current.Windows)
