@@ -440,6 +440,21 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard x:Name="HoverStoryboard">
+                                    <Storyboard>
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Bar"
+                                                                        Storyboard.TargetProperty="Tag">
+                                            <DiscreteObjectKeyFrame KeyTime="0:0:0.3" Value="Hover" />
+                                        </ObjectAnimationUsingKeyFrames>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <StopStoryboard BeginStoryboardName="HoverStoryboard" />
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger SourceName="Bar" Property="Tag" Value="Hover">
                             <Setter TargetName="Bar" Property="Fill" Value="{DynamicResource Brush.Accent}" />
                             <Setter TargetName="Bar" Property="Width" Value="3" />
                         </Trigger>
