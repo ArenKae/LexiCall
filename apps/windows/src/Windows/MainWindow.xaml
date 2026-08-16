@@ -194,7 +194,7 @@
                                 </Button>
                             </Border>
 
-                            <Separator Margin="2,8,2,8" />
+                            <Separator Margin="2,10,2,10" />
 
                             <!-- Custom categories: CategoryTree's own top level is exactly the
                                  virtual nodes above plus real ROOT categories (subcategories only
@@ -396,7 +396,7 @@
                                             BorderThickness="0,0,0,1"
                                             BorderBrush="{DynamicResource Brush.Border.Strong}"
                                             VerticalAlignment="Bottom"
-                                            Margin="0,0,0,-10">
+                                            Margin="0,0,0,-15">
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Setter Property="Visibility" Value="Collapsed" />
