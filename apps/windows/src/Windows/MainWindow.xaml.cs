@@ -1,5 +1,6 @@
 // Code-behind for the main window: opens modal windows, relays category-tree
-// interactions to MainWindowViewModel, and shows confirmations/errors via MessageBox.
+// interactions to MainWindowViewModel, and shows confirmations/errors via
+// themed dialogs (ConfirmationDialog, AlertDialog).
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -211,23 +212,40 @@ public partial class MainWindow : Window
         }
     }
 
-    // Re-decodes the base64 rather than reusing the Image's Source, so this
-    // doesn't depend on binding/event ordering.
-    private void DetailImage_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    // The thumbnail's DataContext is the clicked EntryImage (from the
+    // ItemsControl bound to Images), not the whole entry — SelectedEntry is
+    // read directly off the ViewModel to locate it in the full list and open
+    // the preview at the right index. Re-decodes the base64 rather than
+    // trusting the Image's own Source, so this doesn't depend on binding/
+    // event ordering; also doubles as the "image not fetched after a pull
+    // yet" guard (ImageBase64 empty), a silent no-op rather than a broken
+    // preview.
+    private void DetailImageThumbnail_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: Models.VocabularyEntry entry })
+        if (sender is not FrameworkElement { DataContext: Models.EntryImage image } ||
+            ViewModel.SelectedEntry is not { } entry)
         {
             return;
         }
 
-        var image = Converters.Base64ImageConverter.ToBitmapImage(entry.ImageBase64);
-
-        if (image is null)
+        if (Converters.Base64ImageConverter.ToBitmapImage(image.ImageBase64) is null)
         {
             return;
         }
 
-        new ImagePreviewWindow(this, image).ShowDialog();
+        var index = entry.Images.IndexOf(image);
+
+        if (index < 0)
+        {
+            return;
+        }
+
+        new ImagePreviewWindow(this, entry.Images, index).ShowDialog();
+    }
+
+    private void ArchiveEntryButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ToggleArchiveEntry(ViewModel.SelectedEntry);
     }
 
     // The chip carries its category (VocabularyCategory) as DataContext.
@@ -235,14 +253,58 @@ public partial class MainWindow : Window
     {
         if (sender is FrameworkElement { DataContext: Models.VocabularyCategory category })
         {
+            if (CategoryPanelToggleButton.IsChecked == true)
+            {
+                ApplyCategoryPanelCollapsedState(isCollapsed: false);
+            }
+
             ViewModel.SelectCategory(category.Id);
+
+            if (ViewModel.SelectedCategoryNode is { } selectedNode)
+            {
+                BringCategoryNodeIntoView(selectedNode);
+            }
+
             e.Handled = true;
         }
     }
 
+    // TreeViewItem containers only materialize for an item once its parent
+    // is expanded and a layout pass has run, so each ancestor's container is
+    // resolved and laid out before searching the next level down.
+    private void BringCategoryNodeIntoView(CategoryNodeViewModel targetNode)
+    {
+        var path = new List<CategoryNodeViewModel>();
+        var current = targetNode;
+
+        while (current is not null)
+        {
+            path.Insert(0, current);
+            current = FindParentNode(ViewModel.CategoryTree, current);
+        }
+
+        ItemsControl container = CategoryTreeView;
+        TreeViewItem? item = null;
+
+        foreach (var node in path)
+        {
+            container.UpdateLayout();
+
+            if (container.ItemContainerGenerator.ContainerFromItem(node) is not TreeViewItem nextItem)
+            {
+                return;
+            }
+
+            item = nextItem;
+            container = nextItem;
+        }
+
+        item?.BringIntoView();
+    }
+
     // ─── Categories ───
 
-    // The two virtual nodes always sit first in CategoryTree (see
+    // The three virtual nodes always sit first in CategoryTree (see
     // MainWindowViewModel.RebuildCategoryTree). Setting IsSelected runs the
     // same selection path as clicking them in the tree (CategoryNodeViewModel.
     // IsSelected's setter calls back into OnCategoryNodeSelected).
@@ -254,6 +316,11 @@ public partial class MainWindow : Window
     private void SelectUncategorizedButton_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.CategoryTree[1].IsSelected = true;
+    }
+
+    private void SelectArchivesButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CategoryTree[2].IsSelected = true;
     }
 
     // The swatch carries its node (CategoryNodeViewModel) as DataContext —
@@ -334,7 +401,7 @@ public partial class MainWindow : Window
 
         if (error is not null)
         {
-            MessageBox.Show(this, error, "Suppression impossible", MessageBoxButton.OK, MessageBoxImage.Information);
+            AlertDialog.Show(this, error, "Suppression impossible");
         }
     }
 
@@ -355,7 +422,7 @@ public partial class MainWindow : Window
 
                 if (error is not null)
                 {
-                    MessageBox.Show(this, error, "Enregistrement impossible", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    AlertDialog.Show(this, error, "Enregistrement impossible");
                 }
                 else
                 {
@@ -384,7 +451,7 @@ public partial class MainWindow : Window
     {
         if (node.Depth == 0)
         {
-            return ViewModel.CategoryTree.Skip(2).ToList();
+            return ViewModel.CategoryTree.Skip(3).ToList();
         }
 
         var parent = FindParentNode(ViewModel.CategoryTree, node);
@@ -575,7 +642,7 @@ public partial class MainWindow : Window
 
         if (error is not null && interactive)
         {
-            MessageBox.Show(this, error, "Renommage impossible", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AlertDialog.Show(this, error, "Renommage impossible");
             node.EditName = newName;
             node.IsEditing = true;
         }

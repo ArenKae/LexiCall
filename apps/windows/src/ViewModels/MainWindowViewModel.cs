@@ -235,9 +235,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(EmptyDetailMessage));
                 OnPropertyChanged(nameof(SelectedEntrySyncStatusText));
                 OnPropertyChanged(nameof(SelectedEntrySyncIsSynced));
+                OnPropertyChanged(nameof(ArchiveButtonText));
             }
         }
     }
+
+    public string ArchiveButtonText => SelectedEntry?.IsArchived == true ? "Désarchiver" : "Archiver";
 
     public string ThemeToggleText => ThemeService.CurrentTheme == AppTheme.Dark
         ? "☀  Thème clair"
@@ -482,17 +485,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             foreach (var (category, success) in categoryPushResults)
             {
                 RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name,
-                    SyncHistoryOperation.Push, success ? SyncHistoryOutcome.Success : SyncHistoryOutcome.Failure);
+                    SyncHistoryOperation.Push, success ? SyncHistoryOutcome.Success : SyncHistoryOutcome.Failure,
+                    GetChangeKind(category.CreatedAt, category.UpdatedAt));
             }
 
             foreach (var (entry, success) in entryPushResults)
             {
                 RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word,
-                    SyncHistoryOperation.Push, success ? SyncHistoryOutcome.Success : SyncHistoryOutcome.Failure);
+                    SyncHistoryOperation.Push, success ? SyncHistoryOutcome.Success : SyncHistoryOutcome.Failure,
+                    GetChangeKind(entry.CreatedAt, entry.UpdatedAt));
             }
 
-            MergePulled(Categories, categoriesPull.Items, FindCategoryIndex, c => c.Id, c => c.UpdatedAt, c => c.IsDeleted, (c, t) => c.SyncedAt = t, SyncHistoryEntityType.Category, c => c.Name);
-            MergePulled(Entries, entriesPull.Items, FindEntryIndex, e => e.Id, e => e.UpdatedAt, e => e.IsDeleted, (e, t) => e.SyncedAt = t, SyncHistoryEntityType.Entry, e => e.Word);
+            MergePulled(Categories, categoriesPull.Items, FindCategoryIndex, c => c.Id, c => c.UpdatedAt, c => c.CreatedAt, c => c.IsDeleted, (c, t) => c.SyncedAt = t, SyncHistoryEntityType.Category, c => c.Name);
+            MergePulled(Entries, entriesPull.Items, FindEntryIndex, e => e.Id, e => e.UpdatedAt, e => e.CreatedAt, e => e.IsDeleted, (e, t) => e.SyncedAt = t, SyncHistoryEntityType.Entry, e => e.Word);
             RebuildCategoryTree();
             RefreshFilteredEntries();
             SaveDatabase();
@@ -529,6 +534,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Func<Guid, int> findIndex,
         Func<T, Guid> getId,
         Func<T, DateTimeOffset> getUpdatedAt,
+        Func<T, DateTimeOffset> getCreatedAt,
         Func<T, bool> getIsDeleted,
         Action<T, DateTimeOffset> setSyncedAt,
         SyncHistoryEntityType entityType,
@@ -561,13 +567,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 setSyncedAt(item, getUpdatedAt(item));
                 collection.Add(item);
-                RecordSyncHistory(entityType, getId(item), getLabel(item), SyncHistoryOperation.Pull, SyncHistoryOutcome.Success);
+                RecordSyncHistory(entityType, getId(item), getLabel(item), SyncHistoryOperation.Pull, SyncHistoryOutcome.Success,
+                    GetChangeKind(getCreatedAt(item), getUpdatedAt(item)));
             }
             else if (getUpdatedAt(item) > getUpdatedAt(collection[index]))
             {
                 setSyncedAt(item, getUpdatedAt(item));
                 collection[index] = item;
-                RecordSyncHistory(entityType, getId(item), getLabel(item), SyncHistoryOperation.Pull, SyncHistoryOutcome.Success);
+                RecordSyncHistory(entityType, getId(item), getLabel(item), SyncHistoryOperation.Pull, SyncHistoryOutcome.Success,
+                    GetChangeKind(getCreatedAt(item), getUpdatedAt(item)));
             }
         }
     }
@@ -575,7 +583,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     // Must only be called on the UI thread: mutates the UI-bound SyncHistory
     // collection directly.
     private void RecordSyncHistory(SyncHistoryEntityType entityType, Guid entityId, string entityLabel,
-        SyncHistoryOperation operation, SyncHistoryOutcome outcome)
+        SyncHistoryOperation operation, SyncHistoryOutcome outcome, SyncHistoryChangeKind? changeKind = null)
     {
         SyncHistory.Insert(0, new SyncHistoryEntry
         {
@@ -584,7 +592,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             EntityId = entityId,
             EntityLabel = entityLabel,
             Operation = operation,
-            Outcome = outcome
+            Outcome = outcome,
+            ChangeKind = changeKind
         });
 
         while (SyncHistory.Count > SyncHistoryStore.MaxEntries)
@@ -594,6 +603,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         SyncHistoryStore.Save(SyncHistory.ToList());
     }
+
+    // Push/pull history rows show whether the underlying data was created or
+    // edited — irrelevant for Delete, which already says so via Operation.
+    // CreatedAt == UpdatedAt exactly at creation time (both editors stamp them
+    // from the same DateTimeOffset.Now call), so any difference means at
+    // least one edit happened since.
+    private static SyncHistoryChangeKind GetChangeKind(DateTimeOffset createdAt, DateTimeOffset updatedAt) =>
+        createdAt == updatedAt ? SyncHistoryChangeKind.Created : SyncHistoryChangeKind.Updated;
 
     // Called from SyncHistoryWindow after user confirmation.
     public void ClearSyncHistory()
@@ -610,7 +627,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (!await _apiClient.TryUpsertEntryAsync(entry).ConfigureAwait(false))
         {
             Application.Current.Dispatcher.Invoke(() =>
-                RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word, SyncHistoryOperation.Push, SyncHistoryOutcome.Failure));
+                RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word, SyncHistoryOperation.Push, SyncHistoryOutcome.Failure,
+                    GetChangeKind(entry.CreatedAt, entry.UpdatedAt)));
             return;
         }
 
@@ -625,7 +643,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 Entries[index].SyncedAt = entry.UpdatedAt;
                 SaveDatabase();
-                RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word, SyncHistoryOperation.Push, SyncHistoryOutcome.Success);
+                RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word, SyncHistoryOperation.Push, SyncHistoryOutcome.Success,
+                    GetChangeKind(entry.CreatedAt, entry.UpdatedAt));
 
                 // In-place mutation: SelectedEntry isn't reassigned on this
                 // path (unlike MergePulled), so its setter doesn't notify on
@@ -645,7 +664,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (!await _apiClient.TryUpsertCategoryAsync(category).ConfigureAwait(false))
         {
             Application.Current.Dispatcher.Invoke(() =>
-                RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name, SyncHistoryOperation.Push, SyncHistoryOutcome.Failure));
+                RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name, SyncHistoryOperation.Push, SyncHistoryOutcome.Failure,
+                    GetChangeKind(category.CreatedAt, category.UpdatedAt)));
             return;
         }
 
@@ -657,7 +677,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 Categories[index].SyncedAt = category.UpdatedAt;
                 SaveDatabase();
-                RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name, SyncHistoryOperation.Push, SyncHistoryOutcome.Success);
+                RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name, SyncHistoryOperation.Push, SyncHistoryOutcome.Success,
+                    GetChangeKind(category.CreatedAt, category.UpdatedAt));
             }
         });
     }
@@ -740,6 +761,28 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         SaveDatabase();
         _ = PushEntryUpsertAsync(updatedEntry);
+    }
+
+    // Quick-toggle from the detail column's Archiver/Désarchiver button — the
+    // same field is also editable via a checkbox in the entry editor form,
+    // both paths go through the same IsArchived property on VocabularyEntry.
+    public void ToggleArchiveEntry(VocabularyEntry? entry)
+    {
+        if (entry is null)
+        {
+            return;
+        }
+
+        entry.IsArchived = !entry.IsArchived;
+        entry.UpdatedAt = DateTimeOffset.Now;
+        // Archiving/unarchiving always flips the entry's visibility in
+        // whatever view it was just selected from, so RefreshFilteredEntries
+        // always ends up picking a new SelectedEntry — its own setter is
+        // what refreshes ArchiveButtonText, no extra notification needed here.
+        RebuildCategoryTree();
+        RefreshFilteredEntries();
+        SaveDatabase();
+        _ = PushEntryUpsertAsync(entry);
     }
 
     public void DeleteEntry(VocabularyEntry entry)
@@ -990,12 +1033,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         CategoryTree.Clear();
 
         var allNode = CategoryNodeViewModel.CreateAllEntries(OnCategoryNodeSelected);
-        allNode.EntryCount = Entries.Count;
+        allNode.EntryCount = Entries.Count(entry => !entry.IsArchived);
         CategoryTree.Add(allNode);
 
         var uncategorizedNode = CategoryNodeViewModel.CreateUncategorized(OnCategoryNodeSelected);
-        uncategorizedNode.EntryCount = Entries.Count(entry => entry.CategoryIds.Count == 0);
+        uncategorizedNode.EntryCount = Entries.Count(entry => entry.CategoryIds.Count == 0 && !entry.IsArchived);
         CategoryTree.Add(uncategorizedNode);
+
+        var archivesNode = CategoryNodeViewModel.CreateArchives(OnCategoryNodeSelected);
+        archivesNode.EntryCount = Entries.Count(entry => entry.IsArchived);
+        CategoryTree.Add(archivesNode);
 
         // Flatten gives a depth-first walk with each node's depth; a stack
         // is enough to reconstruct the nesting.
@@ -1032,7 +1079,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             }
         }
 
-        foreach (var rootNode in CategoryTree.Skip(2))
+        foreach (var rootNode in CategoryTree.Skip(3))
         {
             ComputeEntryCounts(rootNode);
         }
@@ -1051,6 +1098,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             CategoryNodeKind.Category => CollectNodes(CategoryTree)
                 .FirstOrDefault(node => node.Category?.Id == selectedCategoryId),
             CategoryNodeKind.Uncategorized => CategoryTree[1],
+            CategoryNodeKind.Archives => CategoryTree[2],
             _ => allNode
         } ?? allNode;
 
@@ -1069,7 +1117,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             subtreeIds.UnionWith(ComputeEntryCounts(child));
         }
 
-        node.EntryCount = Entries.Count(entry => entry.CategoryIds.Any(subtreeIds.Contains));
+        node.EntryCount = Entries.Count(entry => !entry.IsArchived && entry.CategoryIds.Any(subtreeIds.Contains));
         return subtreeIds;
     }
 
@@ -1242,6 +1290,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool EntryMatchesCategory(VocabularyEntry entry)
     {
+        // Archived entries are invisible everywhere except the Archives node
+        // itself — checked first so it short-circuits every other branch.
+        if (_selectedCategoryNode?.Kind == CategoryNodeKind.Archives)
+        {
+            return entry.IsArchived;
+        }
+
+        if (entry.IsArchived)
+        {
+            return false;
+        }
+
         if (_selectedCategoryNode is null || _selectedCategoryNode.Kind == CategoryNodeKind.AllEntries)
         {
             return true;

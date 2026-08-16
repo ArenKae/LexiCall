@@ -21,6 +21,14 @@ public enum SyncHistoryOutcome
     Failure
 }
 
+// The data-level change behind a Push/Pull operation — null for Delete,
+// where it would be redundant with Operation itself.
+public enum SyncHistoryChangeKind
+{
+    Created,
+    Updated
+}
+
 public sealed class SyncHistoryEntry
 {
     public Guid Id { get; init; } = Guid.NewGuid();
@@ -38,4 +46,6 @@ public sealed class SyncHistoryEntry
     public required SyncHistoryOperation Operation { get; init; }
 
     public required SyncHistoryOutcome Outcome { get; init; }
+
+    public SyncHistoryChangeKind? ChangeKind { get; init; }
 }

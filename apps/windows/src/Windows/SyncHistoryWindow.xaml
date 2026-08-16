@@ -143,6 +143,28 @@
                                         </TextBlock.Style>
                                     </TextBlock>
 
+                                    <!-- Data-level change behind a push/pull; absent
+                                         (ChangeKind null) for Delete rows, where it
+                                         would only repeat what "suppression" already says. -->
+                                    <TextBlock FontSize="12"
+                                               Foreground="{DynamicResource Brush.Text.Secondary}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ChangeKind}" Value="{x:Static models:SyncHistoryChangeKind.Created}">
+                                                        <Setter Property="Text" Value=" · création" />
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ChangeKind}" Value="{x:Static models:SyncHistoryChangeKind.Updated}">
+                                                        <Setter Property="Text" Value=" · édition" />
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
                                     <!-- Redundant with the icon's color, on purpose:
                                          a color-only failure signal is easy to miss
                                          at a glance in a dense list. -->

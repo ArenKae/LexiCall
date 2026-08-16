@@ -22,9 +22,12 @@ public sealed class VocabularyEntry
 
     public List<string> Tags { get; init; } = [];
 
-    // JPEG re-encoded to base64 (already resized/compressed on upload); empty
-    // string when the entry has no image.
-    public string ImageBase64 { get; set; } = string.Empty;
+    public VocabularyEntryType Type { get; set; } = VocabularyEntryType.Undefined;
+
+    public bool IsArchived { get; set; }
+
+    // Up to 3 images, enforced at the picker level (EntryEditorWindowViewModel).
+    public List<EntryImage> Images { get; init; } = [];
 
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.Now;
 

@@ -12,6 +12,8 @@ namespace LexiCall.Desktop.ViewModels;
 
 public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 {
+    public const int MaxImages = 3;
+
     private readonly VocabularyEntry? _existingEntry;
     private string _word = string.Empty;
     private string _definition = string.Empty;
@@ -20,7 +22,8 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     private string _notes = string.Empty;
     private string _source = string.Empty;
     private string _tagsText = string.Empty;
-    private string _imageBase64 = string.Empty;
+    private VocabularyEntryType _type = VocabularyEntryType.Undefined;
+    private bool _isArchived;
     private string _errorMessage = string.Empty;
 
     public EntryEditorWindowViewModel(
@@ -30,7 +33,6 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     {
         _existingEntry = existingEntry;
         SaveEntryCommand = new RelayCommand(SaveEntry);
-        RemoveImageCommand = new RelayCommand(RemoveImage);
 
         // Categories are optional (CategoryIds may stay empty). On creation,
         // initialCategoryId pre-checks the category selected in the tree.
@@ -43,6 +45,11 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
                     : item.Category.Id == initialCategoryId,
                 item.Depth)));
 
+        Images = new ObservableCollection<EntryImageEditorViewModel>(
+            (existingEntry?.Images ?? [])
+            .Select(image => new EntryImageEditorViewModel(image.Id, image.Caption, image.ImageBase64, RemoveImage)));
+        Images.CollectionChanged += (_, _) => OnPropertyChanged(nameof(CanAddMoreImages));
+
         if (existingEntry is not null)
         {
             Word = existingEntry.Word;
@@ -52,7 +59,8 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             Notes = existingEntry.Notes;
             Source = existingEntry.Source;
             TagsText = TextListParser.FormatCommaSeparatedText(existingEntry.Tags);
-            _imageBase64 = existingEntry.ImageBase64;
+            _type = existingEntry.Type;
+            _isArchived = existingEntry.IsArchived;
         }
     }
 
@@ -62,9 +70,14 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 
     public RelayCommand SaveEntryCommand { get; }
 
-    public RelayCommand RemoveImageCommand { get; }
-
     public ObservableCollection<CategorySelectionViewModel> CategorySelections { get; }
+
+    public ObservableCollection<EntryImageEditorViewModel> Images { get; }
+
+    public bool CanAddMoreImages => Images.Count < MaxImages;
+
+    public IReadOnlyList<(VocabularyEntryType Value, string Label)> AvailableTypes =>
+        VocabularyEntryTypeCatalog.All;
 
     public bool HasAvailableCategories => CategorySelections.Count > 0;
 
@@ -138,19 +151,17 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         set => SetProperty(ref _tagsText, value);
     }
 
-    public string ImageBase64
+    public VocabularyEntryType Type
     {
-        get => _imageBase64;
-        private set
-        {
-            if (SetProperty(ref _imageBase64, value))
-            {
-                OnPropertyChanged(nameof(HasImage));
-            }
-        }
+        get => _type;
+        set => SetProperty(ref _type, value);
     }
 
-    public bool HasImage => !string.IsNullOrEmpty(ImageBase64);
+    public bool IsArchived
+    {
+        get => _isArchived;
+        set => SetProperty(ref _isArchived, value);
+    }
 
     public string ErrorMessage
     {
@@ -158,23 +169,41 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _errorMessage, value);
     }
 
-    // Resizing/compression delegated to ImageProcessor (no WPF dependency here).
-    public void SetImageFromFile(string filePath)
+    // Resizing/compression delegated to ImageProcessor (no WPF dependency
+    // here). Accepts more files than there's room for (e.g. a multi-select
+    // dialog) and silently takes only as many as fit under MaxImages.
+    public void AddImagesFromFiles(IEnumerable<string> filePaths)
     {
-        if (ImageProcessor.TryEncodeImage(filePath, out var base64Image, out var error))
+        var truncated = false;
+
+        foreach (var filePath in filePaths)
         {
-            ImageBase64 = base64Image;
-            ClearError();
+            if (Images.Count >= MaxImages)
+            {
+                truncated = true;
+                break;
+            }
+
+            if (ImageProcessor.TryEncodeImage(filePath, out var base64Image, out var error))
+            {
+                Images.Add(new EntryImageEditorViewModel(Guid.NewGuid(), string.Empty, base64Image, RemoveImage));
+                ClearError();
+            }
+            else
+            {
+                ErrorMessage = error;
+            }
         }
-        else
+
+        if (truncated)
         {
-            ErrorMessage = error;
+            ErrorMessage = $"Une entrée ne peut avoir que {MaxImages} images au maximum ; le reste a été ignoré.";
         }
     }
 
-    private void RemoveImage()
+    private void RemoveImage(EntryImageEditorViewModel image)
     {
-        ImageBase64 = string.Empty;
+        Images.Remove(image);
     }
 
     private void SaveEntry()
@@ -211,7 +240,11 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
                 .Select(category => category.CategoryId)
                 .ToList(),
             Tags = TextListParser.ParseCommaSeparatedText(TagsText),
-            ImageBase64 = ImageBase64,
+            Type = Type,
+            IsArchived = IsArchived,
+            Images = Images
+                .Select(image => new EntryImage { Id = image.Id, Caption = image.Caption.Trim(), ImageBase64 = image.ImageBase64 })
+                .ToList(),
             CreatedAt = _existingEntry?.CreatedAt ?? now,
             UpdatedAt = now
         };

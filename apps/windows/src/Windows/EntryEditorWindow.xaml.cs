@@ -34,18 +34,19 @@ public partial class EntryEditorWindow : Window
     public VocabularyEntry? SavedEntry => _viewModel.SavedEntry;
 
     // The file picker is a WPF detail: the ViewModel only receives the chosen
-    // path and knows nothing about OpenFileDialog.
-    private void SelectImageButton_Click(object sender, RoutedEventArgs e)
+    // paths and knows nothing about OpenFileDialog.
+    private void AddImagesButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
             Filter = "Images (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif",
-            CheckFileExists = true
+            CheckFileExists = true,
+            Multiselect = true
         };
 
         if (dialog.ShowDialog(this) == true)
         {
-            _viewModel.SetImageFromFile(dialog.FileName);
+            _viewModel.AddImagesFromFiles(dialog.FileNames);
         }
     }
 }

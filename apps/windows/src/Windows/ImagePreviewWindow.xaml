@@ -10,14 +10,46 @@
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI"
         KeyDown="Window_KeyDown">
-    <!-- Enlarged preview of an entry's image (opened by clicking it in the
-         Detail column). MaxWidth/MaxHeight are set in code-behind as a
-         fraction of the work area, so it never overflows the screen. -->
+    <!-- Enlarged preview of an entry's image(s) (opened by clicking a
+         thumbnail in the Detail column). MaxWidth/MaxHeight are set in
+         code-behind as a fraction of the work area, so it never overflows
+         the screen. Previous/Next cycle through the owning entry's other
+         images when it has more than one. -->
     <StackPanel Margin="24">
-        <Image x:Name="PreviewImage"
-               Stretch="Uniform"
-               Cursor="Hand"
-               MouseLeftButtonUp="PreviewImage_MouseLeftButtonUp" />
+        <Grid>
+            <Image x:Name="PreviewImage"
+                   Stretch="Uniform"
+                   Cursor="Hand"
+                   MouseLeftButtonUp="PreviewImage_MouseLeftButtonUp" />
+
+            <Button x:Name="PreviousButton"
+                    Content="‹"
+                    FontSize="20"
+                    Width="32" Height="32"
+                    Padding="0"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Margin="8,0,0,0"
+                    ToolTip="Image précédente"
+                    Click="PreviousButton_Click" />
+
+            <Button x:Name="NextButton"
+                    Content="›"
+                    FontSize="20"
+                    Width="32" Height="32"
+                    Padding="0"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Margin="0,0,8,0"
+                    ToolTip="Image suivante"
+                    Click="NextButton_Click" />
+        </Grid>
+
+        <TextBlock x:Name="CaptionText"
+                   Margin="0,10,0,0"
+                   TextWrapping="Wrap"
+                   TextAlignment="Center"
+                   Foreground="{DynamicResource Brush.Text.Secondary}" />
 
         <Button Content="Fermer"
                 Width="96"
