@@ -76,7 +76,12 @@ PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.split_images_in_place
 
 ## Deployment
 
-`Dockerfile`, `docker-compose.prod.yml` and `deploy/backup.sh` are ready for
-a Docker deployment on the OVH VPS, but the actual rollout (and the choice
-of public exposure — direct port + TLS reverse proxy vs VPN/tunnel) is
-deferred to a later step, once the VPS is provisioned.
+`docker-compose.prod.yml` deploys the API only — MongoDB is a shared instance
+owned and operated outside this repo. The `api` service reaches it over an external Docker network,
+`lexicall-db`, which must already exist before `docker compose up` is run
+against this file; nothing in this repo creates, starts, stops, or owns that
+network, the Mongo container, or its data volume. `MONGO_URI` in `.env` points
+at a scoped user (`readWrite` on this app's own database only, never a root
+account — see `.env.example`). `deploy/backup.sh` mirrors that scoping: it
+backs up only this app's own database, using the same app credentials, from a
+disposable container on `lexicall-db` — not a full-instance backup.

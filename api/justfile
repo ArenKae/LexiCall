@@ -80,11 +80,13 @@ prod-backup:
 migrate *ARGS:
     PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.migrate_from_json {{ARGS}}
 
-# Interactive mongosh shell, authenticated as root. Password is read
-# straight from .env — never typed or pasted into a masked prompt.
+# Interactive mongosh shell, authenticated as the scoped app user — no root
+# in this repo, MongoDB is shared infra owned outside it. A disposable
+# mongo:8.0 container on the external `lexicall-db` network reaches it;
+# nothing here assumes a `mongo` Compose service exists in this project.
 [group('production')]
 mongosh:
     #!/usr/bin/env bash
     set -euo pipefail
-    ROOT_PWD=$(grep -oP '(?<=^MONGO_ROOT_PASSWORD=).*' .env)
-    docker compose -f docker-compose.prod.yml exec mongo mongosh "mongodb://lexicall_root:${ROOT_PWD}@localhost:27017/admin"
+    MONGO_URI=$(grep -oP '(?<=^MONGO_URI=).*' .env)
+    docker run --rm -it --network lexicall-db mongo:8.0 mongosh "$MONGO_URI"
