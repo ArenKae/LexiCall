@@ -33,6 +33,19 @@ public partial class EntryEditorWindow : Window
 
     public VocabularyEntry? SavedEntry => _viewModel.SavedEntry;
 
+    // Caps the window to 80% of the owner's size — Owner is only guaranteed
+    // set by the time the window is shown, not at construction.
+    private void EntryEditorWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (Owner is null)
+        {
+            return;
+        }
+
+        Height = Math.Min(Height, Owner.ActualHeight * 0.8);
+        Width = Math.Min(Width, Owner.ActualWidth * 0.8);
+    }
+
     // The file picker is a WPF detail: the ViewModel only receives the chosen
     // paths and knows nothing about OpenFileDialog.
     private void AddImagesButton_Click(object sender, RoutedEventArgs e)
