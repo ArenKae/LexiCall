@@ -16,4 +16,15 @@
     <Resource Include="Assets\Fonts\BaskervilleOldFace.ttf" />
   </ItemGroup>
 
+  <!-- Explicit exclude: VS Code's transient wpftmp design-time project doesn't reliably
+       inherit the SDK's own obj/bin exclusion, which duplicates generated .g.cs items. -->
+  <ItemGroup>
+    <Compile Remove="obj\**" />
+    <Compile Remove="bin\**" />
+    <EmbeddedResource Remove="obj\**" />
+    <EmbeddedResource Remove="bin\**" />
+    <None Remove="obj\**" />
+    <None Remove="bin\**" />
+  </ItemGroup>
+
 </Project>
