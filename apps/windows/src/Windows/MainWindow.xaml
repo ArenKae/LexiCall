@@ -905,14 +905,7 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <!-- Clickable: selects this category in the left-hand
-                                                         panel. Represented by a small color dot, not a
-                                                         filled badge — color stays a discreet accent. Hover
-                                                         uses the tree's own accent-ring recipe (Selection.
-                                                         Background + Accent border), not Surface.Hover — the
-                                                         chip sits inside a ListBoxItem that already uses
-                                                         Surface.Hover for its own row hover, so a plain
-                                                         Surface.Hover fill here would be indistinguishable. -->
+
                                                     <Border CornerRadius="6"
                                                             Padding="4,2"
                                                             Margin="0,0,8,0"
@@ -1132,11 +1125,14 @@
 
                                         <Separator Margin="0,16,0,20" />
 
-                                        <!-- Metadata on the left, image top-right (Auto column, collapses
-                                             to 0 when absent). Below WidthBreakpointConverter's threshold,
-                                             Style.Triggers move the image to a full-width 2nd row —
-                                             Grid.Row/Column must therefore stay set via Style, not as a
-                                             direct attribute, or the local value would win over the Trigger. -->
+                                        <!-- Metadata sections on the left, the image as its own section
+                                             (same icon+label+separator header as the others, so it reads
+                                             as part of the same structure, not a floating picture) on the
+                                             right — Auto column, collapses to 0 when absent. Below
+                                             WidthBreakpointConverter's threshold, Style.Triggers move it to
+                                             a full-width 2nd row — Grid.Row/Column must therefore stay set
+                                             via Style, not as a direct attribute, or the local value would
+                                             win over the Trigger. -->
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
@@ -1273,21 +1269,13 @@
                                                            Foreground="{DynamicResource Brush.Text.Secondary}" />
                                             </StackPanel>
 
-                                            <Border x:Name="DetailImageFrame"
-                                                    MaxWidth="260"
-                                                    MaxHeight="220"
-                                                    VerticalAlignment="Top"
-                                                    HorizontalAlignment="Left"
-                                                    Background="{DynamicResource Brush.Surface.Hover}"
-                                                    CornerRadius="8"
-                                                    Cursor="Hand"
-                                                    MouseLeftButtonUp="DetailImage_MouseLeftButtonUp">
-                                                <Border.Style>
-                                                    <Style TargetType="Border">
+                                            <StackPanel>
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
                                                         <Setter Property="Grid.Row" Value="0" />
                                                         <Setter Property="Grid.Column" Value="1" />
                                                         <Setter Property="Grid.ColumnSpan" Value="1" />
-                                                        <Setter Property="Margin" Value="20,0,8,0" />
+                                                        <Setter Property="Margin" Value="20,0,0,0" />
                                                         <Setter Property="Visibility" Value="Visible" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding ImageBase64}" Value="">
@@ -1298,34 +1286,61 @@
                                                                 <Setter Property="Grid.Row" Value="1" />
                                                                 <Setter Property="Grid.Column" Value="0" />
                                                                 <Setter Property="Grid.ColumnSpan" Value="2" />
-                                                                <Setter Property="Margin" Value="0,106,8,0" />
+                                                                <Setter Property="Margin" Value="0,20,0,0" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </Border.Style>
+                                                </StackPanel.Style>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Path Grid.Column="0"
+                                                          Data="{StaticResource Icon.Phosphor.image}"
+                                                          Fill="{DynamicResource Brush.Text.Secondary}"
+                                                          Width="14" Height="14" Stretch="Uniform"
+                                                          VerticalAlignment="Center"
+                                                          Margin="0,0,10,0" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="Image"
+                                                               FontWeight="SemiBold"
+                                                               VerticalAlignment="Center" />
+                                                </Grid>
+                                                <Separator Margin="0,10,0,14" />
 
-                                                <!-- CornerRadius alone only rounds the Border's own
-                                                     Background/BorderBrush painting — a child Image still
-                                                     clips to a plain rectangle unless the Border's own Clip
-                                                     is set to a matching rounded geometry. ElementName (not
-                                                     RelativeSource=Self): Geometry isn't a FrameworkElement,
-                                                     so it has no "self" to resolve against. -->
-                                                <Border.Clip>
-                                                    <RectangleGeometry RadiusX="8" RadiusY="8">
-                                                        <RectangleGeometry.Rect>
-                                                            <MultiBinding Converter="{StaticResource SizeToRectConverter}">
-                                                                <Binding ElementName="DetailImageFrame" Path="ActualWidth" />
-                                                                <Binding ElementName="DetailImageFrame" Path="ActualHeight" />
-                                                            </MultiBinding>
-                                                        </RectangleGeometry.Rect>
-                                                    </RectangleGeometry>
-                                                </Border.Clip>
+                                                <Border x:Name="DetailImageFrame"
+                                                        MaxWidth="220"
+                                                        MaxHeight="220"
+                                                        HorizontalAlignment="Left"
+                                                        Background="{DynamicResource Brush.Surface.Hover}"
+                                                        CornerRadius="8"
+                                                        Cursor="Hand"
+                                                        Margin="24,0,0,0"
+                                                        MouseLeftButtonUp="DetailImage_MouseLeftButtonUp">
+                                                    <!-- CornerRadius alone only rounds the Border's own
+                                                         Background/BorderBrush painting — a child Image still
+                                                         clips to a plain rectangle unless the Border's own Clip
+                                                         is set to a matching rounded geometry. ElementName (not
+                                                         RelativeSource=Self): Geometry isn't a FrameworkElement,
+                                                         so it has no "self" to resolve against. -->
+                                                    <Border.Clip>
+                                                        <RectangleGeometry RadiusX="8" RadiusY="8">
+                                                            <RectangleGeometry.Rect>
+                                                                <MultiBinding Converter="{StaticResource SizeToRectConverter}">
+                                                                    <Binding ElementName="DetailImageFrame" Path="ActualWidth" />
+                                                                    <Binding ElementName="DetailImageFrame" Path="ActualHeight" />
+                                                                </MultiBinding>
+                                                            </RectangleGeometry.Rect>
+                                                        </RectangleGeometry>
+                                                    </Border.Clip>
 
-                                                <Image Source="{Binding ImageBase64, Converter={StaticResource Base64ImageConverter}}"
-                                                       MaxWidth="260"
-                                                       MaxHeight="220"
-                                                       Stretch="Uniform" />
-                                            </Border>
+                                                    <Image Source="{Binding ImageBase64, Converter={StaticResource Base64ImageConverter}}"
+                                                           MaxWidth="220"
+                                                           MaxHeight="220"
+                                                           Stretch="Uniform" />
+                                                </Border>
+                                            </StackPanel>
                                         </Grid>
                                     </StackPanel>
                                 </DataTemplate>
