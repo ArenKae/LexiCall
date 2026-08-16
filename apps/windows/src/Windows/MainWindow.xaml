@@ -907,31 +907,52 @@
                                                 <DataTemplate>
                                                     <!-- Clickable: selects this category in the left-hand
                                                          panel. Represented by a small color dot, not a
-                                                         filled badge — color stays a discreet accent. -->
-                                                    <StackPanel Orientation="Horizontal"
-                                                                Margin="0,0,12,0"
-                                                                Cursor="Hand"
-                                                                ToolTip="Filtrer par cette catégorie"
-                                                                MouseLeftButtonUp="CategoryChip_MouseLeftButtonUp">
-                                                        <Ellipse Width="8" Height="8"
-                                                                 VerticalAlignment="Center"
-                                                                 Margin="0,0,5,0">
-                                                            <Ellipse.RenderTransform>
-                                                                <TranslateTransform Y="1" />
-                                                            </Ellipse.RenderTransform>
-                                                            <Ellipse.Fill>
-                                                                <MultiBinding Converter="{StaticResource CategoryDotColorConverter}">
-                                                                    <Binding Path="." />
-                                                                    <Binding Path="DataContext.Categories"
-                                                                             RelativeSource="{RelativeSource AncestorType=Window}" />
-                                                                </MultiBinding>
-                                                            </Ellipse.Fill>
-                                                        </Ellipse>
-                                                        <TextBlock Text="{Binding Name}"
-                                                                   FontSize="12"
-                                                                   Foreground="{DynamicResource Brush.Text.Secondary}"
-                                                                   VerticalAlignment="Center" />
-                                                    </StackPanel>
+                                                         filled badge — color stays a discreet accent. Hover
+                                                         uses the tree's own accent-ring recipe (Selection.
+                                                         Background + Accent border), not Surface.Hover — the
+                                                         chip sits inside a ListBoxItem that already uses
+                                                         Surface.Hover for its own row hover, so a plain
+                                                         Surface.Hover fill here would be indistinguishable. -->
+                                                    <Border CornerRadius="6"
+                                                            Padding="4,2"
+                                                            Margin="0,0,8,0"
+                                                            BorderThickness="1.5"
+                                                            Cursor="Hand"
+                                                            ToolTip="Filtrer par cette catégorie"
+                                                            MouseLeftButtonUp="CategoryChip_MouseLeftButtonUp">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="Transparent" />
+                                                                <Setter Property="BorderBrush" Value="Transparent" />
+                                                                <Style.Triggers>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter Property="Background" Value="{DynamicResource Brush.Selection.Background}" />
+                                                                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                                                    </Trigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Ellipse Width="8" Height="8"
+                                                                     VerticalAlignment="Center"
+                                                                     Margin="0,0,5,0">
+                                                                <Ellipse.RenderTransform>
+                                                                    <TranslateTransform Y="1" />
+                                                                </Ellipse.RenderTransform>
+                                                                <Ellipse.Fill>
+                                                                    <MultiBinding Converter="{StaticResource CategoryDotColorConverter}">
+                                                                        <Binding Path="." />
+                                                                        <Binding Path="DataContext.Categories"
+                                                                                 RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                                    </MultiBinding>
+                                                                </Ellipse.Fill>
+                                                            </Ellipse>
+                                                            <TextBlock Text="{Binding Name}"
+                                                                       FontSize="12"
+                                                                       Foreground="{DynamicResource Brush.Text.Secondary}"
+                                                                       VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                    </Border>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
@@ -1064,28 +1085,47 @@
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <!-- Clickable: selects this category in the left-hand
-                                                         panel (Cursor="Hand" signals the action). -->
-                                                    <StackPanel Orientation="Horizontal"
-                                                                Margin="0,0,16,4"
-                                                                Cursor="Hand"
-                                                                ToolTip="Filtrer par cette catégorie"
-                                                                MouseLeftButtonUp="CategoryChip_MouseLeftButtonUp">
-                                                        <Ellipse Width="9" Height="9"
-                                                                 VerticalAlignment="Center"
-                                                                 Margin="0,0,6,0">
-                                                            <Ellipse.Fill>
-                                                                <MultiBinding Converter="{StaticResource CategoryDotColorConverter}">
-                                                                    <Binding Path="." />
-                                                                    <Binding Path="DataContext.Categories"
-                                                                             RelativeSource="{RelativeSource AncestorType=Window}" />
-                                                                </MultiBinding>
-                                                            </Ellipse.Fill>
-                                                        </Ellipse>
-                                                        <TextBlock Text="{Binding Name}"
-                                                                   FontSize="13"
-                                                                   Foreground="{DynamicResource Brush.Text.Secondary}"
-                                                                   VerticalAlignment="Center" />
-                                                    </StackPanel>
+                                                         panel (Cursor="Hand" signals the action). Same
+                                                         accent-ring hover recipe as the entry list's chips
+                                                         above (Selection.Background + Accent border, not
+                                                         Surface.Hover). -->
+                                                    <Border CornerRadius="6"
+                                                            Padding="4,2"
+                                                            Margin="0,0,12,2"
+                                                            BorderThickness="1.5"
+                                                            Cursor="Hand"
+                                                            ToolTip="Filtrer par cette catégorie"
+                                                            MouseLeftButtonUp="CategoryChip_MouseLeftButtonUp">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="Transparent" />
+                                                                <Setter Property="BorderBrush" Value="Transparent" />
+                                                                <Style.Triggers>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter Property="Background" Value="{DynamicResource Brush.Selection.Background}" />
+                                                                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                                                    </Trigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Ellipse Width="9" Height="9"
+                                                                     VerticalAlignment="Center"
+                                                                     Margin="0,0,6,0">
+                                                                <Ellipse.Fill>
+                                                                    <MultiBinding Converter="{StaticResource CategoryDotColorConverter}">
+                                                                        <Binding Path="." />
+                                                                        <Binding Path="DataContext.Categories"
+                                                                                 RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                                    </MultiBinding>
+                                                                </Ellipse.Fill>
+                                                            </Ellipse>
+                                                            <TextBlock Text="{Binding Name}"
+                                                                       FontSize="13"
+                                                                       Foreground="{DynamicResource Brush.Text.Secondary}"
+                                                                       VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                    </Border>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>

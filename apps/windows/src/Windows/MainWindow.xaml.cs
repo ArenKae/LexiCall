@@ -235,9 +235,53 @@ public partial class MainWindow : Window
     {
         if (sender is FrameworkElement { DataContext: Models.VocabularyCategory category })
         {
+            if (CategoryPanelToggleButton.IsChecked == true)
+            {
+                ApplyCategoryPanelCollapsedState(isCollapsed: false);
+            }
+
             ViewModel.SelectCategory(category.Id);
+
+            if (ViewModel.SelectedCategoryNode is { } selectedNode)
+            {
+                BringCategoryNodeIntoView(selectedNode);
+            }
+
             e.Handled = true;
         }
+    }
+
+    // TreeViewItem containers only materialize for an item once its parent
+    // is expanded and a layout pass has run, so each ancestor's container is
+    // resolved and laid out before searching the next level down.
+    private void BringCategoryNodeIntoView(CategoryNodeViewModel targetNode)
+    {
+        var path = new List<CategoryNodeViewModel>();
+        var current = targetNode;
+
+        while (current is not null)
+        {
+            path.Insert(0, current);
+            current = FindParentNode(ViewModel.CategoryTree, current);
+        }
+
+        ItemsControl container = CategoryTreeView;
+        TreeViewItem? item = null;
+
+        foreach (var node in path)
+        {
+            container.UpdateLayout();
+
+            if (container.ItemContainerGenerator.ContainerFromItem(node) is not TreeViewItem nextItem)
+            {
+                return;
+            }
+
+            item = nextItem;
+            container = nextItem;
+        }
+
+        item?.BringIntoView();
     }
 
     // ─── Categories ───
