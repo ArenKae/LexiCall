@@ -13,7 +13,6 @@ ENTRY_PAYLOAD = {
     "Notes": "",
     "Source": "",
     "CategoryIds": [],
-    "Tags": [],
 }
 
 IMAGE_BYTES = b"\xff\xd8\xff\xe0fake-jpeg-bytes"

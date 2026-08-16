@@ -204,7 +204,7 @@
                     <TextBlock Grid.Row="10"
                                Grid.Column="0"
                                Grid.ColumnSpan="3"
-                               Text="Images (3 maximum)"
+                               Text="Images (4 maximum)"
                                FontWeight="SemiBold" />
                     <StackPanel Grid.Row="11"
                                 Grid.Column="0"

@@ -106,7 +106,6 @@ public sealed class VocabularyRepository
                 Notes = legacyEntry.Notes,
                 Source = legacyEntry.Source,
                 CategoryIds = categoryIds.Distinct().ToList(),
-                Tags = legacyEntry.Tags,
                 CreatedAt = legacyEntry.CreatedAt,
                 UpdatedAt = legacyEntry.UpdatedAt
             });
@@ -207,8 +206,6 @@ public sealed class VocabularyRepository
         public string Source { get; init; } = string.Empty;
 
         public List<string> Categories { get; init; } = [];
-
-        public List<string> Tags { get; init; } = [];
 
         public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.Now;
 
