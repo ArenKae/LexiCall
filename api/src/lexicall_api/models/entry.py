@@ -6,7 +6,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-MAX_IMAGES_PER_ENTRY = 3
+MAX_IMAGES_PER_ENTRY = 4
 
 
 class VocabularyEntryType(str, Enum):

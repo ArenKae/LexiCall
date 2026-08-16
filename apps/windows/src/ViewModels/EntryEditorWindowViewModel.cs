@@ -12,7 +12,7 @@ namespace LexiCall.Desktop.ViewModels;
 
 public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 {
-    public const int MaxImages = 3;
+    public const int MaxImages = 4;
 
     private readonly VocabularyEntry? _existingEntry;
     private string _word = string.Empty;
@@ -76,7 +76,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 
     public bool CanAddMoreImages => Images.Count < MaxImages;
 
-    public IReadOnlyList<(VocabularyEntryType Value, string Label)> AvailableTypes =>
+    public IReadOnlyList<VocabularyEntryTypeOption> AvailableTypes =>
         VocabularyEntryTypeCatalog.All;
 
     public bool HasAvailableCategories => CategorySelections.Count > 0;
