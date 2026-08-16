@@ -1,5 +1,6 @@
 // Code-behind for the main window: opens modal windows, relays category-tree
-// interactions to MainWindowViewModel, and shows confirmations/errors via MessageBox.
+// interactions to MainWindowViewModel, and shows confirmations/errors via
+// themed dialogs (ConfirmationDialog, AlertDialog).
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -378,7 +379,7 @@ public partial class MainWindow : Window
 
         if (error is not null)
         {
-            MessageBox.Show(this, error, "Suppression impossible", MessageBoxButton.OK, MessageBoxImage.Information);
+            AlertDialog.Show(this, error, "Suppression impossible");
         }
     }
 
@@ -399,7 +400,7 @@ public partial class MainWindow : Window
 
                 if (error is not null)
                 {
-                    MessageBox.Show(this, error, "Enregistrement impossible", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    AlertDialog.Show(this, error, "Enregistrement impossible");
                 }
                 else
                 {
@@ -619,7 +620,7 @@ public partial class MainWindow : Window
 
         if (error is not null && interactive)
         {
-            MessageBox.Show(this, error, "Renommage impossible", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AlertDialog.Show(this, error, "Renommage impossible");
             node.EditName = newName;
             node.IsEditing = true;
         }
