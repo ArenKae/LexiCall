@@ -1194,8 +1194,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 },
                 Notes = "À rapprocher de fugace, qui insiste sur la rapidité.",
                 Source = "Le Petit Prince — Antoine de Saint-Exupéry",
-                CategoryIds = { durationCategory.Id, literatureCategory.Id },
-                Tags = { "adjectif" }
+                CategoryIds = { durationCategory.Id, literatureCategory.Id }
             },
                 new VocabularyEntry
             {
@@ -1207,8 +1206,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     "Son observation perspicace révéla un détail ignoré de tous."
                 },
                 Source = "Lecture personnelle",
-                CategoryIds = { characterCategory.Id },
-                Tags = { "adjectif" }
+                CategoryIds = { characterCategory.Id }
             },
                 new VocabularyEntry
             {
@@ -1221,8 +1219,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 },
                 Notes = "Terme fréquent en anthropologie et en critique littéraire.",
                 Source = "Essai sur les espaces de transition",
-                CategoryIds = { philosophyCategory.Id, literatureCategory.Id },
-                Tags = { "adjectif", "concept" }
+                CategoryIds = { philosophyCategory.Id, literatureCategory.Id }
             }
             ]
         };
@@ -1346,8 +1343,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SearchFieldMatches(entry.Source, normalizedQuery) ||
             SearchFieldsMatch(entry.Synonyms, normalizedQuery) ||
             SearchFieldsMatch(entry.ExampleSentences, normalizedQuery) ||
-            SearchFieldsMatch(GetCategoryNames(entry.CategoryIds), normalizedQuery) ||
-            SearchFieldsMatch(entry.Tags, normalizedQuery);
+            SearchFieldsMatch(GetCategoryNames(entry.CategoryIds), normalizedQuery);
     }
 
     private IEnumerable<string> GetCategoryNames(IEnumerable<Guid> categoryIds)

@@ -756,7 +756,7 @@
                 <Grid Grid.Row="0">
                     <TextBox x:Name="SearchTextBox"
                              Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
-                             ToolTip="Recherche dans les mots, définitions, notes, exemples, catégories et tags.">
+                             ToolTip="Recherche dans les mots, définitions, notes, exemples et catégories.">
                         <TextBox.Style>
                             <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                                 <Setter Property="Padding" Value="9,6,40,6" />

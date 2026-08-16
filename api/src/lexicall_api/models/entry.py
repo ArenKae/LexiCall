@@ -44,7 +44,6 @@ class VocabularyEntryWrite(BaseModel):
     notes: str = Field(default="", alias="Notes")
     source: str = Field(default="", alias="Source")
     category_ids: list[str] = Field(default_factory=list, alias="CategoryIds")
-    tags: list[str] = Field(default_factory=list, alias="Tags")
     # No default: every push must state a type explicitly (Undefined is a
     # real enum member, not a silent fallback at this layer).
     type: VocabularyEntryType = Field(alias="Type")
@@ -75,7 +74,6 @@ class VocabularyEntrySummary(BaseModel):
     notes: str = Field(default="", alias="Notes")
     source: str = Field(default="", alias="Source")
     category_ids: list[str] = Field(default_factory=list, alias="CategoryIds")
-    tags: list[str] = Field(default_factory=list, alias="Tags")
     # Defaults kept even though the type is conceptually required: a safety
     # net for any document the migration hasn't backfilled yet (belt-and-
     # suspenders alongside the strict deploy-after-migration rollout order).

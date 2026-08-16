@@ -9,7 +9,6 @@
       "Notes": "",
       "Source": "",
       "CategoryIds": ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],
-      "Tags": [],
       "ImageBase64": "aGVsbG8=",
       "CreatedAt": "2026-01-01T10:00:00+00:00",
       "UpdatedAt": "2026-01-01T10:00:00+00:00"
@@ -23,7 +22,6 @@
       "Notes": "",
       "Source": "",
       "CategoryIds": ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"],
-      "Tags": [],
       "ImageBase64": "",
       "CreatedAt": "2026-01-01T10:00:00+00:00",
       "UpdatedAt": "2026-01-01T10:00:00+00:00"
@@ -37,7 +35,6 @@
       "Notes": "",
       "Source": "",
       "CategoryIds": [],
-      "Tags": [],
       "ImageBase64": "",
       "CreatedAt": "2026-01-01T10:00:00+00:00",
       "UpdatedAt": "2026-01-01T10:00:00+00:00"

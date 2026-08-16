@@ -30,7 +30,6 @@ def _put_entry(client, auth_headers, **overrides):
         "Notes": "",
         "Source": "",
         "CategoryIds": [],
-        "Tags": [],
         **overrides,
     }
     return client.put(f"/entries/{entry_id}", json=payload, headers=auth_headers)

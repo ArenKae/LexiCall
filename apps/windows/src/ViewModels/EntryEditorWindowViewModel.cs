@@ -21,7 +21,6 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     private string _exampleSentencesText = string.Empty;
     private string _notes = string.Empty;
     private string _source = string.Empty;
-    private string _tagsText = string.Empty;
     private VocabularyEntryType _type = VocabularyEntryType.Undefined;
     private bool _isArchived;
     private string _errorMessage = string.Empty;
@@ -58,7 +57,6 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             ExampleSentencesText = TextListParser.FormatLineSeparatedText(existingEntry.ExampleSentences);
             Notes = existingEntry.Notes;
             Source = existingEntry.Source;
-            TagsText = TextListParser.FormatCommaSeparatedText(existingEntry.Tags);
             _type = existingEntry.Type;
             _isArchived = existingEntry.IsArchived;
         }
@@ -143,12 +141,6 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     {
         get => _source;
         set => SetProperty(ref _source, value);
-    }
-
-    public string TagsText
-    {
-        get => _tagsText;
-        set => SetProperty(ref _tagsText, value);
     }
 
     public VocabularyEntryType Type
@@ -239,7 +231,6 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
                 .Where(category => category.IsSelected)
                 .Select(category => category.CategoryId)
                 .ToList(),
-            Tags = TextListParser.ParseCommaSeparatedText(TagsText),
             Type = Type,
             IsArchived = IsArchived,
             Images = Images
