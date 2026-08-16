@@ -482,17 +482,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             foreach (var (category, success) in categoryPushResults)
             {
                 RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name,
-                    SyncHistoryOperation.Push, success ? SyncHistoryOutcome.Success : SyncHistoryOutcome.Failure);
+                    SyncHistoryOperation.Push, success ? SyncHistoryOutcome.Success : SyncHistoryOutcome.Failure,
+                    GetChangeKind(category.CreatedAt, category.UpdatedAt));
             }
 
             foreach (var (entry, success) in entryPushResults)
             {
                 RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word,
-                    SyncHistoryOperation.Push, success ? SyncHistoryOutcome.Success : SyncHistoryOutcome.Failure);
+                    SyncHistoryOperation.Push, success ? SyncHistoryOutcome.Success : SyncHistoryOutcome.Failure,
+                    GetChangeKind(entry.CreatedAt, entry.UpdatedAt));
             }
 
-            MergePulled(Categories, categoriesPull.Items, FindCategoryIndex, c => c.Id, c => c.UpdatedAt, c => c.IsDeleted, (c, t) => c.SyncedAt = t, SyncHistoryEntityType.Category, c => c.Name);
-            MergePulled(Entries, entriesPull.Items, FindEntryIndex, e => e.Id, e => e.UpdatedAt, e => e.IsDeleted, (e, t) => e.SyncedAt = t, SyncHistoryEntityType.Entry, e => e.Word);
+            MergePulled(Categories, categoriesPull.Items, FindCategoryIndex, c => c.Id, c => c.UpdatedAt, c => c.CreatedAt, c => c.IsDeleted, (c, t) => c.SyncedAt = t, SyncHistoryEntityType.Category, c => c.Name);
+            MergePulled(Entries, entriesPull.Items, FindEntryIndex, e => e.Id, e => e.UpdatedAt, e => e.CreatedAt, e => e.IsDeleted, (e, t) => e.SyncedAt = t, SyncHistoryEntityType.Entry, e => e.Word);
             RebuildCategoryTree();
             RefreshFilteredEntries();
             SaveDatabase();
@@ -529,6 +531,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Func<Guid, int> findIndex,
         Func<T, Guid> getId,
         Func<T, DateTimeOffset> getUpdatedAt,
+        Func<T, DateTimeOffset> getCreatedAt,
         Func<T, bool> getIsDeleted,
         Action<T, DateTimeOffset> setSyncedAt,
         SyncHistoryEntityType entityType,
@@ -561,13 +564,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 setSyncedAt(item, getUpdatedAt(item));
                 collection.Add(item);
-                RecordSyncHistory(entityType, getId(item), getLabel(item), SyncHistoryOperation.Pull, SyncHistoryOutcome.Success);
+                RecordSyncHistory(entityType, getId(item), getLabel(item), SyncHistoryOperation.Pull, SyncHistoryOutcome.Success,
+                    GetChangeKind(getCreatedAt(item), getUpdatedAt(item)));
             }
             else if (getUpdatedAt(item) > getUpdatedAt(collection[index]))
             {
                 setSyncedAt(item, getUpdatedAt(item));
                 collection[index] = item;
-                RecordSyncHistory(entityType, getId(item), getLabel(item), SyncHistoryOperation.Pull, SyncHistoryOutcome.Success);
+                RecordSyncHistory(entityType, getId(item), getLabel(item), SyncHistoryOperation.Pull, SyncHistoryOutcome.Success,
+                    GetChangeKind(getCreatedAt(item), getUpdatedAt(item)));
             }
         }
     }
@@ -575,7 +580,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     // Must only be called on the UI thread: mutates the UI-bound SyncHistory
     // collection directly.
     private void RecordSyncHistory(SyncHistoryEntityType entityType, Guid entityId, string entityLabel,
-        SyncHistoryOperation operation, SyncHistoryOutcome outcome)
+        SyncHistoryOperation operation, SyncHistoryOutcome outcome, SyncHistoryChangeKind? changeKind = null)
     {
         SyncHistory.Insert(0, new SyncHistoryEntry
         {
@@ -584,7 +589,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             EntityId = entityId,
             EntityLabel = entityLabel,
             Operation = operation,
-            Outcome = outcome
+            Outcome = outcome,
+            ChangeKind = changeKind
         });
 
         while (SyncHistory.Count > SyncHistoryStore.MaxEntries)
@@ -594,6 +600,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         SyncHistoryStore.Save(SyncHistory.ToList());
     }
+
+    // Push/pull history rows show whether the underlying data was created or
+    // edited — irrelevant for Delete, which already says so via Operation.
+    // CreatedAt == UpdatedAt exactly at creation time (both editors stamp them
+    // from the same DateTimeOffset.Now call), so any difference means at
+    // least one edit happened since.
+    private static SyncHistoryChangeKind GetChangeKind(DateTimeOffset createdAt, DateTimeOffset updatedAt) =>
+        createdAt == updatedAt ? SyncHistoryChangeKind.Created : SyncHistoryChangeKind.Updated;
 
     // Called from SyncHistoryWindow after user confirmation.
     public void ClearSyncHistory()
@@ -610,7 +624,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (!await _apiClient.TryUpsertEntryAsync(entry).ConfigureAwait(false))
         {
             Application.Current.Dispatcher.Invoke(() =>
-                RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word, SyncHistoryOperation.Push, SyncHistoryOutcome.Failure));
+                RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word, SyncHistoryOperation.Push, SyncHistoryOutcome.Failure,
+                    GetChangeKind(entry.CreatedAt, entry.UpdatedAt)));
             return;
         }
 
@@ -625,7 +640,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 Entries[index].SyncedAt = entry.UpdatedAt;
                 SaveDatabase();
-                RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word, SyncHistoryOperation.Push, SyncHistoryOutcome.Success);
+                RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word, SyncHistoryOperation.Push, SyncHistoryOutcome.Success,
+                    GetChangeKind(entry.CreatedAt, entry.UpdatedAt));
 
                 // In-place mutation: SelectedEntry isn't reassigned on this
                 // path (unlike MergePulled), so its setter doesn't notify on
@@ -645,7 +661,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (!await _apiClient.TryUpsertCategoryAsync(category).ConfigureAwait(false))
         {
             Application.Current.Dispatcher.Invoke(() =>
-                RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name, SyncHistoryOperation.Push, SyncHistoryOutcome.Failure));
+                RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name, SyncHistoryOperation.Push, SyncHistoryOutcome.Failure,
+                    GetChangeKind(category.CreatedAt, category.UpdatedAt)));
             return;
         }
 
@@ -657,7 +674,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 Categories[index].SyncedAt = category.UpdatedAt;
                 SaveDatabase();
-                RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name, SyncHistoryOperation.Push, SyncHistoryOutcome.Success);
+                RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name, SyncHistoryOperation.Push, SyncHistoryOutcome.Success,
+                    GetChangeKind(category.CreatedAt, category.UpdatedAt));
             }
         });
     }

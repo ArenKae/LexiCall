@@ -238,6 +238,7 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
             return;
         }
 
+        var now = DateTimeOffset.Now;
         SavedCategory = new VocabularyCategory
         {
             Id = _existingCategory?.Id ?? _pendingCategoryId,
@@ -245,8 +246,10 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
             ParentId = parentId,
             Description = Description.Trim(),
             IconGlyph = IconGlyph,
-            CreatedAt = _existingCategory?.CreatedAt ?? DateTimeOffset.Now,
-            UpdatedAt = DateTimeOffset.Now
+            // Same instant on creation (CreatedAt == UpdatedAt) — a signal
+            // relied on for sync-history's push/pull data-kind display.
+            CreatedAt = _existingCategory?.CreatedAt ?? now,
+            UpdatedAt = now
         };
         SavedColorHex = ColorHex;
 
