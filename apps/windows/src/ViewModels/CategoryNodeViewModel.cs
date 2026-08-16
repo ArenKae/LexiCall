@@ -13,6 +13,7 @@ public enum CategoryNodeKind
 {
     AllEntries,
     Uncategorized,
+    Archives,
     Category
 }
 
@@ -44,6 +45,9 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
     public static CategoryNodeViewModel CreateUncategorized(Action<CategoryNodeViewModel> onSelected) =>
         new(CategoryNodeKind.Uncategorized, category: null, onSelected);
 
+    public static CategoryNodeViewModel CreateArchives(Action<CategoryNodeViewModel> onSelected) =>
+        new(CategoryNodeKind.Archives, category: null, onSelected);
+
     public static CategoryNodeViewModel CreateForCategory(
         VocabularyCategory category,
         Action<CategoryNodeViewModel> onSelected) =>
@@ -63,17 +67,21 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
     {
         CategoryNodeKind.AllEntries => "Toutes les entrées",
         CategoryNodeKind.Uncategorized => "Sans catégorie",
+        CategoryNodeKind.Archives => "Archives",
         _ => Category!.Name
     };
 
     // Icon shown before the name: the category's chosen icon (a vector
     // IconKey, or a legacy emoji -- IconKeyToGeometryConverter falls back to
     // rendering the raw string when it isn't a known key), or a default
-    // vector glyph (virtual nodes, or a category with no icon).
+    // vector glyph (virtual nodes, or a category with no icon). "Books" moved
+    // from AllEntries to Archives (and AllEntries to "stack") so the two
+    // virtual nodes aren't visually confusable.
     public string DisplayIcon => Kind switch
     {
-        CategoryNodeKind.AllEntries => "Phosphor.books",
+        CategoryNodeKind.AllEntries => "Phosphor.stack",
         CategoryNodeKind.Uncategorized => "Solar.tag",
+        CategoryNodeKind.Archives => "Phosphor.books",
         _ => string.IsNullOrEmpty(Category!.IconGlyph) ? "Solar.tag" : Category.IconGlyph
     };
 

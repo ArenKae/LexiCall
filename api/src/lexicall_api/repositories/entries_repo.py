@@ -26,6 +26,13 @@ def list_ids() -> set[str]:
     return set(get_entries_collection().distinct("Id"))
 
 
+def list_all_raw() -> list[dict]:
+    # Every document, tombstones included — used by one-off migrations that
+    # must reach every entry regardless of IsDeleted.
+    docs = get_entries_collection().find({})
+    return [strip_mongo_id(doc) for doc in docs]
+
+
 def get_entry(entry_id: str) -> dict | None:
     doc = get_entries_collection().find_one({"Id": entry_id, "IsDeleted": {"$ne": True}})
     return strip_mongo_id(doc) if doc else None
@@ -86,6 +93,25 @@ def delete_entry(entry_id: str, deleted_at: datetime | None = None) -> tuple[dic
     if result is not None:
         return strip_mongo_id(result), True
     return _get_entry_raw(entry_id), False
+
+
+def get_current_image_ids(entry_id: str) -> set[str]:
+    # Read before put_entry's write: the "before" snapshot the caller needs
+    # to diff against the incoming payload's image ids (put_entry itself
+    # only ever returns the "after" state).
+    doc = get_entries_collection().find_one({"Id": entry_id}, {"Images.Id": 1})
+    if doc is None:
+        return set()
+    return {image["Id"] for image in doc.get("Images", [])}
+
+
+def set_type_archived_images(entry_id: str, type_value: str, is_archived: bool, images: list[dict]) -> None:
+    # Direct $set for the one-off Type/IsArchived/Images backfill migration —
+    # no CAS needed, this runs offline with no concurrent writer.
+    get_entries_collection().update_one(
+        {"Id": entry_id},
+        {"$set": {"Type": type_value, "IsArchived": is_archived, "Images": images}},
+    )
 
 
 def count_entries_using_category(category_id: str) -> int:

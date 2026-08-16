@@ -54,6 +54,8 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0"
@@ -141,18 +143,37 @@
 
                     <TextBlock Grid.Row="4"
                                Grid.Column="0"
+                               Text="Type"
+                               FontWeight="SemiBold" />
+                    <ComboBox Grid.Row="5"
+                              Grid.Column="0"
+                              Margin="0,6,0,14"
+                              ItemsSource="{Binding AvailableTypes}"
+                              DisplayMemberPath="Label"
+                              SelectedValuePath="Value"
+                              SelectedValue="{Binding Type}" />
+
+                    <CheckBox Grid.Row="5"
+                              Grid.Column="2"
+                              Content="Archivé"
+                              VerticalAlignment="Center"
+                              Margin="0,6,0,14"
+                              IsChecked="{Binding IsArchived}" />
+
+                    <TextBlock Grid.Row="6"
+                               Grid.Column="0"
                                Text="Source"
                                FontWeight="SemiBold" />
-                    <TextBox Grid.Row="5"
+                    <TextBox Grid.Row="7"
                              Grid.Column="0"
                              Margin="0,6,0,14"
                              Text="{Binding Source, UpdateSourceTrigger=PropertyChanged}" />
 
-                    <TextBlock Grid.Row="4"
+                    <TextBlock Grid.Row="6"
                                Grid.Column="2"
                                Text="Exemples"
                                FontWeight="SemiBold" />
-                    <TextBox Grid.Row="5"
+                    <TextBox Grid.Row="7"
                              Grid.Column="2"
                              Margin="0,6,0,14"
                              Height="84"
@@ -162,88 +183,108 @@
                              VerticalContentAlignment="Top"
                              Text="{Binding ExampleSentencesText, UpdateSourceTrigger=PropertyChanged}" />
 
-                    <TextBlock Grid.Row="6"
+                    <TextBlock Grid.Row="8"
                                Grid.Column="0"
                                Text="Synonymes"
                                FontWeight="SemiBold" />
-                    <TextBox Grid.Row="7"
+                    <TextBox Grid.Row="9"
                              Grid.Column="0"
                              Margin="0,6,0,14"
                              Text="{Binding SynonymsText, UpdateSourceTrigger=PropertyChanged}" />
 
-                    <TextBlock Grid.Row="6"
+                    <TextBlock Grid.Row="8"
                                Grid.Column="2"
                                Text="Tags"
                                FontWeight="SemiBold" />
-                    <TextBox Grid.Row="7"
+                    <TextBox Grid.Row="9"
                              Grid.Column="2"
                              Margin="0,6,0,14"
                              Text="{Binding TagsText, UpdateSourceTrigger=PropertyChanged}" />
 
-                    <TextBlock Grid.Row="8"
-                               Grid.Column="0"
-                               Grid.ColumnSpan="3"
-                               Text="Image"
-                               FontWeight="SemiBold" />
-                    <DockPanel Grid.Row="9"
-                               Grid.Column="0"
-                               Grid.ColumnSpan="3"
-                               Margin="0,6,0,14">
-                        <Border x:Name="ImagePickerPreviewFrame"
-                                DockPanel.Dock="Left"
-                                Width="96"
-                                Height="96"
-                                Margin="0,0,16,0"
-                                BorderBrush="{DynamicResource Brush.Border.Strong}"
-                                BorderThickness="1"
-                                CornerRadius="6"
-                                Background="{DynamicResource Brush.Input.Background}">
-                            <!-- CornerRadius alone only rounds the Border's own
-                                 Background/BorderBrush painting — a child Image still
-                                 clips to a plain rectangle unless the Border's own Clip
-                                 is set to a matching rounded geometry. -->
-                            <Border.Clip>
-                                <RectangleGeometry RadiusX="6" RadiusY="6">
-                                    <RectangleGeometry.Rect>
-                                        <MultiBinding Converter="{StaticResource SizeToRectConverter}">
-                                            <Binding ElementName="ImagePickerPreviewFrame" Path="ActualWidth" />
-                                            <Binding ElementName="ImagePickerPreviewFrame" Path="ActualHeight" />
-                                        </MultiBinding>
-                                    </RectangleGeometry.Rect>
-                                </RectangleGeometry>
-                            </Border.Clip>
-                            <Image Source="{Binding ImageBase64, Converter={StaticResource Base64ImageConverter}}"
-                                   Stretch="Uniform" />
-                        </Border>
-
-                        <StackPanel Orientation="Horizontal"
-                                    VerticalAlignment="Center">
-                            <Button Content="Choisir une image..."
-                                    Width="150"
-                                    Margin="0,0,10,0"
-                                    Click="SelectImageButton_Click" />
-                            <Button Content="Retirer l'image"
-                                    Width="120"
-                                    Command="{Binding RemoveImageCommand}">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding HasImage}" Value="False">
-                                                <Setter Property="IsEnabled" Value="False" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
-                        </StackPanel>
-                    </DockPanel>
-
                     <TextBlock Grid.Row="10"
+                               Grid.Column="0"
+                               Grid.ColumnSpan="3"
+                               Text="Images (3 maximum)"
+                               FontWeight="SemiBold" />
+                    <StackPanel Grid.Row="11"
+                                Grid.Column="0"
+                                Grid.ColumnSpan="3"
+                                Margin="0,6,0,14">
+                        <ItemsControl ItemsSource="{Binding Images}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,12,8" Width="96">
+                                        <Grid>
+                                            <Border x:Name="ImageThumbnailFrame"
+                                                    Width="96"
+                                                    Height="96"
+                                                    BorderBrush="{DynamicResource Brush.Border.Strong}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6"
+                                                    Background="{DynamicResource Brush.Input.Background}">
+                                                <!-- CornerRadius alone only rounds the Border's own
+                                                     Background/BorderBrush painting — a child Image still
+                                                     clips to a plain rectangle unless the Border's own Clip
+                                                     is set to a matching rounded geometry. -->
+                                                <Border.Clip>
+                                                    <RectangleGeometry RadiusX="6" RadiusY="6">
+                                                        <RectangleGeometry.Rect>
+                                                            <MultiBinding Converter="{StaticResource SizeToRectConverter}">
+                                                                <Binding ElementName="ImageThumbnailFrame" Path="ActualWidth" />
+                                                                <Binding ElementName="ImageThumbnailFrame" Path="ActualHeight" />
+                                                            </MultiBinding>
+                                                        </RectangleGeometry.Rect>
+                                                    </RectangleGeometry>
+                                                </Border.Clip>
+                                                <Image Source="{Binding ImageBase64, Converter={StaticResource Base64ImageConverter}}"
+                                                       Stretch="Uniform" />
+                                            </Border>
+                                            <Button Content="✕"
+                                                    Width="22" Height="22"
+                                                    Padding="0"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Top"
+                                                    Margin="0,-8,-8,0"
+                                                    Style="{StaticResource DangerButtonStyle}"
+                                                    ToolTip="Retirer cette image"
+                                                    Command="{Binding RemoveCommand}" />
+                                        </Grid>
+                                        <TextBox Margin="0,6,0,0"
+                                                 Text="{Binding Caption, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="Légende de l'image" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Button Content="Ajouter des images..."
+                                Width="150"
+                                HorizontalAlignment="Left"
+                                Margin="0,4,0,0"
+                                Click="AddImagesButton_Click">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CanAddMoreImages}" Value="False">
+                                            <Setter Property="IsEnabled" Value="False" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="12"
                                Grid.Column="0"
                                Grid.ColumnSpan="3"
                                Text="Notes personnelles"
                                FontWeight="SemiBold" />
-                    <TextBox Grid.Row="11"
+                    <TextBox Grid.Row="13"
                              Grid.Column="0"
                              Grid.ColumnSpan="3"
                              Margin="0,6,0,0"
@@ -254,7 +295,7 @@
                              VerticalContentAlignment="Top"
                              Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" />
 
-                    <TextBlock Grid.Row="12"
+                    <TextBlock Grid.Row="14"
                                Grid.ColumnSpan="3"
                                Text="{Binding ErrorMessage}"
                                Margin="0,14,0,0"

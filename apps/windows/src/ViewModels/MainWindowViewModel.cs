@@ -235,9 +235,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(EmptyDetailMessage));
                 OnPropertyChanged(nameof(SelectedEntrySyncStatusText));
                 OnPropertyChanged(nameof(SelectedEntrySyncIsSynced));
+                OnPropertyChanged(nameof(ArchiveButtonText));
             }
         }
     }
+
+    public string ArchiveButtonText => SelectedEntry?.IsArchived == true ? "Désarchiver" : "Archiver";
 
     public string ThemeToggleText => ThemeService.CurrentTheme == AppTheme.Dark
         ? "☀  Thème clair"
@@ -760,6 +763,28 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _ = PushEntryUpsertAsync(updatedEntry);
     }
 
+    // Quick-toggle from the detail column's Archiver/Désarchiver button — the
+    // same field is also editable via a checkbox in the entry editor form,
+    // both paths go through the same IsArchived property on VocabularyEntry.
+    public void ToggleArchiveEntry(VocabularyEntry? entry)
+    {
+        if (entry is null)
+        {
+            return;
+        }
+
+        entry.IsArchived = !entry.IsArchived;
+        entry.UpdatedAt = DateTimeOffset.Now;
+        // Archiving/unarchiving always flips the entry's visibility in
+        // whatever view it was just selected from, so RefreshFilteredEntries
+        // always ends up picking a new SelectedEntry — its own setter is
+        // what refreshes ArchiveButtonText, no extra notification needed here.
+        RebuildCategoryTree();
+        RefreshFilteredEntries();
+        SaveDatabase();
+        _ = PushEntryUpsertAsync(entry);
+    }
+
     public void DeleteEntry(VocabularyEntry entry)
     {
         var index = FindEntryIndex(entry.Id);
@@ -1008,12 +1033,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         CategoryTree.Clear();
 
         var allNode = CategoryNodeViewModel.CreateAllEntries(OnCategoryNodeSelected);
-        allNode.EntryCount = Entries.Count;
+        allNode.EntryCount = Entries.Count(entry => !entry.IsArchived);
         CategoryTree.Add(allNode);
 
         var uncategorizedNode = CategoryNodeViewModel.CreateUncategorized(OnCategoryNodeSelected);
-        uncategorizedNode.EntryCount = Entries.Count(entry => entry.CategoryIds.Count == 0);
+        uncategorizedNode.EntryCount = Entries.Count(entry => entry.CategoryIds.Count == 0 && !entry.IsArchived);
         CategoryTree.Add(uncategorizedNode);
+
+        var archivesNode = CategoryNodeViewModel.CreateArchives(OnCategoryNodeSelected);
+        archivesNode.EntryCount = Entries.Count(entry => entry.IsArchived);
+        CategoryTree.Add(archivesNode);
 
         // Flatten gives a depth-first walk with each node's depth; a stack
         // is enough to reconstruct the nesting.
@@ -1050,7 +1079,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             }
         }
 
-        foreach (var rootNode in CategoryTree.Skip(2))
+        foreach (var rootNode in CategoryTree.Skip(3))
         {
             ComputeEntryCounts(rootNode);
         }
@@ -1069,6 +1098,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             CategoryNodeKind.Category => CollectNodes(CategoryTree)
                 .FirstOrDefault(node => node.Category?.Id == selectedCategoryId),
             CategoryNodeKind.Uncategorized => CategoryTree[1],
+            CategoryNodeKind.Archives => CategoryTree[2],
             _ => allNode
         } ?? allNode;
 
@@ -1087,7 +1117,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             subtreeIds.UnionWith(ComputeEntryCounts(child));
         }
 
-        node.EntryCount = Entries.Count(entry => entry.CategoryIds.Any(subtreeIds.Contains));
+        node.EntryCount = Entries.Count(entry => !entry.IsArchived && entry.CategoryIds.Any(subtreeIds.Contains));
         return subtreeIds;
     }
 
@@ -1260,6 +1290,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool EntryMatchesCategory(VocabularyEntry entry)
     {
+        // Archived entries are invisible everywhere except the Archives node
+        // itself — checked first so it short-circuits every other branch.
+        if (_selectedCategoryNode?.Kind == CategoryNodeKind.Archives)
+        {
+            return entry.IsArchived;
+        }
+
+        if (entry.IsArchived)
+        {
+            return false;
+        }
+
         if (_selectedCategoryNode is null || _selectedCategoryNode.Kind == CategoryNodeKind.AllEntries)
         {
             return true;

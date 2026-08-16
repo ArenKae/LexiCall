@@ -48,17 +48,28 @@ def upsert_entry(entry_id: str, payload: VocabularyEntryWrite) -> dict:
     # The only write route for entries — PUT always upserts, so the client
     # never needs to know in advance whether entry_id already exists.
     _validate_category_ids(payload.category_ids)
-    image_bytes = _decode_image(payload.image_base64)
-    data = payload.model_dump(by_alias=True, exclude={"image_base64"})
+
+    # Decoded (and size-checked) BEFORE any Mongo write, same reasoning as
+    # the old single-image case: one invalid image must never leave the
+    # entry written without a matching image, or the other way around.
+    decoded_images = [(image.id, _decode_image(image.image_base64)) for image in payload.images]
+
+    # The "before" snapshot — put_entry below only ever returns the "after"
+    # state, so this is the only way to know which images to drop.
+    previous_image_ids = entries_repo.get_current_image_ids(entry_id)
+
+    data = payload.model_dump(by_alias=True, exclude={"images": {"__all__": {"image_base64"}}})
     entry, applied = entries_repo.put_entry(entry_id, data)
 
-    # Skip the image write if this push lost its Last-Write-Wins race —
-    # otherwise a stale push could overwrite a more recent image.
+    # Skip the image diff if this push lost its Last-Write-Wins race —
+    # otherwise a stale push could overwrite a more recent set of images.
     if applied:
-        if image_bytes is not None:
-            entry_images_repo.upsert_image(entry_id, image_bytes, "image/jpeg")
-        else:
-            entry_images_repo.delete_image(entry_id)
+        new_image_ids = {image_id for image_id, _bytes in decoded_images}
+        for image_id, image_bytes in decoded_images:
+            if image_bytes is not None:
+                entry_images_repo.upsert_image(image_id, image_bytes, "image/jpeg")
+        for stale_id in previous_image_ids - new_image_ids:
+            entry_images_repo.delete_image(stale_id)
     return entry
 
 
@@ -67,10 +78,11 @@ def delete_entry(entry_id: str, deleted_at: datetime | None = None) -> None:
     entry, applied = entries_repo.delete_entry(entry_id, deleted_at=deleted_at)
     if entry is None:
         raise HTTPException(status_code=404, detail="Entry not found.")
-    # Skip the image delete if this deletion lost its Last-Write-Wins race
+    # Skip the image cascade if this deletion lost its Last-Write-Wins race
     # (the entry was edited more recently elsewhere).
     if applied:
-        entry_images_repo.delete_image(entry_id)
+        for image in entry.get("Images", []):
+            entry_images_repo.delete_image(image["Id"])
 
 
 @router.get("/{entry_id}", response_model=VocabularyEntrySummary)

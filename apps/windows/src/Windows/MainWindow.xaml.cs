@@ -212,23 +212,40 @@ public partial class MainWindow : Window
         }
     }
 
-    // Re-decodes the base64 rather than reusing the Image's Source, so this
-    // doesn't depend on binding/event ordering.
-    private void DetailImage_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    // The thumbnail's DataContext is the clicked EntryImage (from the
+    // ItemsControl bound to Images), not the whole entry — SelectedEntry is
+    // read directly off the ViewModel to locate it in the full list and open
+    // the preview at the right index. Re-decodes the base64 rather than
+    // trusting the Image's own Source, so this doesn't depend on binding/
+    // event ordering; also doubles as the "image not fetched after a pull
+    // yet" guard (ImageBase64 empty), a silent no-op rather than a broken
+    // preview.
+    private void DetailImageThumbnail_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: Models.VocabularyEntry entry })
+        if (sender is not FrameworkElement { DataContext: Models.EntryImage image } ||
+            ViewModel.SelectedEntry is not { } entry)
         {
             return;
         }
 
-        var image = Converters.Base64ImageConverter.ToBitmapImage(entry.ImageBase64);
-
-        if (image is null)
+        if (Converters.Base64ImageConverter.ToBitmapImage(image.ImageBase64) is null)
         {
             return;
         }
 
-        new ImagePreviewWindow(this, image).ShowDialog();
+        var index = entry.Images.IndexOf(image);
+
+        if (index < 0)
+        {
+            return;
+        }
+
+        new ImagePreviewWindow(this, entry.Images, index).ShowDialog();
+    }
+
+    private void ArchiveEntryButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ToggleArchiveEntry(ViewModel.SelectedEntry);
     }
 
     // The chip carries its category (VocabularyCategory) as DataContext.
@@ -287,7 +304,7 @@ public partial class MainWindow : Window
 
     // ─── Categories ───
 
-    // The two virtual nodes always sit first in CategoryTree (see
+    // The three virtual nodes always sit first in CategoryTree (see
     // MainWindowViewModel.RebuildCategoryTree). Setting IsSelected runs the
     // same selection path as clicking them in the tree (CategoryNodeViewModel.
     // IsSelected's setter calls back into OnCategoryNodeSelected).
@@ -299,6 +316,11 @@ public partial class MainWindow : Window
     private void SelectUncategorizedButton_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.CategoryTree[1].IsSelected = true;
+    }
+
+    private void SelectArchivesButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CategoryTree[2].IsSelected = true;
     }
 
     // The swatch carries its node (CategoryNodeViewModel) as DataContext —
@@ -429,7 +451,7 @@ public partial class MainWindow : Window
     {
         if (node.Depth == 0)
         {
-            return ViewModel.CategoryTree.Skip(2).ToList();
+            return ViewModel.CategoryTree.Skip(3).ToList();
         }
 
         var parent = FindParentNode(ViewModel.CategoryTree, node);

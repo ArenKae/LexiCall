@@ -19,6 +19,7 @@
             <converters:SizeToRectConverter x:Key="SizeToRectConverter" />
             <converters:Base64ImageConverter x:Key="Base64ImageConverter" />
             <converters:WidthBreakpointConverter x:Key="WidthBreakpointConverter" />
+            <converters:VocabularyEntryTypeToLabelConverter x:Key="VocabularyEntryTypeToLabelConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

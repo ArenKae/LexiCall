@@ -46,8 +46,10 @@ public sealed class VocabularyRepository
         return document.RootElement.ValueKind switch
         {
             JsonValueKind.Array => MigrateLegacyDatabase(json),
-            JsonValueKind.Object => SanitizeDatabase(
-                JsonSerializer.Deserialize<VocabularyDatabase>(json, JsonOptions) ?? new VocabularyDatabase()),
+            JsonValueKind.Object => MigrateLegacyInlineImages(
+                json,
+                SanitizeDatabase(
+                    JsonSerializer.Deserialize<VocabularyDatabase>(json, JsonOptions) ?? new VocabularyDatabase())),
             _ => new VocabularyDatabase()
         };
     }
@@ -116,6 +118,48 @@ public sealed class VocabularyRepository
             Categories = categoriesByName.Values.ToList()
         });
     }
+
+    // ===== TEMP MIGRATION — remove once every local install has been
+    // through this once (typed deserialization above silently drops any
+    // unknown "ImageBase64" field left over from before the Images[]
+    // redesign; this recovers it into Images[0] instead of losing it). See
+    // api/src/lexicall_api/migration/migrate_type_archive_images.py for the
+    // matching server-side migration. Self-terminating: a no-op once every
+    // entry's Images list is non-empty. =====
+    private static VocabularyDatabase MigrateLegacyInlineImages(string json, VocabularyDatabase database)
+    {
+        using var document = JsonDocument.Parse(json);
+
+        if (document.RootElement.ValueKind != JsonValueKind.Object ||
+            !document.RootElement.TryGetProperty("Entries", out var entriesElement))
+        {
+            return database;
+        }
+
+        var entriesById = database.Entries.ToDictionary(entry => entry.Id);
+
+        foreach (var entryElement in entriesElement.EnumerateArray())
+        {
+            if (!entryElement.TryGetProperty("Id", out var idProperty) ||
+                !Guid.TryParse(idProperty.GetString(), out var id) ||
+                !entriesById.TryGetValue(id, out var entry) ||
+                entry.Images.Count > 0 ||
+                !entryElement.TryGetProperty("ImageBase64", out var imageProperty))
+            {
+                continue;
+            }
+
+            var legacyImage = imageProperty.GetString();
+
+            if (!string.IsNullOrEmpty(legacyImage))
+            {
+                entry.Images.Add(new EntryImage { Caption = string.Empty, ImageBase64 = legacyImage });
+            }
+        }
+
+        return database;
+    }
+    // ===== END TEMP MIGRATION =====
 
     private static VocabularyDatabase SanitizeDatabase(VocabularyDatabase database)
     {

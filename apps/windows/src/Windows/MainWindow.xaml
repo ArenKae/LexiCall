@@ -131,12 +131,13 @@
                                         Padding="0"
                                         Click="SelectAllEntriesButton_Click"
                                         ToolTip="Toutes les entrées">
-                                    <Path Data="{StaticResource Icon.Phosphor.books}"
+                                    <Path Data="{StaticResource Icon.Phosphor.stack}"
                                           Fill="{DynamicResource Brush.Icon.Neutral}"
                                           Width="14" Height="14" Stretch="Uniform" />
                                 </Button>
                             </Border>
                             <Border Width="32" Height="32"
+                                    Margin="0,0,0,4"
                                     CornerRadius="8"
                                     BorderThickness="1.5">
                                 <Border.Style>
@@ -160,6 +161,34 @@
                                         Click="SelectUncategorizedButton_Click"
                                         ToolTip="Sans catégorie">
                                     <Path Data="{StaticResource Icon.Solar.tag}"
+                                          Fill="{DynamicResource Brush.Icon.Neutral}"
+                                          Width="14" Height="14" Stretch="Uniform" />
+                                </Button>
+                            </Border>
+                            <Border Width="32" Height="32"
+                                    CornerRadius="8"
+                                    BorderThickness="1.5">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Surface.Hover}" />
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding SelectedCategoryNode.Kind}" Value="{x:Static viewModels:CategoryNodeKind.Archives}">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Selection.Background}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Button Style="{StaticResource GhostButtonStyle}"
+                                        Width="24" Height="24"
+                                        Padding="0"
+                                        Click="SelectArchivesButton_Click"
+                                        ToolTip="Archives">
+                                    <Path Data="{StaticResource Icon.Phosphor.books}"
                                           Fill="{DynamicResource Brush.Icon.Neutral}"
                                           Width="14" Height="14" Stretch="Uniform" />
                                 </Button>
@@ -372,7 +401,7 @@
                                             <Style TargetType="Border">
                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Kind}" Value="{x:Static viewModels:CategoryNodeKind.Uncategorized}">
+                                                    <DataTrigger Binding="{Binding Kind}" Value="{x:Static viewModels:CategoryNodeKind.Archives}">
                                                         <Setter Property="Visibility" Value="Visible" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
@@ -984,6 +1013,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <DockPanel Grid.Row="0" Margin="0,0,0,18">
@@ -1058,6 +1088,10 @@
                                         <TextBlock Text="{Binding Word}"
                                                    FontFamily="{StaticResource Font.Serif}"
                                                    FontSize="34" />
+                                        <TextBlock Text="{Binding Type, Converter={StaticResource VocabularyEntryTypeToLabelConverter}}"
+                                                   FontStyle="Italic"
+                                                   Foreground="{DynamicResource Brush.Text.Secondary}"
+                                                   Margin="0,2,0,0" />
                                         <TextBlock Text="{Binding Definition}"
                                                    FontFamily="{StaticResource Font.Serif}"
                                                    FontWeight="Normal"
@@ -1278,7 +1312,7 @@
                                                         <Setter Property="Margin" Value="20,0,0,0" />
                                                         <Setter Property="Visibility" Value="Visible" />
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding ImageBase64}" Value="">
+                                                            <DataTrigger Binding="{Binding Images.Count}" Value="0">
                                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}, Converter={StaticResource WidthBreakpointConverter}}"
@@ -1303,43 +1337,52 @@
                                                           VerticalAlignment="Center"
                                                           Margin="0,0,10,0" />
                                                     <TextBlock Grid.Column="1"
-                                                               Text="Image"
+                                                               Text="Images"
                                                                FontWeight="SemiBold"
                                                                VerticalAlignment="Center" />
                                                 </Grid>
                                                 <Separator Margin="0,10,0,14" />
 
-                                                <Border x:Name="DetailImageFrame"
-                                                        MaxWidth="220"
-                                                        MaxHeight="220"
-                                                        HorizontalAlignment="Left"
-                                                        Background="{DynamicResource Brush.Surface.Hover}"
-                                                        CornerRadius="8"
-                                                        Cursor="Hand"
-                                                        Margin="24,0,0,0"
-                                                        MouseLeftButtonUp="DetailImage_MouseLeftButtonUp">
-                                                    <!-- CornerRadius alone only rounds the Border's own
-                                                         Background/BorderBrush painting — a child Image still
-                                                         clips to a plain rectangle unless the Border's own Clip
-                                                         is set to a matching rounded geometry. ElementName (not
-                                                         RelativeSource=Self): Geometry isn't a FrameworkElement,
-                                                         so it has no "self" to resolve against. -->
-                                                    <Border.Clip>
-                                                        <RectangleGeometry RadiusX="8" RadiusY="8">
-                                                            <RectangleGeometry.Rect>
-                                                                <MultiBinding Converter="{StaticResource SizeToRectConverter}">
-                                                                    <Binding ElementName="DetailImageFrame" Path="ActualWidth" />
-                                                                    <Binding ElementName="DetailImageFrame" Path="ActualHeight" />
-                                                                </MultiBinding>
-                                                            </RectangleGeometry.Rect>
-                                                        </RectangleGeometry>
-                                                    </Border.Clip>
+                                                <ItemsControl ItemsSource="{Binding Images}"
+                                                              Margin="24,0,0,0">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border x:Name="DetailImageFrame"
+                                                                    Width="120"
+                                                                    Height="120"
+                                                                    Margin="0,0,12,12"
+                                                                    Background="{DynamicResource Brush.Surface.Hover}"
+                                                                    CornerRadius="8"
+                                                                    Cursor="Hand"
+                                                                    MouseLeftButtonUp="DetailImageThumbnail_MouseLeftButtonUp">
+                                                                <!-- CornerRadius alone only rounds the Border's own
+                                                                     Background/BorderBrush painting — a child Image still
+                                                                     clips to a plain rectangle unless the Border's own Clip
+                                                                     is set to a matching rounded geometry. ElementName (not
+                                                                     RelativeSource=Self): Geometry isn't a FrameworkElement,
+                                                                     so it has no "self" to resolve against. -->
+                                                                <Border.Clip>
+                                                                    <RectangleGeometry RadiusX="8" RadiusY="8">
+                                                                        <RectangleGeometry.Rect>
+                                                                            <MultiBinding Converter="{StaticResource SizeToRectConverter}">
+                                                                                <Binding ElementName="DetailImageFrame" Path="ActualWidth" />
+                                                                                <Binding ElementName="DetailImageFrame" Path="ActualHeight" />
+                                                                            </MultiBinding>
+                                                                        </RectangleGeometry.Rect>
+                                                                    </RectangleGeometry>
+                                                                </Border.Clip>
 
-                                                    <Image Source="{Binding ImageBase64, Converter={StaticResource Base64ImageConverter}}"
-                                                           MaxWidth="220"
-                                                           MaxHeight="220"
-                                                           Stretch="Uniform" />
-                                                </Border>
+                                                                <Image Source="{Binding ImageBase64, Converter={StaticResource Base64ImageConverter}}"
+                                                                       Stretch="Uniform" />
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
                                             </StackPanel>
                                         </Grid>
                                     </StackPanel>
@@ -1367,6 +1410,43 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
+
+                    <!-- Kept apart from Modifier/Supprimer (top of the column)
+                         so that row doesn't grow too wide at reduced window
+                         widths. -->
+                    <StackPanel Grid.Row="2"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right"
+                                Margin="0,18,0,0">
+                        <TextBlock Text="Archivé"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,10,0"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Brush.Text.Secondary}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedEntry.IsArchived}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <Button Content="{Binding ArchiveButtonText}"
+                                Click="ArchiveEntryButton_Click">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedEntry}" Value="{x:Null}">
+                                            <Setter Property="IsEnabled" Value="False" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
                 </Grid>
             </Border>
 

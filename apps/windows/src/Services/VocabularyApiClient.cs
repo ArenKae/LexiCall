@@ -97,9 +97,9 @@ public sealed class VocabularyApiClient
         }
     }
 
-    // The whole entry (ImageBase64 included) goes in one PUT — the API
-    // decides server-side whether to mirror the image into entry_images
-    // (see routers/entries.py), in a single network round trip.
+    // The whole entry (Images included, bytes and all) goes in one PUT — the
+    // API decides server-side which images to mirror into entry_images (see
+    // routers/entries.py), in a single network round trip.
     public Task<bool> TryUpsertEntryAsync(VocabularyEntry entry) =>
         TryUpsertAsync(entry.Id, "/entries", entry);
 
