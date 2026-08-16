@@ -1343,7 +1343,19 @@
                                                 </Grid>
                                                 <Separator Margin="0,10,0,14" />
 
+                                                <!-- MaxWidth caps the WrapPanel: this column is Auto-sized,
+                                                     which measures its content under an effectively
+                                                     unconstrained width — without a cap the WrapPanel never
+                                                     wraps, so the column balloons to fit every thumbnail on
+                                                     one row and squeezes the metadata column next to it down
+                                                     to nothing. HorizontalAlignment="Left" is required
+                                                     alongside it: the default Stretch, once clamped by
+                                                     MaxWidth below the available width, centers the element
+                                                     in the leftover space instead of keeping it flush with
+                                                     the other sections' Margin-driven indent. -->
                                                 <ItemsControl ItemsSource="{Binding Images}"
+                                                              MaxWidth="270"
+                                                              HorizontalAlignment="Left"
                                                               Margin="24,0,0,0">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate>
