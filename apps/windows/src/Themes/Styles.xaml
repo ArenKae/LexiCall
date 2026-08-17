@@ -3,7 +3,8 @@
     DynamicResource so the light/dark toggle applies live.
 -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:viewModels="clr-namespace:LexiCall.Desktop.ViewModels">
 
     <FontFamily x:Key="Font.Serif">./Assets/Fonts/#Baskerville Old Face, Times New Roman, serif</FontFamily>
 
@@ -350,6 +351,11 @@
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding Depth}" Value="0">
                                             <Setter Property="Margin" Value="0,6,0,0" />
+                                        </DataTrigger>
+                                        <!-- Archives is also the last virtual node: extra room below it
+                                             widens the gap the real-vs-virtual separator line sits in. -->
+                                        <DataTrigger Binding="{Binding Kind}" Value="{x:Static viewModels:CategoryNodeKind.Archives}">
+                                            <Setter Property="Margin" Value="0,6,0,10" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>

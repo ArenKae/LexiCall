@@ -34,6 +34,19 @@ public partial class CategoryEditorWindow : Window
 
     public string? SavedColorHex => _viewModel.SavedColorHex;
 
+    // Caps the window to 80% of the owner's size — Owner is only guaranteed
+    // set by the time the window is shown, not at construction.
+    private void CategoryEditorWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (Owner is null)
+        {
+            return;
+        }
+
+        Height = Math.Min(Height, Owner.ActualHeight * 0.8);
+        Width = Math.Min(Width, Owner.ActualWidth * 0.8);
+    }
+
     private void ChooseIconButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new IconPickerWindow(_viewModel.IconGlyph)

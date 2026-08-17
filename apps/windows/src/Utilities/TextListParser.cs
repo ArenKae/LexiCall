@@ -7,7 +7,7 @@ public static class TextListParser
     public static List<string> ParseCommaSeparatedText(string value)
     {
         return value
-            .Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Split([',', ';', '-'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(item => item.Length > 0)
             .ToList();
     }
