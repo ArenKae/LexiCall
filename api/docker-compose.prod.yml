@@ -3,6 +3,8 @@
 # provisioned) — this file only expects to find it reachable on the external
 # `lexicall-db` Docker network. Nothing here creates, starts, stops, or owns
 # the data volume for that instance.
+name: lexicall
+
 services:
   api:
     build: .
