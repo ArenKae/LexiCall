@@ -45,9 +45,21 @@ dev-mongo-up:
 # pass a positional arg to restrict it, e.g. `just dev-run 127.0.0.1`.
 # Positional, not NAME=value like make — `just dev-run HOST=127.0.0.1`
 # would pass the literal string "HOST=127.0.0.1" as the value.
+# Self-healing: --reload's parent+worker pair can outlive an interrupted
+# previous run (e.g. a killed terminal) and keep PORT bound with nothing
+# left to Ctrl+C. Kill whatever already holds PORT before starting rather
+# than failing with "Address already in use".
 [group('dev')]
-dev-run HOST="0.0.0.0":
-    .venv/bin/uvicorn lexicall_api.main:app --reload --app-dir src --env-file .env --host {{HOST}}
+dev-run HOST="0.0.0.0" PORT="8000":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    pids=$(lsof -ti tcp:{{PORT}} 2>/dev/null || true)
+    if [ -n "$pids" ]; then
+        echo "Port {{PORT}} already in use by PID(s) $pids — killing stale process before starting..." >&2
+        kill $pids
+        sleep 0.5
+    fi
+    exec .venv/bin/uvicorn lexicall_api.main:app --reload --app-dir src --env-file .env --host {{HOST}} --port {{PORT}}
 
 # Stop the dev stack.
 [group('dev')]
