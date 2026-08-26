@@ -202,12 +202,14 @@ public sealed class VocabularyApiClient
 
     // Explicit user action (the "Suggérer une définition" button), not
     // background sync: returns a status instead of a plain bool so the caller
-    // can show a meaningful error rather than swallow the failure.
-    public async Task<(DefinitionSuggestionStatus Status, DefinitionSuggestion? Suggestion)> TrySuggestDefinitionAsync(string word)
+    // can show a meaningful error rather than swallow the failure. ErrorDetail
+    // carries the real cause (FastAPI's {"detail": "..."} body, or the
+    // exception message) so the UI isn't stuck with one generic string.
+    public async Task<(DefinitionSuggestionStatus Status, DefinitionSuggestion? Suggestion, string? ErrorDetail)> TrySuggestDefinitionAsync(string word)
     {
         if (_enrichmentHttpClient is null)
         {
-            return (DefinitionSuggestionStatus.NotConfigured, null);
+            return (DefinitionSuggestionStatus.NotConfigured, null, null);
         }
 
         try
@@ -218,18 +220,46 @@ public sealed class VocabularyApiClient
 
             if (!response.IsSuccessStatusCode)
             {
-                return (DefinitionSuggestionStatus.Failed, null);
+                var errorDetail = await ReadErrorDetailAsync(response).ConfigureAwait(false);
+                return (DefinitionSuggestionStatus.Failed, null, errorDetail);
             }
 
             var result = await response.Content.ReadFromJsonAsync<DefinitionSuggestionResponse>(JsonOptions).ConfigureAwait(false);
             return result is null
-                ? (DefinitionSuggestionStatus.Failed, null)
-                : (DefinitionSuggestionStatus.Ok, new DefinitionSuggestion(result.Definition, result.Type));
+                ? (DefinitionSuggestionStatus.Failed, null, null)
+                : (DefinitionSuggestionStatus.Ok, new DefinitionSuggestion(result.Definition, result.Type), null);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
-            return (DefinitionSuggestionStatus.Failed, null);
+            return (DefinitionSuggestionStatus.Failed, null, ex.Message);
         }
+    }
+
+    // FastAPI's default error shape is {"detail": "..."} (HTTPException) or
+    // {"detail": [...]} (422 validation errors) — fall back to the raw body,
+    // then to the bare status code, for anything else (e.g. a proxy error page).
+    private static async Task<string?> ReadErrorDetailAsync(HttpResponseMessage response)
+    {
+        var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return $"HTTP {(int)response.StatusCode}";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            if (document.RootElement.TryGetProperty("detail", out var detail) && detail.ValueKind == JsonValueKind.String)
+            {
+                return detail.GetString();
+            }
+        }
+        catch (JsonException)
+        {
+            // Not JSON — fall through to the raw body.
+        }
+
+        return body.Length > 300 ? body[..300] : body;
     }
 
     private sealed record DefinitionSuggestionResponse(string Word, string Definition, VocabularyEntryType Type);

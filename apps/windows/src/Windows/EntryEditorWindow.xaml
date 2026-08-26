@@ -155,6 +155,23 @@
                                      VerticalContentAlignment="Top"
                                      Text="{Binding Definition, UpdateSourceTrigger=PropertyChanged}" />
 
+                            <TextBlock Text="{Binding SuggestionErrorMessage}"
+                                       Margin="0,0,0,12"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource Brush.Danger}"
+                                       FontWeight="SemiBold">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasSuggestionError}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
                             <!-- Review card for the AI-suggested definition (session 1.4's
                                  minimal review mode): editing this text before clicking
                                  "Accepter" is how the user corrects a suggestion. -->
