@@ -18,8 +18,10 @@ def generate_structured(
     instructions: str | None = None,
     reasoning_effort: str = "low",
     tools: list[dict] | None = None,
+    tool_choice: str | dict | None = None,
 ) -> dict:
     client = OpenAI(api_key=settings.openai_api_key)
+    extra_kwargs = {} if tool_choice is None else {"tool_choice": tool_choice}
     response = client.responses.create(
         model=MODEL,
         input=input,
@@ -34,5 +36,6 @@ def generate_structured(
         },
         reasoning={"effort": reasoning_effort},
         tools=tools or [],
+        **extra_kwargs,
     )
     return json.loads(response.output_text)

@@ -10,9 +10,11 @@ DEFINITION_INSTRUCTIONS = (
     "sens), jamais une explication développée. Ne mentionne jamais la nature "
     "grammaticale du mot dans le texte de la définition (pas de \"(nom "
     "masculin)\", \"(verbe)\", etc.) : le champ `type` sert exactement à ça, "
-    "garde-le hors du texte. Si un contexte est fourni, appuie-toi dessus. Si "
-    "aucun contexte n'est fourni, réponds du mieux que tu peux à partir de "
-    "tes connaissances."
+    "garde-le hors du texte. Le texte de la définition ne doit contenir aucun "
+    "lien ni balisage markdown (pas de \"[texte](url)\") ni mention explicite "
+    "d'une source : écris uniquement le texte brut de la définition. Si un "
+    "contexte est fourni, appuie-toi dessus. Si aucun contexte n'est fourni, "
+    "utilise la recherche web pour te documenter avant de répondre."
 )
 
 DEFINITION_SCHEMA = {
@@ -32,11 +34,18 @@ DEFINITION_SCHEMA = {
 def suggest_definition(word: str) -> dict:
     context = wiktionary_client.fetch_definition_context(word)
     prompt = _build_definition_prompt(word, context)
+    # No Wiktionary context to ground the answer: force a real web search
+    # rather than letting the model silently fall back to internal memory
+    # alone (tool_choice="auto" doesn't reliably trigger it).
+    tools = None if context is not None else [{"type": "web_search"}]
+    tool_choice = None if context is not None else "required"
     return llm_client.generate_structured(
         prompt,
         schema_name="definition_suggestion",
         json_schema=DEFINITION_SCHEMA,
         instructions=DEFINITION_INSTRUCTIONS,
+        tools=tools,
+        tool_choice=tool_choice,
     )
 
 
