@@ -29,6 +29,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     private bool _isSuggestingDefinition;
     private string? _suggestedDefinition;
     private bool _typeAppliedFromSuggestion;
+    private string _suggestionErrorMessage = string.Empty;
 
     public EntryEditorWindowViewModel(
         VocabularyEntry? existingEntry = null,
@@ -223,6 +224,24 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 
     public bool HasSuggestedDefinition => !string.IsNullOrEmpty(SuggestedDefinition);
 
+    // Separate from ErrorMessage: that one sits at the very bottom of the
+    // scrollable form (below Notes/Images), out of view from the Suggérer
+    // button up near Définition — a suggestion failure needs its own message
+    // right there, not one the user has to scroll down to notice.
+    public string SuggestionErrorMessage
+    {
+        get => _suggestionErrorMessage;
+        private set
+        {
+            if (SetProperty(ref _suggestionErrorMessage, value))
+            {
+                OnPropertyChanged(nameof(HasSuggestionError));
+            }
+        }
+    }
+
+    public bool HasSuggestionError => !string.IsNullOrEmpty(SuggestionErrorMessage);
+
     public bool CanSuggestDefinition =>
         !IsSuggestingDefinition &&
         !string.IsNullOrWhiteSpace(Word) &&
@@ -287,10 +306,10 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        ClearError();
+        SuggestionErrorMessage = string.Empty;
         IsSuggestingDefinition = true;
 
-        var (status, suggestion) = await _apiClient.TrySuggestDefinitionAsync(word);
+        var (status, suggestion, errorDetail) = await _apiClient.TrySuggestDefinitionAsync(word);
 
         IsSuggestingDefinition = false;
 
@@ -309,10 +328,12 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
                 }
                 break;
             case DefinitionSuggestionStatus.NotConfigured:
-                ErrorMessage = "La suggestion de définition nécessite une synchronisation API configurée (voir Options).";
+                SuggestionErrorMessage = "La suggestion de définition nécessite une synchronisation API configurée (voir Options).";
                 break;
             default:
-                ErrorMessage = "Impossible d'obtenir une suggestion pour le moment. Réessaie plus tard.";
+                SuggestionErrorMessage = string.IsNullOrWhiteSpace(errorDetail)
+                    ? "Impossible d'obtenir une suggestion pour le moment. Réessaie plus tard."
+                    : $"Impossible d'obtenir une suggestion : {errorDetail}";
                 break;
         }
     }

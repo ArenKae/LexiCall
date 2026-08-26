@@ -20,6 +20,13 @@ def generate_structured(
     tools: list[dict] | None = None,
     tool_choice: str | dict | None = None,
 ) -> dict:
+    if not settings.openai_api_key:
+        # Fails with a precise, actionable message instead of the SDK's own
+        # generic "Missing credentials..." (which OpenAI(api_key=None) would
+        # otherwise raise) — this is a server misconfiguration, not an
+        # OpenAI-side failure, so it's worth being explicit about.
+        raise RuntimeError("OPENAI_API_KEY n'est pas configurée côté serveur (voir api/.env).")
+
     client = OpenAI(api_key=settings.openai_api_key)
     extra_kwargs = {} if tool_choice is None else {"tool_choice": tool_choice}
     response = client.responses.create(
