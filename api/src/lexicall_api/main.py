@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI
 from fastapi.responses import Response
 
 from lexicall_api.database import ensure_indexes, ping
-from lexicall_api.routers import categories, entries, entry_images
+from lexicall_api.routers import categories, enrichment, entries, entry_images, wiktionary
 from lexicall_api.security import require_api_key
 
 
@@ -22,6 +22,8 @@ app = FastAPI(title="LexiCall API", lifespan=lifespan)
 app.include_router(entries.router)
 app.include_router(categories.router)
 app.include_router(entry_images.router)
+app.include_router(enrichment.router)
+app.include_router(wiktionary.router)
 
 
 @app.get("/", tags=["health"])

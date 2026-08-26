@@ -74,6 +74,22 @@ PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.split_images_in_place 
 PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.split_images_in_place
 ```
 
+## AI enrichment
+
+Foundational plumbing for upcoming AI-assisted features (definition suggestion, field
+enrichment, auto-categorization) — this section covers only what's actually implemented so far.
+`llm_client.py` wraps the OpenAI Responses API, locked to model `gpt-5.6-luna` (a lightweight
+snapshot, fitting for this project's classification/retrieval-style tasks) for the whole
+project. It centralizes three things reused by every future AI feature: structured JSON
+output (`text.format = {type: "json_schema", strict: true}`), reasoning effort (`reasoning.effort`,
+default `"low"`), and the built-in `web_search` tool. The OpenAI key lives only in `api/.env`
+(`OPENAI_API_KEY`) — never exposed to the desktop client, which keeps talking exclusively to this
+API as usual.
+
+Structured Outputs in strict mode requires `additionalProperties: false` and every property listed
+in `required` — the wrapper passes the schema through as-is, so a schema that doesn't follow this
+shape is rejected by OpenAI, not caught locally.
+
 ## Deployment
 
 `docker-compose.prod.yml` deploys the API only — MongoDB is a shared instance

@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
 using LexiCall.Desktop.Commands;
 using LexiCall.Desktop.Models;
+using LexiCall.Desktop.Services;
 using LexiCall.Desktop.Utilities;
 
 namespace LexiCall.Desktop.ViewModels;
@@ -15,6 +16,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     public const int MaxImages = 4;
 
     private readonly VocabularyEntry? _existingEntry;
+    private readonly VocabularyApiClient? _apiClient;
     private string _word = string.Empty;
     private string _definition = string.Empty;
     private string _synonymsText = string.Empty;
@@ -24,14 +26,22 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     private VocabularyEntryType _type = VocabularyEntryType.Undefined;
     private bool _isArchived;
     private string _errorMessage = string.Empty;
+    private bool _isSuggestingDefinition;
+    private string? _suggestedDefinition;
+    private bool _typeAppliedFromSuggestion;
 
     public EntryEditorWindowViewModel(
         VocabularyEntry? existingEntry = null,
         IEnumerable<VocabularyCategory>? availableCategories = null,
-        Guid? initialCategoryId = null)
+        Guid? initialCategoryId = null,
+        VocabularyApiClient? apiClient = null)
     {
         _existingEntry = existingEntry;
+        _apiClient = apiClient;
         SaveEntryCommand = new RelayCommand(SaveEntry);
+        SuggestDefinitionCommand = new RelayCommand(async () => await SuggestDefinitionAsync());
+        AcceptSuggestedDefinitionCommand = new RelayCommand(AcceptSuggestedDefinition);
+        RejectSuggestedDefinitionCommand = new RelayCommand(RejectSuggestedDefinition);
 
         // Categories are optional (CategoryIds may stay empty). On creation,
         // initialCategoryId pre-checks the category selected in the tree.
@@ -68,6 +78,12 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 
     public RelayCommand SaveEntryCommand { get; }
 
+    public RelayCommand SuggestDefinitionCommand { get; }
+
+    public RelayCommand AcceptSuggestedDefinitionCommand { get; }
+
+    public RelayCommand RejectSuggestedDefinitionCommand { get; }
+
     public ObservableCollection<CategorySelectionViewModel> CategorySelections { get; }
 
     public ObservableCollection<EntryImageEditorViewModel> Images { get; }
@@ -103,6 +119,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _word, value))
             {
                 ClearError();
+                OnPropertyChanged(nameof(CanSuggestDefinition));
             }
         }
     }
@@ -146,7 +163,24 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     public VocabularyEntryType Type
     {
         get => _type;
-        set => SetProperty(ref _type, value);
+        set
+        {
+            if (SetProperty(ref _type, value))
+            {
+                OnPropertyChanged(nameof(SelectedTypeOption));
+            }
+        }
+    }
+
+    // The ComboBox binds SelectedItem to this instead of SelectedValue: WPF's
+    // SelectedValue/SelectedValuePath reflection-based lookup reliably picks
+    // up a user's dropdown click but doesn't always repaint the closed box
+    // when Type is set programmatically (e.g. AcceptSuggestedDefinition) —
+    // SelectedItem avoids that lookup path entirely.
+    public VocabularyEntryTypeOption? SelectedTypeOption
+    {
+        get => AvailableTypes.FirstOrDefault(option => option.Value == Type);
+        set => Type = value?.Value ?? VocabularyEntryType.Undefined;
     }
 
     public bool IsArchived
@@ -160,6 +194,39 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         get => _errorMessage;
         private set => SetProperty(ref _errorMessage, value);
     }
+
+    public bool IsSuggestingDefinition
+    {
+        get => _isSuggestingDefinition;
+        private set
+        {
+            if (SetProperty(ref _isSuggestingDefinition, value))
+            {
+                OnPropertyChanged(nameof(CanSuggestDefinition));
+            }
+        }
+    }
+
+    // Bound TwoWay by the review TextBox: editing it before clicking
+    // "Accepter" is how the user corrects a suggestion.
+    public string? SuggestedDefinition
+    {
+        get => _suggestedDefinition;
+        set
+        {
+            if (SetProperty(ref _suggestedDefinition, value))
+            {
+                OnPropertyChanged(nameof(HasSuggestedDefinition));
+            }
+        }
+    }
+
+    public bool HasSuggestedDefinition => !string.IsNullOrEmpty(SuggestedDefinition);
+
+    public bool CanSuggestDefinition =>
+        !IsSuggestingDefinition &&
+        !string.IsNullOrWhiteSpace(Word) &&
+        (_apiClient?.IsConfigured ?? false);
 
     // Resizing/compression delegated to ImageProcessor (no WPF dependency
     // here). Accepts more files than there's room for (e.g. a multi-select
@@ -196,6 +263,81 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     private void RemoveImage(EntryImageEditorViewModel image)
     {
         Images.Remove(image);
+    }
+
+    // Plain frontend autocorrect, unrelated to the LLM call itself — just a
+    // courtesy fix-up triggered by the same button click.
+    private void CapitalizeWordFirstLetter()
+    {
+        if (Word.Length > 0 && !char.IsUpper(Word[0]))
+        {
+            Word = char.ToUpperInvariant(Word[0]) + Word[1..];
+        }
+    }
+
+    // No ConfigureAwait(false): unlike MainWindowViewModel, this ViewModel has
+    // no Dispatcher re-marshalling of its own — letting the default WPF
+    // SynchronizationContext resume on the UI thread is the simplest option,
+    // since the continuation below sets bound properties directly.
+    private async Task SuggestDefinitionAsync()
+    {
+        var word = Word.Trim();
+        if (string.IsNullOrWhiteSpace(word) || _apiClient is null)
+        {
+            return;
+        }
+
+        ClearError();
+        IsSuggestingDefinition = true;
+
+        var (status, suggestion) = await _apiClient.TrySuggestDefinitionAsync(word);
+
+        IsSuggestingDefinition = false;
+
+        switch (status)
+        {
+            case DefinitionSuggestionStatus.Ok when suggestion is not null:
+                // Capitalization is not part of the LLM response,
+                // just applied alongside it just so the suggestion
+                // reads as one cohesive AI-reviewed result.
+                CapitalizeWordFirstLetter();
+                SuggestedDefinition = suggestion.Definition;
+                if (Type == VocabularyEntryType.Undefined)
+                {
+                    Type = suggestion.Type;
+                    _typeAppliedFromSuggestion = true;
+                }
+                break;
+            case DefinitionSuggestionStatus.NotConfigured:
+                ErrorMessage = "La suggestion de définition nécessite une synchronisation API configurée (voir Options).";
+                break;
+            default:
+                ErrorMessage = "Impossible d'obtenir une suggestion pour le moment. Réessaie plus tard.";
+                break;
+        }
+    }
+
+    private void AcceptSuggestedDefinition()
+    {
+        if (SuggestedDefinition is { } suggestion)
+        {
+            Definition = suggestion;
+        }
+
+        // Type was already applied live when the suggestion arrived.
+        SuggestedDefinition = null;
+        _typeAppliedFromSuggestion = false;
+    }
+
+    private void RejectSuggestedDefinition()
+    {
+        if (_typeAppliedFromSuggestion)
+        {
+            Type = VocabularyEntryType.Undefined;
+        }
+
+        SuggestedDefinition = null;
+        _typeAppliedFromSuggestion = false;
     }
 
     private void SaveEntry()

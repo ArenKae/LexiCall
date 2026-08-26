@@ -23,6 +23,18 @@ public enum ApiConnectionStatus
 // the local clock, see AppSettings.LastPulledAt.
 public sealed record SyncPullResult<T>(IReadOnlyList<T> Items, string? ServerTimestamp);
 
+// NotConfigured/Failed are distinguished (unlike the bool Try* methods below)
+// because this call is an explicit user action, not background sync — the
+// caller needs to show a meaningful error, not swallow it.
+public enum DefinitionSuggestionStatus
+{
+    NotConfigured,
+    Failed,
+    Ok
+}
+
+public sealed record DefinitionSuggestion(string Definition, VocabularyEntryType Type);
+
 public sealed class VocabularyApiClient
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -31,34 +43,46 @@ public sealed class VocabularyApiClient
     };
 
     private readonly HttpClient? _httpClient;
+    // Separate, longer-timeout client for the LLM-backed enrichment calls:
+    // those take 2-6s (up to ~6s with the web_search fallback), well past the
+    // 2s timeout tuned for silent background sync below.
+    private readonly HttpClient? _enrichmentHttpClient;
 
     public VocabularyApiClient(string? baseUrl, string? apiKey)
     {
+        _httpClient = CreateHttpClient(baseUrl, apiKey, TimeSpan.FromSeconds(2));
+        _enrichmentHttpClient = CreateHttpClient(baseUrl, apiKey, TimeSpan.FromSeconds(20));
+    }
+
+    private static HttpClient? CreateHttpClient(string? baseUrl, string? apiKey, TimeSpan timeout)
+    {
         if (string.IsNullOrWhiteSpace(baseUrl))
         {
-            return;
+            return null;
         }
 
+        HttpClient client;
         try
         {
-            _httpClient = new HttpClient
+            client = new HttpClient
             {
                 BaseAddress = new Uri(baseUrl, UriKind.Absolute),
-                Timeout = TimeSpan.FromSeconds(2)
+                Timeout = timeout
             };
         }
         catch (UriFormatException)
         {
             // Malformed URL in settings: disable sync rather than block
             // app startup.
-            _httpClient = null;
-            return;
+            return null;
         }
 
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
-            _httpClient.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+            client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
         }
+
+        return client;
     }
 
     public bool IsConfigured => _httpClient is not null;
@@ -175,6 +199,40 @@ public sealed class VocabularyApiClient
             return false;
         }
     }
+
+    // Explicit user action (the "Suggérer une définition" button), not
+    // background sync: returns a status instead of a plain bool so the caller
+    // can show a meaningful error rather than swallow the failure.
+    public async Task<(DefinitionSuggestionStatus Status, DefinitionSuggestion? Suggestion)> TrySuggestDefinitionAsync(string word)
+    {
+        if (_enrichmentHttpClient is null)
+        {
+            return (DefinitionSuggestionStatus.NotConfigured, null);
+        }
+
+        try
+        {
+            using var response = await _enrichmentHttpClient
+                .GetAsync($"/enrichment/definition/{Uri.EscapeDataString(word)}")
+                .ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return (DefinitionSuggestionStatus.Failed, null);
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<DefinitionSuggestionResponse>(JsonOptions).ConfigureAwait(false);
+            return result is null
+                ? (DefinitionSuggestionStatus.Failed, null)
+                : (DefinitionSuggestionStatus.Ok, new DefinitionSuggestion(result.Definition, result.Type));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            return (DefinitionSuggestionStatus.Failed, null);
+        }
+    }
+
+    private sealed record DefinitionSuggestionResponse(string Word, string Definition, VocabularyEntryType Type);
 
     private async Task<bool> TryDeleteAsync(string resourcePath)
     {

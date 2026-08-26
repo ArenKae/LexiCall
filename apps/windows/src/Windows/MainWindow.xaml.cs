@@ -144,7 +144,8 @@ public partial class MainWindow : Window
         // meant for the current context.
         var dialog = new EntryEditorWindow(
             availableCategories: ViewModel.Categories,
-            initialCategoryId: ViewModel.SelectedCategoryNode?.Category?.Id)
+            initialCategoryId: ViewModel.SelectedCategoryNode?.Category?.Id,
+            apiClient: ViewModel.ApiClient)
         {
             Owner = this
         };
@@ -173,7 +174,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dialog = new EntryEditorWindow(ViewModel.SelectedEntry, ViewModel.Categories)
+        var dialog = new EntryEditorWindow(ViewModel.SelectedEntry, ViewModel.Categories, apiClient: ViewModel.ApiClient)
         {
             Owner = this
         };

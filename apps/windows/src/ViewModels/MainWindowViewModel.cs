@@ -106,6 +106,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public string DataFilePath => _repository.FilePath;
 
+    // Lets EntryEditorWindow reuse the same configured client for the
+    // "Suggérer une définition" enrichment call, instead of building its own.
+    public VocabularyApiClient ApiClient => _apiClient;
+
     public string SearchQuery
     {
         get => _searchQuery;
@@ -1117,7 +1121,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             subtreeIds.UnionWith(ComputeEntryCounts(child));
         }
 
-        node.EntryCount = Entries.Count(entry => !entry.IsArchived && entry.CategoryIds.Any(subtreeIds.Contains));
+        node.EntryCount = Entries.Count(entry => entry.CategoryIds.Any(subtreeIds.Contains));
         return subtreeIds;
     }
 
@@ -1287,26 +1291,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool EntryMatchesCategory(VocabularyEntry entry)
     {
-        // Archived entries are invisible everywhere except the Archives node
-        // itself — checked first so it short-circuits every other branch.
+        // Archived entries are hidden from "Toutes les entrées" and "Sans
+        // catégorie", but still show up under their own real categories.
         if (_selectedCategoryNode?.Kind == CategoryNodeKind.Archives)
         {
             return entry.IsArchived;
         }
 
-        if (entry.IsArchived)
-        {
-            return false;
-        }
-
         if (_selectedCategoryNode is null || _selectedCategoryNode.Kind == CategoryNodeKind.AllEntries)
         {
-            return true;
+            return !entry.IsArchived;
         }
 
         if (_selectedCategoryNode.Kind == CategoryNodeKind.Uncategorized)
         {
-            return entry.CategoryIds.Count == 0;
+            return !entry.IsArchived && entry.CategoryIds.Count == 0;
         }
 
         return _activeCategoryFilterIds is not null &&
