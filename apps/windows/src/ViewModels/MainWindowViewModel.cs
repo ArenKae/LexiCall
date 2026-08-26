@@ -106,6 +106,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public string DataFilePath => _repository.FilePath;
 
+    // Lets EntryEditorWindow reuse the same configured client for the
+    // "Suggérer une définition" enrichment call, instead of building its own.
+    public VocabularyApiClient ApiClient => _apiClient;
+
     public string SearchQuery
     {
         get => _searchQuery;
