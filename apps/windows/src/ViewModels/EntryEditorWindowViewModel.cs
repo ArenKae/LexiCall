@@ -45,7 +45,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         // Categories are optional (CategoryIds may stay empty). On creation,
         // initialCategoryId pre-checks the category selected in the tree.
         CategorySelections = new ObservableCollection<CategorySelectionViewModel>(
-            CategoryHierarchy.Flatten((availableCategories ?? []).ToList())
+            CategoryHierarchy.Flatten((availableCategories ?? []).ToList(), CategoryOrderStore.LoadAll())
             .Select(item => new CategorySelectionViewModel(
                 item.Category,
                 existingEntry is not null
