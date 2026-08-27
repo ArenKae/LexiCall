@@ -3,6 +3,7 @@
 using System.Windows;
 using LexiCall.Desktop.Models;
 using LexiCall.Desktop.Services;
+using LexiCall.Desktop.Utilities;
 using LexiCall.Desktop.ViewModels;
 
 namespace LexiCall.Desktop.Windows;
@@ -30,9 +31,42 @@ public partial class EntryEditorWindow : Window
             DialogResult = true;
             Close();
         };
+
+        // Same reasoning: the ViewModel can't open EnrichmentReviewWindow
+        // itself, so it just signals "suggestions are ready" and the window
+        // does the rest, then reports back via ApplyEnrichmentResult.
+        _viewModel.EnrichmentSuggestionsReady += (_, _) => ShowEnrichmentReview();
     }
 
     public VocabularyEntry? SavedEntry => _viewModel.SavedEntry;
+
+    private void ShowEnrichmentReview()
+    {
+        if (_viewModel.PendingEnrichmentSuggestions is not { } suggestions)
+        {
+            return;
+        }
+
+        var reviewViewModel = new EnrichmentReviewWindowViewModel(
+            _viewModel.Definition,
+            _viewModel.Type,
+            TextListParser.ParseCommaSeparatedText(_viewModel.SynonymsText),
+            TextListParser.ParseLineSeparatedText(_viewModel.ExampleSentencesText),
+            suggestions);
+
+        if (!reviewViewModel.HasAnySuggestion)
+        {
+            AlertDialog.Show(this, "Aucune suggestion : tous les champs sont verrouillés ou déjà jugés satisfaisants.", "Enrichissement IA");
+            return;
+        }
+
+        var dialog = new EnrichmentReviewWindow(reviewViewModel) { Owner = this };
+
+        if (dialog.ShowDialog() == true && reviewViewModel.Result is not null)
+        {
+            _viewModel.ApplyEnrichmentResult(reviewViewModel.Result);
+        }
+    }
 
     // Caps the window to 80% of the owner's size — Owner is only guaranteed
     // set by the time the window is shown, not at construction.

@@ -194,6 +194,90 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void EnrichEntryFieldsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedEntry is not { } entry)
+        {
+            return;
+        }
+
+        var draft = new EntryEnrichmentDraft(
+            entry.Word,
+            entry.Definition,
+            entry.Type,
+            entry.Synonyms,
+            entry.ExampleSentences,
+            entry.LockedFields);
+
+        ViewModel.IsEnrichingEntry = true;
+        var (status, suggestions, errorDetail) = await ViewModel.ApiClient.TrySuggestEntryEnrichmentAsync(draft);
+        ViewModel.IsEnrichingEntry = false;
+
+        switch (status)
+        {
+            case EntryEnrichmentStatus.Ok when suggestions is not null:
+                ShowEnrichmentReview(entry, suggestions);
+                break;
+            case EntryEnrichmentStatus.NotConfigured:
+                AlertDialog.Show(this, "L'enrichissement IA nécessite une synchronisation API configurée (voir Options).", "Enrichissement IA");
+                break;
+            default:
+                var message = string.IsNullOrWhiteSpace(errorDetail)
+                    ? "Impossible d'obtenir des suggestions pour le moment. Réessaie plus tard."
+                    : $"Impossible d'obtenir des suggestions : {errorDetail}";
+                AlertDialog.Show(this, message, "Enrichissement IA");
+                break;
+        }
+    }
+
+    // Unlike EntryEditorWindow's own enrichment flow (which only ever updates
+    // its own bound fields, never persists), this is the Détails card: a
+    // read-only view with no surrounding form to save through, so accepting
+    // suggestions here persists immediately via ViewModel.UpdateEntry.
+    private void ShowEnrichmentReview(Models.VocabularyEntry entry, EntryEnrichmentSuggestions suggestions)
+    {
+        var reviewViewModel = new EnrichmentReviewWindowViewModel(
+            entry.Definition, entry.Type, entry.Synonyms, entry.ExampleSentences, suggestions);
+
+        if (!reviewViewModel.HasAnySuggestion)
+        {
+            AlertDialog.Show(this, "Aucune suggestion : tous les champs sont verrouillés ou déjà jugés satisfaisants.", "Enrichissement IA");
+            return;
+        }
+
+        var dialog = new EnrichmentReviewWindow(reviewViewModel) { Owner = this };
+
+        ViewModel.IsEditorDialogOpen = true;
+        try
+        {
+            if (dialog.ShowDialog() == true && reviewViewModel.Result is { } result)
+            {
+                var updatedEntry = new Models.VocabularyEntry
+                {
+                    Id = entry.Id,
+                    Word = entry.Word,
+                    Definition = result.Definition ?? entry.Definition,
+                    Type = result.Type ?? entry.Type,
+                    Synonyms = result.Synonyms ?? entry.Synonyms,
+                    ExampleSentences = result.ExampleSentences ?? entry.ExampleSentences,
+                    Notes = entry.Notes,
+                    Source = entry.Source,
+                    CategoryIds = entry.CategoryIds,
+                    IsArchived = entry.IsArchived,
+                    LockedFields = entry.LockedFields,
+                    Images = entry.Images,
+                    CreatedAt = entry.CreatedAt,
+                    UpdatedAt = DateTimeOffset.Now
+                };
+                ViewModel.UpdateEntry(updatedEntry);
+            }
+        }
+        finally
+        {
+            ViewModel.IsEditorDialogOpen = false;
+        }
+    }
+
     private void DeleteEntryButton_Click(object sender, RoutedEventArgs e)
     {
         if (ViewModel.SelectedEntry is null)

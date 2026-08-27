@@ -90,11 +90,13 @@ Structured Outputs in strict mode requires `additionalProperties: false` and eve
 in `required` — the wrapper passes the schema through as-is, so a schema that doesn't follow this
 shape is rejected by OpenAI, not caught locally.
 
-`GET /enrichment/fields/{entry_id}` judges, per field (Definition/Type/Synonyms/
-ExampleSentences), whether the entry's current value is worth suggesting a replacement for —
-conservative by default, a non-empty field is only touched when there's a real gap. A field
-listed in the entry's `LockedFields` is excluded structurally: it never appears in the LLM
-request (prompt or output schema), not just filtered out of the response.
+`POST /enrichment/fields` judges, per field (Definition/Type/Synonyms/ExampleSentences), whether
+the given current value is worth suggesting a replacement for — conservative by default, a
+non-empty field is only touched when there's a real gap. Takes the field values in the request
+body rather than an entry id: this also has to work for a brand-new, not-yet-saved draft (the
+main use case — enriching a word while it's still being typed in), which has no server-side
+record to look up. A field listed in the request's `LockedFields` is excluded structurally: it
+never appears in the LLM request (prompt or output schema), not just filtered out of the response.
 
 ## Deployment
 

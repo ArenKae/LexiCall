@@ -35,6 +35,10 @@ public sealed class VocabularyEntry
 
     public bool IsArchived { get; set; }
 
+    // Field names (e.g. "Definition", "Synonyms") excluded from AI
+    // enrichment requests — see EntryEditorWindowViewModel's lock toggles.
+    public List<string> LockedFields { get; init; } = [];
+
     // Tombstone flag from an API pull (see VocabularyApiClient.TryPullEntriesAsync).
     // Never stays true locally outside the merge, which removes the entry instead.
     public bool IsDeleted { get; init; }

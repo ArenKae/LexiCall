@@ -17,6 +17,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 
     private readonly VocabularyEntry? _existingEntry;
     private readonly VocabularyApiClient? _apiClient;
+    private readonly HashSet<string> _lockedFields;
     private string _word = string.Empty;
     private string _definition = string.Empty;
     private string _synonymsText = string.Empty;
@@ -26,10 +27,8 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     private VocabularyEntryType _type = VocabularyEntryType.Undefined;
     private bool _isArchived;
     private string _errorMessage = string.Empty;
-    private bool _isSuggestingDefinition;
-    private string? _suggestedDefinition;
-    private bool _typeAppliedFromSuggestion;
-    private string _suggestionErrorMessage = string.Empty;
+    private bool _isEnrichingDraft;
+    private string _enrichmentErrorMessage = string.Empty;
 
     public EntryEditorWindowViewModel(
         VocabularyEntry? existingEntry = null,
@@ -39,10 +38,9 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     {
         _existingEntry = existingEntry;
         _apiClient = apiClient;
+        _lockedFields = new HashSet<string>(existingEntry?.LockedFields ?? []);
         SaveEntryCommand = new RelayCommand(SaveEntry);
-        SuggestDefinitionCommand = new RelayCommand(async () => await SuggestDefinitionAsync());
-        AcceptSuggestedDefinitionCommand = new RelayCommand(AcceptSuggestedDefinition);
-        RejectSuggestedDefinitionCommand = new RelayCommand(RejectSuggestedDefinition);
+        EnrichDraftCommand = new RelayCommand(async () => await EnrichDraftAsync());
 
         // Categories are optional (CategoryIds may stay empty). On creation,
         // initialCategoryId pre-checks the category selected in the tree.
@@ -77,13 +75,18 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 
     public event EventHandler? EntrySaved;
 
+    // The ViewModel never opens EnrichmentReviewWindow itself (it knows
+    // nothing about WPF) — it raises this once suggestions arrive, and
+    // EntryEditorWindow's code-behind reads PendingEnrichmentSuggestions to
+    // show the review dialog, then calls ApplyEnrichmentResult with what
+    // came back.
+    public event EventHandler? EnrichmentSuggestionsReady;
+
+    public EntryEnrichmentSuggestions? PendingEnrichmentSuggestions { get; private set; }
+
     public RelayCommand SaveEntryCommand { get; }
 
-    public RelayCommand SuggestDefinitionCommand { get; }
-
-    public RelayCommand AcceptSuggestedDefinitionCommand { get; }
-
-    public RelayCommand RejectSuggestedDefinitionCommand { get; }
+    public RelayCommand EnrichDraftCommand { get; }
 
     public ObservableCollection<CategorySelectionViewModel> CategorySelections { get; }
 
@@ -120,7 +123,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _word, value))
             {
                 ClearError();
-                OnPropertyChanged(nameof(CanSuggestDefinition));
+                OnPropertyChanged(nameof(CanEnrichDraft));
             }
         }
     }
@@ -176,7 +179,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     // The ComboBox binds SelectedItem to this instead of SelectedValue: WPF's
     // SelectedValue/SelectedValuePath reflection-based lookup reliably picks
     // up a user's dropdown click but doesn't always repaint the closed box
-    // when Type is set programmatically (e.g. AcceptSuggestedDefinition) —
+    // when Type is set programmatically (e.g. ApplyEnrichmentResult) —
     // SelectedItem avoids that lookup path entirely.
     public VocabularyEntryTypeOption? SelectedTypeOption
     {
@@ -196,56 +199,84 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _errorMessage, value);
     }
 
-    public bool IsSuggestingDefinition
+    public bool IsEnrichingDraft
     {
-        get => _isSuggestingDefinition;
+        get => _isEnrichingDraft;
         private set
         {
-            if (SetProperty(ref _isSuggestingDefinition, value))
+            if (SetProperty(ref _isEnrichingDraft, value))
             {
-                OnPropertyChanged(nameof(CanSuggestDefinition));
+                OnPropertyChanged(nameof(CanEnrichDraft));
             }
         }
     }
-
-    // Bound TwoWay by the review TextBox: editing it before clicking
-    // "Accepter" is how the user corrects a suggestion.
-    public string? SuggestedDefinition
-    {
-        get => _suggestedDefinition;
-        set
-        {
-            if (SetProperty(ref _suggestedDefinition, value))
-            {
-                OnPropertyChanged(nameof(HasSuggestedDefinition));
-            }
-        }
-    }
-
-    public bool HasSuggestedDefinition => !string.IsNullOrEmpty(SuggestedDefinition);
 
     // Separate from ErrorMessage: that one sits at the very bottom of the
-    // scrollable form (below Notes/Images), out of view from the Suggérer
-    // button up near Définition — a suggestion failure needs its own message
-    // right there, not one the user has to scroll down to notice.
-    public string SuggestionErrorMessage
+    // scrollable form (below Notes/Images), out of view from the "Enrichir
+    // avec l'IA" button up near Mot — an enrichment failure needs its own
+    // message right there, not one the user has to scroll down to notice.
+    public string EnrichmentErrorMessage
     {
-        get => _suggestionErrorMessage;
+        get => _enrichmentErrorMessage;
         private set
         {
-            if (SetProperty(ref _suggestionErrorMessage, value))
+            if (SetProperty(ref _enrichmentErrorMessage, value))
             {
-                OnPropertyChanged(nameof(HasSuggestionError));
+                OnPropertyChanged(nameof(HasEnrichmentError));
             }
         }
     }
 
-    public bool HasSuggestionError => !string.IsNullOrEmpty(SuggestionErrorMessage);
+    public bool HasEnrichmentError => !string.IsNullOrEmpty(EnrichmentErrorMessage);
 
-    public bool CanSuggestDefinition =>
-        !IsSuggestingDefinition &&
+    public bool CanEnrichDraft =>
+        !IsEnrichingDraft &&
         !string.IsNullOrWhiteSpace(Word) &&
         (_apiClient?.IsConfigured ?? false);
+
+    // One toggle per field the AI enrichment pipeline can touch — checked
+    // means excluded from the next enrichment call (see
+    // VocabularyApiClient.EntryEnrichmentDraft.LockedFields), never that the
+    // field is read-only in the form itself.
+    public bool IsDefinitionLocked
+    {
+        get => _lockedFields.Contains("Definition");
+        set => SetLockedField("Definition", value);
+    }
+
+    public bool IsTypeLocked
+    {
+        get => _lockedFields.Contains("Type");
+        set => SetLockedField("Type", value);
+    }
+
+    public bool IsSynonymsLocked
+    {
+        get => _lockedFields.Contains("Synonyms");
+        set => SetLockedField("Synonyms", value);
+    }
+
+    public bool IsExampleSentencesLocked
+    {
+        get => _lockedFields.Contains("ExampleSentences");
+        set => SetLockedField("ExampleSentences", value);
+    }
+
+    private void SetLockedField(string field, bool locked)
+    {
+        if (locked ? !_lockedFields.Add(field) : !_lockedFields.Remove(field))
+        {
+            return;
+        }
+
+        OnPropertyChanged(field switch
+        {
+            "Definition" => nameof(IsDefinitionLocked),
+            "Type" => nameof(IsTypeLocked),
+            "Synonyms" => nameof(IsSynonymsLocked),
+            _ => nameof(IsExampleSentencesLocked)
+        });
+    }
 
     // Resizing/compression delegated to ImageProcessor (no WPF dependency
     // here). Accepts more files than there's room for (e.g. a multi-select
@@ -284,21 +315,11 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         Images.Remove(image);
     }
 
-    // Plain frontend autocorrect, unrelated to the LLM call itself — just a
-    // courtesy fix-up triggered by the same button click.
-    private void CapitalizeWordFirstLetter()
-    {
-        if (Word.Length > 0 && !char.IsUpper(Word[0]))
-        {
-            Word = char.ToUpperInvariant(Word[0]) + Word[1..];
-        }
-    }
-
     // No ConfigureAwait(false): unlike MainWindowViewModel, this ViewModel has
     // no Dispatcher re-marshalling of its own — letting the default WPF
     // SynchronizationContext resume on the UI thread is the simplest option,
     // since the continuation below sets bound properties directly.
-    private async Task SuggestDefinitionAsync()
+    private async Task EnrichDraftAsync()
     {
         var word = Word.Trim();
         if (string.IsNullOrWhiteSpace(word) || _apiClient is null)
@@ -306,59 +327,63 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        SuggestionErrorMessage = string.Empty;
-        IsSuggestingDefinition = true;
+        EnrichmentErrorMessage = string.Empty;
+        IsEnrichingDraft = true;
 
-        var (status, suggestion, errorDetail) = await _apiClient.TrySuggestDefinitionAsync(word);
+        var draft = new EntryEnrichmentDraft(
+            word,
+            Definition.Trim(),
+            Type,
+            TextListParser.ParseCommaSeparatedText(SynonymsText),
+            TextListParser.ParseLineSeparatedText(ExampleSentencesText),
+            _lockedFields.ToList());
 
-        IsSuggestingDefinition = false;
+        var (status, suggestions, errorDetail) = await _apiClient.TrySuggestEntryEnrichmentAsync(draft);
+
+        IsEnrichingDraft = false;
 
         switch (status)
         {
-            case DefinitionSuggestionStatus.Ok when suggestion is not null:
-                // Capitalization is not part of the LLM response,
-                // just applied alongside it just so the suggestion
-                // reads as one cohesive AI-reviewed result.
-                CapitalizeWordFirstLetter();
-                SuggestedDefinition = suggestion.Definition;
-                if (Type == VocabularyEntryType.Undefined)
-                {
-                    Type = suggestion.Type;
-                    _typeAppliedFromSuggestion = true;
-                }
+            case EntryEnrichmentStatus.Ok when suggestions is not null:
+                PendingEnrichmentSuggestions = suggestions;
+                EnrichmentSuggestionsReady?.Invoke(this, EventArgs.Empty);
                 break;
-            case DefinitionSuggestionStatus.NotConfigured:
-                SuggestionErrorMessage = "La suggestion de définition nécessite une synchronisation API configurée (voir Options).";
+            case EntryEnrichmentStatus.NotConfigured:
+                EnrichmentErrorMessage = "L'enrichissement IA nécessite une synchronisation API configurée (voir Options).";
                 break;
             default:
-                SuggestionErrorMessage = string.IsNullOrWhiteSpace(errorDetail)
-                    ? "Impossible d'obtenir une suggestion pour le moment. Réessaie plus tard."
-                    : $"Impossible d'obtenir une suggestion : {errorDetail}";
+                EnrichmentErrorMessage = string.IsNullOrWhiteSpace(errorDetail)
+                    ? "Impossible d'obtenir des suggestions pour le moment. Réessaie plus tard."
+                    : $"Impossible d'obtenir des suggestions : {errorDetail}";
                 break;
         }
     }
 
-    private void AcceptSuggestedDefinition()
+    // Called by EntryEditorWindow's code-behind once the review dialog it
+    // opened (in response to EnrichmentSuggestionsReady) is saved — only the
+    // fields the user actually accepted are non-null. Never persists
+    // anything itself: the user still has to click Ajouter/Enregistrer.
+    public void ApplyEnrichmentResult(EnrichmentReviewResult result)
     {
-        if (SuggestedDefinition is { } suggestion)
+        if (result.Definition is { } definition)
         {
-            Definition = suggestion;
+            Definition = definition;
         }
 
-        // Type was already applied live when the suggestion arrived.
-        SuggestedDefinition = null;
-        _typeAppliedFromSuggestion = false;
-    }
-
-    private void RejectSuggestedDefinition()
-    {
-        if (_typeAppliedFromSuggestion)
+        if (result.Type is { } type)
         {
-            Type = VocabularyEntryType.Undefined;
+            Type = type;
         }
 
-        SuggestedDefinition = null;
-        _typeAppliedFromSuggestion = false;
+        if (result.Synonyms is { } synonyms)
+        {
+            SynonymsText = TextListParser.FormatCommaSeparatedText(synonyms);
+        }
+
+        if (result.ExampleSentences is { } exampleSentences)
+        {
+            ExampleSentencesText = TextListParser.FormatLineSeparatedText(exampleSentences);
+        }
     }
 
     private void SaveEntry()
@@ -396,6 +421,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
                 .ToList(),
             Type = Type,
             IsArchived = IsArchived,
+            LockedFields = _lockedFields.ToList(),
             Images = Images
                 .Select(image => new EntryImage { Id = image.Id, Caption = image.Caption.Trim(), ImageBase64 = image.ImageBase64 })
                 .ToList(),

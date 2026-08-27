@@ -1430,6 +1430,72 @@
                                 Orientation="Horizontal"
                                 HorizontalAlignment="Right"
                                 Margin="0,18,0,0">
+                        <Button Margin="0,0,10,0"
+                                ToolTip="Enrichir Définition/Type/Synonymes/Exemples via l'IA (nécessite une synchronisation API configurée)"
+                                Click="EnrichEntryFieldsButton_Click">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CanEnrichEntry}" Value="False">
+                                            <Setter Property="IsEnabled" Value="False" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <!-- Spun forever via its own Loaded trigger; only ever
+                                     visible while IsEnrichingEntry is true. -->
+                                <Path Width="12" Height="12" Stretch="Uniform"
+                                      Data="{StaticResource Icon.Phosphor.circle-half-tilt}"
+                                      Margin="0,0,8,0"
+                                      RenderTransformOrigin="0.5,0.5">
+                                    <Path.RenderTransform>
+                                        <RotateTransform Angle="0" />
+                                    </Path.RenderTransform>
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Setter Property="Fill" Value="{DynamicResource Brush.Text.Secondary}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnrichingEntry}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                    <Path.Triggers>
+                                        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                        From="0" To="360" Duration="0:0:0.8"
+                                                        RepeatBehavior="Forever" />
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                    </Path.Triggers>
+                                </Path>
+                                <Path Data="{StaticResource Icon.Phosphor.sparkle}"
+                                      Fill="{DynamicResource Brush.Text.Secondary}"
+                                      Width="13" Height="13"
+                                      Stretch="Uniform"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,8,0" />
+                                <TextBlock VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Enrichir" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnrichingEntry}" Value="True">
+                                                    <Setter Property="Text" Value="Enrichissement en cours..." />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Button>
                         <TextBlock Text="Archivé"
                                    VerticalAlignment="Center"
                                    Margin="0,0,10,0"
