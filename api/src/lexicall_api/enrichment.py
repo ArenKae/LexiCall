@@ -15,6 +15,16 @@ _FIELD_SCHEMA_KEYS = {
 }
 
 ENTRY_ENRICHMENT_INSTRUCTIONS = (
+    "Avant toute proposition, vérifie que « Mot » est un mot ou une "
+    "expression française réelle et attestée — pas une suite de caractères "
+    "aléatoire, un mot inventé, ou une faute de frappe non confirmée. Si le "
+    "contexte fourni ne porte pas sur ce mot précis et que tu n'as pas de "
+    "certitude raisonnable de son existence réelle (y compris après "
+    "recherche web), réponds word_recognized=false et laisse tous les "
+    "autres champs à null : ne te rabats jamais sur un mot proche qui "
+    "existe pour combler l'absence de résultat, ce serait présenter une "
+    "supposition comme un fait. Sinon, réponds word_recognized=true et "
+    "poursuis normalement. "
     "Tu proposes des améliorations aux champs d'une entrée de vocabulaire "
     "pour l'application LexiCall : Définition, Type grammatical, Synonymes, "
     "Exemples. Pour chaque champ présent dans le schéma de sortie, décide "
@@ -31,9 +41,14 @@ ENTRY_ENRICHMENT_INSTRUCTIONS = (
     "exemples) ne doit jamais contenir de lien ni de balisage markdown (pas "
     "de \"[texte](url)\") ni de mention explicite d'une source : écris "
     "uniquement du texte brut partout, y compris quand tu t'appuies sur la "
-    "recherche web. Si un contexte est fourni, appuie-toi dessus. Si aucun "
-    "contexte n'est fourni, utilise la recherche web pour te documenter "
-    "avant de répondre."
+    "recherche web. N'utilise jamais, dans aucun champ, les mots « contexte », "
+    "« source », « Wiktionnaire » ou « recherche web », ni aucune autre "
+    "référence à la façon dont tu as obtenu l'information : rédige comme si "
+    "tu connaissais directement le sens du mot, jamais comme si tu "
+    "répondais à partir d'un texte fourni — l'utilisateur ne voit jamais ce "
+    "texte et une telle référence n'aurait aucun sens pour lui. Si un "
+    "contexte est fourni, appuie-toi dessus. Si aucun contexte n'est fourni, "
+    "utilise la recherche web pour te documenter avant de répondre."
 )
 
 
@@ -52,7 +67,7 @@ def suggest_entry_enrichment(entry: dict) -> dict:
     # alone (tool_choice="auto" doesn't reliably trigger it).
     tools = None if context is not None else [{"type": "web_search"}]
     tool_choice = None if context is not None else "required"
-    return llm_client.generate_structured(
+    result = llm_client.generate_structured(
         prompt,
         schema_name="entry_enrichment",
         json_schema=schema,
@@ -60,6 +75,12 @@ def suggest_entry_enrichment(entry: dict) -> dict:
         tools=tools,
         tool_choice=tool_choice,
     )
+    # Enforced here too, not just via the prompt: a model that ignores the
+    # instruction and returns word_recognized=false alongside real-looking
+    # field values must not leak them to the caller.
+    if not result.pop("word_recognized", True):
+        return {"word_recognized": False}
+    return result
 
 
 _CURRENT_VALUE_LABELS = {
@@ -100,7 +121,7 @@ def _field_value_schema(field: str) -> dict:
 
 
 def _build_entry_enrichment_schema(unlocked: list[str]) -> dict:
-    properties = {}
+    properties = {"word_recognized": {"type": "boolean"}}
     for field in unlocked:
         key = _FIELD_SCHEMA_KEYS[field]
         properties[key] = {

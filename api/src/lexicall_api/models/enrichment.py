@@ -34,6 +34,10 @@ class ListFieldSuggestion(BaseModel):
 
 
 class EntryEnrichmentSuggestions(BaseModel):
+    # False when the LLM couldn't confirm Word is a real, existing French
+    # word/expression — every other field is then absent, no suggestion
+    # content is sent even if the model produced some.
+    word_recognized: bool = True
     definition: TextFieldSuggestion | None = None
     type: TypeFieldSuggestion | None = None
     synonyms: ListFieldSuggestion | None = None

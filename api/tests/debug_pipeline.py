@@ -181,7 +181,11 @@ def llm_step(entry: dict, context: str | None) -> tuple[dict, object] | None:
     result = json.loads(response.output_text)
     response_line("200 OK")
     kv("items", ", ".join(item.type for item in response.output))
+    word_recognized = result.get("word_recognized", True)
+    kv("word_recognized", c(GREEN, "true") if word_recognized else c(RED, "false"))
     for field_key, suggestion in result.items():
+        if field_key == "word_recognized":
+            continue
         if suggestion is None:
             kv(field_key, c(DIM, "aucune suggestion"))
         else:
@@ -231,16 +235,19 @@ def main() -> None:
         return
 
     result, response = llm_result
-    for field_key in ("definition", "type", "synonyms", "example_sentences"):
-        suggestion = result.get(field_key)
-        if field_key not in result:
-            kv(field_key, c(DIM, "verrouillé"))
-        elif suggestion is None:
-            kv(field_key, c(DIM, "aucune suggestion"))
-        else:
-            kv_wrapped(field_key, str(suggestion["value"]), color=GREEN)
-            if suggestion["justification"]:
-                kv_wrapped(f"{field_key} (justif.)", suggestion["justification"])
+    if not result.get("word_recognized", True):
+        kv("word_recognized", c(RED, "false") + " — mot non reconnu, aucune suggestion retournée par l'endpoint réel")
+    else:
+        for field_key in ("definition", "type", "synonyms", "example_sentences"):
+            suggestion = result.get(field_key)
+            if field_key not in result:
+                kv(field_key, c(DIM, "verrouillé"))
+            elif suggestion is None:
+                kv(field_key, c(DIM, "aucune suggestion"))
+            else:
+                kv_wrapped(field_key, str(suggestion["value"]), color=GREEN)
+                if suggestion["justification"]:
+                    kv_wrapped(f"{field_key} (justif.)", suggestion["justification"])
 
     web_search_calls = sum(1 for item in response.output if item.type == "web_search_call")
     cost = estimate_cost(response.usage, web_search_calls)

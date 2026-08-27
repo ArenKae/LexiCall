@@ -98,6 +98,11 @@ main use case — enriching a word while it's still being typed in), which has n
 record to look up. A field listed in the request's `LockedFields` is excluded structurally: it
 never appears in the LLM request (prompt or output schema), not just filtered out of the response.
 
+The response always carries `word_recognized`. When the model can't confirm `Word` is a real,
+existing French word/expression (random characters, an invented word, an unconfirmed typo), it's
+`false` and every other field is absent — the model is explicitly told not to fall back to a
+similar-looking real word to avoid leaving the request empty.
+
 ## Deployment
 
 `docker-compose.prod.yml` deploys the API only — MongoDB is a shared instance
