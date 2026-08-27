@@ -240,6 +240,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(SelectedEntrySyncStatusText));
                 OnPropertyChanged(nameof(SelectedEntrySyncIsSynced));
                 OnPropertyChanged(nameof(ArchiveButtonText));
+                OnPropertyChanged(nameof(CanEnrichEntry));
             }
         }
     }
@@ -260,6 +261,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     // an Application.Current.Windows check: ViewModels never reference a
     // concrete Window type.
     public bool IsEditorDialogOpen { get; set; }
+
+    private bool _isEnrichingEntry;
+
+    // Drives the Détails card's "baguette magique" button spinner/IsEnabled.
+    public bool IsEnrichingEntry
+    {
+        get => _isEnrichingEntry;
+        set
+        {
+            if (SetProperty(ref _isEnrichingEntry, value))
+            {
+                OnPropertyChanged(nameof(CanEnrichEntry));
+            }
+        }
+    }
+
+    public bool CanEnrichEntry => !IsEnrichingEntry && SelectedEntry is not null && ApiClient.IsConfigured;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

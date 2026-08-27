@@ -90,6 +90,19 @@ Structured Outputs in strict mode requires `additionalProperties: false` and eve
 in `required` — the wrapper passes the schema through as-is, so a schema that doesn't follow this
 shape is rejected by OpenAI, not caught locally.
 
+`POST /enrichment/fields` judges, per field (Definition/Type/Synonyms/ExampleSentences), whether
+the given current value is worth suggesting a replacement for — conservative by default, a
+non-empty field is only touched when there's a real gap. Takes the field values in the request
+body rather than an entry id: this also has to work for a brand-new, not-yet-saved draft (the
+main use case — enriching a word while it's still being typed in), which has no server-side
+record to look up. A field listed in the request's `LockedFields` is excluded structurally: it
+never appears in the LLM request (prompt or output schema), not just filtered out of the response.
+
+The response always carries `word_recognized`. When the model can't confirm `Word` is a real,
+existing French word/expression (random characters, an invented word, an unconfirmed typo), it's
+`false` and every other field is absent — the model is explicitly told not to fall back to a
+similar-looking real word to avoid leaving the request empty.
+
 ## Deployment
 
 `docker-compose.prod.yml` deploys the API only — MongoDB is a shared instance

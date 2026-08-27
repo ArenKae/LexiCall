@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using LexiCall.Desktop.Models;
 
 namespace LexiCall.Desktop.Services;
@@ -26,14 +27,38 @@ public sealed record SyncPullResult<T>(IReadOnlyList<T> Items, string? ServerTim
 // NotConfigured/Failed are distinguished (unlike the bool Try* methods below)
 // because this call is an explicit user action, not background sync — the
 // caller needs to show a meaningful error, not swallow it.
-public enum DefinitionSuggestionStatus
+public enum EntryEnrichmentStatus
 {
     NotConfigured,
     Failed,
     Ok
 }
 
-public sealed record DefinitionSuggestion(string Definition, VocabularyEntryType Type);
+public sealed record FieldSuggestion<T>(T Value, string? Justification);
+
+// A field absent here (rather than present with a null suggestion) means the
+// API judged it locked or already satisfactory — see POST /enrichment/fields
+// (response_model_exclude_none=True). WordRecognized is the one exception:
+// always present, and false when the LLM couldn't confirm Word is a real,
+// existing French word/expression — every other field is then absent too
+// (anti-hallucination: no silent "correction" to a similar real word).
+public sealed record EntryEnrichmentSuggestions(
+    [property: JsonPropertyName("word_recognized")] bool WordRecognized,
+    FieldSuggestion<string>? Definition,
+    FieldSuggestion<VocabularyEntryType>? Type,
+    FieldSuggestion<List<string>>? Synonyms,
+    [property: JsonPropertyName("example_sentences")] FieldSuggestion<List<string>>? ExampleSentences);
+
+// Current field values sent as the request body — not an entry id, since this
+// must also work for a brand-new, not-yet-saved draft (see
+// EntryEditorWindowViewModel), which has nothing to look up server-side yet.
+public sealed record EntryEnrichmentDraft(
+    string Word,
+    string Definition,
+    VocabularyEntryType Type,
+    List<string> Synonyms,
+    List<string> ExampleSentences,
+    List<string> LockedFields);
 
 public sealed class VocabularyApiClient
 {
@@ -200,38 +225,39 @@ public sealed class VocabularyApiClient
         }
     }
 
-    // Explicit user action (the "Suggérer une définition" button), not
-    // background sync: returns a status instead of a plain bool so the caller
-    // can show a meaningful error rather than swallow the failure. ErrorDetail
-    // carries the real cause (FastAPI's {"detail": "..."} body, or the
-    // exception message) so the UI isn't stuck with one generic string.
-    public async Task<(DefinitionSuggestionStatus Status, DefinitionSuggestion? Suggestion, string? ErrorDetail)> TrySuggestDefinitionAsync(string word)
+    // Explicit user action (the enrichment buttons on the Détails card and in
+    // EntryEditorWindow), not background sync: returns a status instead of a
+    // plain bool so the caller can show a meaningful error rather than
+    // swallow the failure. ErrorDetail carries the real cause (FastAPI's
+    // {"detail": "..."} body, or the exception message) so the UI isn't stuck
+    // with one generic string.
+    public async Task<(EntryEnrichmentStatus Status, EntryEnrichmentSuggestions? Suggestions, string? ErrorDetail)> TrySuggestEntryEnrichmentAsync(EntryEnrichmentDraft draft)
     {
         if (_enrichmentHttpClient is null)
         {
-            return (DefinitionSuggestionStatus.NotConfigured, null, null);
+            return (EntryEnrichmentStatus.NotConfigured, null, null);
         }
 
         try
         {
             using var response = await _enrichmentHttpClient
-                .GetAsync($"/enrichment/definition/{Uri.EscapeDataString(word)}")
+                .PostAsJsonAsync("/enrichment/fields", draft, JsonOptions)
                 .ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
                 var errorDetail = await ReadErrorDetailAsync(response).ConfigureAwait(false);
-                return (DefinitionSuggestionStatus.Failed, null, errorDetail);
+                return (EntryEnrichmentStatus.Failed, null, errorDetail);
             }
 
-            var result = await response.Content.ReadFromJsonAsync<DefinitionSuggestionResponse>(JsonOptions).ConfigureAwait(false);
+            var result = await response.Content.ReadFromJsonAsync<EntryEnrichmentSuggestions>(JsonOptions).ConfigureAwait(false);
             return result is null
-                ? (DefinitionSuggestionStatus.Failed, null, null)
-                : (DefinitionSuggestionStatus.Ok, new DefinitionSuggestion(result.Definition, result.Type), null);
+                ? (EntryEnrichmentStatus.Failed, null, null)
+                : (EntryEnrichmentStatus.Ok, result, null);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
-            return (DefinitionSuggestionStatus.Failed, null, ex.Message);
+            return (EntryEnrichmentStatus.Failed, null, ex.Message);
         }
     }
 
@@ -261,8 +287,6 @@ public sealed class VocabularyApiClient
 
         return body.Length > 300 ? body[..300] : body;
     }
-
-    private sealed record DefinitionSuggestionResponse(string Word, string Definition, VocabularyEntryType Type);
 
     private async Task<bool> TryDeleteAsync(string resourcePath)
     {

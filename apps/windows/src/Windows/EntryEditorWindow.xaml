@@ -9,6 +9,86 @@
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI"
         Loaded="EntryEditorWindow_Loaded">
+    <Window.Resources>
+        <!-- Icon-only toggle for the per-field AI-enrichment lock (see
+             EntryEditorWindowViewModel.IsDefinitionLocked etc.) — no implicit
+             ToggleButton style exists app-wide, so this needs its own
+             chrome-free template (same idea as Styles.xaml's
+             TreeExpanderStyle) rather than the default WPF button look. -->
+        <Style x:Key="FieldLockToggleStyle" TargetType="ToggleButton">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="ToolTip" Value="Exclure ce champ de l'enrichissement IA" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border Background="Transparent">
+                            <!-- Open padlock by default (field free for AI
+                                 enrichment); switches to closed + accent
+                                 color once locked. -->
+                            <Path x:Name="LockIcon"
+                                  Data="{StaticResource Icon.Phosphor.lock-key-open}"
+                                  Width="13" Height="13" Stretch="Uniform"
+                                  Fill="{DynamicResource Brush.Text.Secondary}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="LockIcon" Property="Data" Value="{StaticResource Icon.Phosphor.lock-key}" />
+                                <Setter TargetName="LockIcon" Property="Fill" Value="{DynamicResource Brush.Danger}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- "Enrichir" needs more visual weight than a plain secondary
+             button (it's the entry point to the whole AI review flow, not a
+             minor action) but shouldn't compete with "Enregistrer" — the
+             window's one true primary action. An accent-outlined button
+             (accent border/text, neutral fill at rest, filling solid on
+             press) sits between the two, and is scoped to this window only:
+             this compromise doesn't apply anywhere else "Enrichir avec l'IA"
+             appears (the Détails card keeps its plain button style). -->
+        <Style x:Key="EnrichButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="14,4" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.Surface.Hover}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.Accent}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.OnAccent}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <!--
         Modal add/edit entry form. Left column groups the text fields (word,
         definition, synonyms, examples, notes) in one uninterrupted flow;
@@ -59,6 +139,7 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <Path Grid.Column="0"
                                       Data="{StaticResource Icon.Phosphor.book-bookmark}"
@@ -67,32 +148,13 @@
                                       VerticalAlignment="Center"
                                       Margin="0,0,10,0" />
                                 <TextBlock Grid.Column="1" Text="Mot *" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            </Grid>
-                            <TextBox Margin="0,8,0,20"
-                                     Text="{Binding Word, UpdateSourceTrigger=PropertyChanged}" />
-
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Path Grid.Column="0"
-                                      Data="{StaticResource Icon.Solar.notebook}"
-                                      Fill="{DynamicResource Brush.Text.Secondary}"
-                                      Width="14" Height="14" Stretch="Uniform"
-                                      VerticalAlignment="Center"
-                                      Margin="0,0,10,0" />
-                                <TextBlock Grid.Column="1" Text="Définition *" FontWeight="SemiBold" VerticalAlignment="Center" />
                                 <Button Grid.Column="2"
-                                        Padding="10,3"
-                                        FontSize="12"
-                                        ToolTip="Propose une définition à partir du Wiktionnaire (nécessite une synchronisation API configurée)"
-                                        Command="{Binding SuggestDefinitionCommand}">
+                                        ToolTip="Propose Définition/Type/Synonymes/Exemples via l'IA (nécessite une synchronisation API configurée)"
+                                        Command="{Binding EnrichDraftCommand}">
                                     <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                        <Style TargetType="Button" BasedOn="{StaticResource EnrichButtonStyle}">
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding CanSuggestDefinition}" Value="False">
+                                                <DataTrigger Binding="{Binding CanEnrichDraft}" Value="False">
                                                     <Setter Property="IsEnabled" Value="False" />
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -100,10 +162,11 @@
                                     </Button.Style>
                                     <StackPanel Orientation="Horizontal">
                                         <!-- Spun forever via its own Loaded trigger; only ever
-                                             visible while IsSuggestingDefinition is true. -->
-                                        <Path Width="12" Height="12" Stretch="Uniform"
+                                             visible while IsEnrichingDraft is true. -->
+                                        <Path Width="13" Height="13" Stretch="Uniform"
                                               Data="{StaticResource Icon.Phosphor.circle-half-tilt}"
-                                              Margin="0,0,6,0"
+                                              Fill="{DynamicResource Brush.Accent}"
+                                              Margin="0,0,7,0"
                                               RenderTransformOrigin="0.5,0.5">
                                             <Path.RenderTransform>
                                                 <RotateTransform Angle="0" />
@@ -111,9 +174,8 @@
                                             <Path.Style>
                                                 <Style TargetType="Path">
                                                     <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Text.Secondary}" />
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsSuggestingDefinition}" Value="True">
+                                                        <DataTrigger Binding="{Binding IsEnrichingDraft}" Value="True">
                                                             <Setter Property="Visibility" Value="Visible" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
@@ -132,13 +194,19 @@
                                                 </EventTrigger>
                                             </Path.Triggers>
                                         </Path>
+                                        <Path Data="{StaticResource Icon.Phosphor.sparkle}"
+                                              Fill="{DynamicResource Brush.Accent}"
+                                              Width="13" Height="13"
+                                              Stretch="Uniform"
+                                              VerticalAlignment="Center"
+                                              Margin="0,0,7,0" />
                                         <TextBlock VerticalAlignment="Center">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value="Suggérer une définition" />
+                                                    <Setter Property="Text" Value="Enrichir" />
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsSuggestingDefinition}" Value="True">
-                                                            <Setter Property="Text" Value="Suggestion en cours..." />
+                                                        <DataTrigger Binding="{Binding IsEnrichingDraft}" Value="True">
+                                                            <Setter Property="Text" Value="Enrichissement en cours..." />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -148,14 +216,9 @@
                                 </Button>
                             </Grid>
                             <TextBox Margin="0,8,0,12"
-                                     Height="96"
-                                     AcceptsReturn="True"
-                                     TextWrapping="Wrap"
-                                     VerticalScrollBarVisibility="Auto"
-                                     VerticalContentAlignment="Top"
-                                     Text="{Binding Definition, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding Word, UpdateSourceTrigger=PropertyChanged}" />
 
-                            <TextBlock Text="{Binding SuggestionErrorMessage}"
+                            <TextBlock Text="{Binding EnrichmentErrorMessage}"
                                        Margin="0,0,0,12"
                                        TextWrapping="Wrap"
                                        Foreground="{DynamicResource Brush.Danger}"
@@ -164,7 +227,7 @@
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding HasSuggestionError}" Value="True">
+                                            <DataTrigger Binding="{Binding HasEnrichmentError}" Value="True">
                                                 <Setter Property="Visibility" Value="Visible" />
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -172,50 +235,36 @@
                                 </TextBlock.Style>
                             </TextBlock>
 
-                            <!-- Review card for the AI-suggested definition (session 1.4's
-                                 minimal review mode): editing this text before clicking
-                                 "Accepter" is how the user corrects a suggestion. -->
-                            <Border Margin="0,0,0,20"
-                                    Padding="12"
-                                    CornerRadius="6"
-                                    BorderThickness="1"
-                                    BorderBrush="{DynamicResource Brush.Border.Strong}"
-                                    Background="{DynamicResource Brush.Input.Background}">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding HasSuggestedDefinition}" Value="True">
-                                                <Setter Property="Visibility" Value="Visible" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                                <StackPanel>
-                                    <TextBlock Text="Suggestion IA" FontWeight="SemiBold" Margin="0,0,0,8" />
-                                    <TextBox Height="80"
-                                             AcceptsReturn="True"
-                                             TextWrapping="Wrap"
-                                             VerticalScrollBarVisibility="Auto"
-                                             VerticalContentAlignment="Top"
-                                             Text="{Binding SuggestedDefinition, UpdateSourceTrigger=PropertyChanged}" />
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-                                        <Button Content="Rejeter"
-                                                Width="90"
-                                                Margin="0,0,8,0"
-                                                Command="{Binding RejectSuggestedDefinitionCommand}" />
-                                        <Button Content="Accepter"
-                                                Width="90"
-                                                Style="{StaticResource AccentButtonStyle}"
-                                                Command="{Binding AcceptSuggestedDefinitionCommand}" />
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Path Grid.Column="0"
+                                      Data="{StaticResource Icon.Solar.notebook}"
+                                      Fill="{DynamicResource Brush.Text.Secondary}"
+                                      Width="14" Height="14" Stretch="Uniform"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,10,0" />
+                                <TextBlock Grid.Column="1" Text="Définition *" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <ToggleButton Grid.Column="2"
+                                              Style="{StaticResource FieldLockToggleStyle}"
+                                              IsChecked="{Binding IsDefinitionLocked, Mode=TwoWay}" />
+                            </Grid>
+                            <TextBox Margin="0,8,0,20"
+                                     Height="96"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     VerticalContentAlignment="Top"
+                                     Text="{Binding Definition, UpdateSourceTrigger=PropertyChanged}" />
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <Path Grid.Column="0"
                                       Data="{StaticResource Icon.Phosphor.book-open}"
@@ -224,6 +273,9 @@
                                       VerticalAlignment="Center"
                                       Margin="0,0,10,0" />
                                 <TextBlock Grid.Column="1" Text="Synonymes" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <ToggleButton Grid.Column="2"
+                                              Style="{StaticResource FieldLockToggleStyle}"
+                                              IsChecked="{Binding IsSynonymsLocked, Mode=TwoWay}" />
                             </Grid>
                             <TextBox Margin="0,8,0,20"
                                      Text="{Binding SynonymsText, UpdateSourceTrigger=PropertyChanged}" />
@@ -232,6 +284,7 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <Path Grid.Column="0"
                                       Data="{StaticResource Icon.Phosphor.quotes}"
@@ -240,6 +293,9 @@
                                       VerticalAlignment="Center"
                                       Margin="0,0,10,0" />
                                 <TextBlock Grid.Column="1" Text="Exemples" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <ToggleButton Grid.Column="2"
+                                              Style="{StaticResource FieldLockToggleStyle}"
+                                              IsChecked="{Binding IsExampleSentencesLocked, Mode=TwoWay}" />
                             </Grid>
                             <TextBox Margin="0,8,0,20"
                                      Height="96"
@@ -343,6 +399,7 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <Path Grid.Column="0"
                                       Data="{StaticResource Icon.Phosphor.shapes}"
@@ -351,6 +408,9 @@
                                       VerticalAlignment="Center"
                                       Margin="0,0,10,0" />
                                 <TextBlock Grid.Column="1" Text="Type *" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <ToggleButton Grid.Column="2"
+                                              Style="{StaticResource FieldLockToggleStyle}"
+                                              IsChecked="{Binding IsTypeLocked, Mode=TwoWay}" />
                             </Grid>
                             <Grid Margin="0,8,0,20">
                                 <Grid.ColumnDefinitions>
