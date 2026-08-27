@@ -66,6 +66,11 @@ dev-run HOST="0.0.0.0" PORT="8000":
 dev-stop:
     docker compose down
 
+# Run the definition-suggestion pipeline debug tool (tests/debug_pipeline.py) for a given word.
+[group('dev')]
+debug-pipeline WORD:
+    PYTHONPATH=src .venv/bin/python tests/debug_pipeline.py {{WORD}}
+
 # --------------------------------------------
 # --- production (docker-compose.prod.yml) ---
 # --------------------------------------------
