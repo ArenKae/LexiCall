@@ -90,6 +90,12 @@ Structured Outputs in strict mode requires `additionalProperties: false` and eve
 in `required` — the wrapper passes the schema through as-is, so a schema that doesn't follow this
 shape is rejected by OpenAI, not caught locally.
 
+`GET /enrichment/fields/{entry_id}` judges, per field (Definition/Type/Synonyms/
+ExampleSentences), whether the entry's current value is worth suggesting a replacement for —
+conservative by default, a non-empty field is only touched when there's a real gap. A field
+listed in the entry's `LockedFields` is excluded structurally: it never appears in the LLM
+request (prompt or output schema), not just filtered out of the response.
+
 ## Deployment
 
 `docker-compose.prod.yml` deploys the API only — MongoDB is a shared instance

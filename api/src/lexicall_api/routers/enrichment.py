@@ -5,18 +5,22 @@ import openai
 from fastapi import APIRouter, Depends, HTTPException
 
 from lexicall_api import enrichment
-from lexicall_api.models.enrichment import DefinitionSuggestionResult
+from lexicall_api.models.enrichment import EntryEnrichmentSuggestions
+from lexicall_api.repositories import entries_repo
 from lexicall_api.security import require_api_key
 
 router = APIRouter(prefix="/enrichment", tags=["enrichment"], dependencies=[Depends(require_api_key)])
 
 
-@router.get("/definition/{word}", response_model=DefinitionSuggestionResult)
-def suggest_definition(word: str) -> dict:
+@router.get("/fields/{entry_id}", response_model=EntryEnrichmentSuggestions, response_model_exclude_none=True)
+def suggest_entry_fields(entry_id: str) -> dict:
+    entry = entries_repo.get_entry(entry_id)
+    if entry is None:
+        raise HTTPException(404, "Entry not found.")
     # Translated into a specific 502 detail instead of letting FastAPI's
     # generic 500 "Internal Server Error" swallow the real cause.
     try:
-        result = enrichment.suggest_definition(word)
+        return enrichment.suggest_entry_enrichment(entry)
     except openai.AuthenticationError as exc:
         raise HTTPException(502, f"Clé API OpenAI refusée : {exc}") from exc
     except openai.RateLimitError as exc:
@@ -29,4 +33,3 @@ def suggest_definition(word: str) -> dict:
         raise HTTPException(502, f"Erreur Wiktionnaire : {exc}") from exc
     except RuntimeError as exc:
         raise HTTPException(502, str(exc)) from exc
-    return {"word": word, **result}

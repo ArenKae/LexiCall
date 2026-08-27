@@ -49,6 +49,9 @@ class VocabularyEntryWrite(BaseModel):
     type: VocabularyEntryType = Field(alias="Type")
     is_archived: bool = Field(default=False, alias="IsArchived")
     images: list[VocabularyEntryImageWrite] = Field(default_factory=list, alias="Images")
+    # Field names excluded from AI enrichment requests (see enrichment.py) —
+    # an unrecognized name is simply ignored, not validated here.
+    locked_fields: list[str] = Field(default_factory=list, alias="LockedFields")
     # Client-stamped edit time, used for Last-Write-Wins comparisons.
     updated_at: datetime | None = Field(default=None, alias="UpdatedAt")
     # Trusted from the client so an offline-created entry keeps its real
@@ -80,6 +83,7 @@ class VocabularyEntrySummary(BaseModel):
     type: VocabularyEntryType = Field(default=VocabularyEntryType.UNDEFINED, alias="Type")
     is_archived: bool = Field(default=False, alias="IsArchived")
     images: list[VocabularyEntryImage] = Field(default_factory=list, alias="Images")
+    locked_fields: list[str] = Field(default_factory=list, alias="LockedFields")
     created_at: datetime = Field(alias="CreatedAt")
     updated_at: datetime = Field(alias="UpdatedAt")
     # True once soft-deleted; only ever seen through a delta pull.

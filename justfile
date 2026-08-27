@@ -68,10 +68,11 @@ run HOST="0.0.0.0":
 stop:
     just --justfile api/justfile --working-directory api dev-stop
 
-# Run the definition-suggestion pipeline debug tool for a given word.
+# Run the entry-enrichment pipeline debug tool for a given word. *ARGS
+# forwards extra flags, e.g. --locked Synonyms,Type.
 [group('api : dev')]
-test WORD:
-    just --justfile api/justfile --working-directory api debug-pipeline {{WORD}}
+test WORD *ARGS:
+    just --justfile api/justfile --working-directory api debug-pipeline {{WORD}} {{ARGS}}
 
 # --------------------------------------------
 # --- api : prod (docker-compose.prod.yml) ---

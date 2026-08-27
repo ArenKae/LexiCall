@@ -66,10 +66,11 @@ dev-run HOST="0.0.0.0" PORT="8000":
 dev-stop:
     docker compose down
 
-# Run the definition-suggestion pipeline debug tool (tests/debug_pipeline.py) for a given word.
+# Run the entry-enrichment pipeline debug tool (tests/debug_pipeline.py) for
+# a given word. *ARGS forwards extra flags, e.g. --locked Synonyms,Type.
 [group('dev')]
-debug-pipeline WORD:
-    PYTHONPATH=src .venv/bin/python tests/debug_pipeline.py {{WORD}}
+debug-pipeline WORD *ARGS:
+    PYTHONPATH=src .venv/bin/python tests/debug_pipeline.py {{WORD}} {{ARGS}}
 
 # --------------------------------------------
 # --- production (docker-compose.prod.yml) ---
