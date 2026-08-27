@@ -315,6 +315,16 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         Images.Remove(image);
     }
 
+    // Plain frontend autocorrect, unrelated to the LLM call itself — just a
+    // courtesy fix-up triggered alongside a successful enrichment response.
+    private void CapitalizeWordFirstLetter()
+    {
+        if (Word.Length > 0 && !char.IsUpper(Word[0]))
+        {
+            Word = char.ToUpperInvariant(Word[0]) + Word[1..];
+        }
+    }
+
     // No ConfigureAwait(false): unlike MainWindowViewModel, this ViewModel has
     // no Dispatcher re-marshalling of its own — letting the default WPF
     // SynchronizationContext resume on the UI thread is the simplest option,
@@ -345,6 +355,15 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         switch (status)
         {
             case EntryEnrichmentStatus.Ok when suggestions is not null:
+                if (suggestions.WordRecognized)
+                {
+                    // Plain frontend autocorrect, not actually part of the
+                    // LLM response — applied alongside it just so the
+                    // suggestion reads as one cohesive AI-reviewed result.
+                    // Skipped when the word itself was rejected: nothing to
+                    // "cohere" with in that case.
+                    CapitalizeWordFirstLetter();
+                }
                 PendingEnrichmentSuggestions = suggestions;
                 EnrichmentSuggestionsReady?.Invoke(this, EventArgs.Empty);
                 break;

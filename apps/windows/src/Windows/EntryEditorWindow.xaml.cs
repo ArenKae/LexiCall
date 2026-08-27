@@ -47,6 +47,15 @@ public partial class EntryEditorWindow : Window
             return;
         }
 
+        if (!suggestions.WordRecognized)
+        {
+            AlertDialog.Show(
+                this,
+                $"« {_viewModel.Word} » n'a pas été reconnu comme un mot ou une expression française existante — aucune suggestion n'a pu être générée.",
+                "Enrichissement IA");
+            return;
+        }
+
         var reviewViewModel = new EnrichmentReviewWindowViewModel(
             _viewModel.Definition,
             _viewModel.Type,

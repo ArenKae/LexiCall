@@ -236,6 +236,15 @@ public partial class MainWindow : Window
     // suggestions here persists immediately via ViewModel.UpdateEntry.
     private void ShowEnrichmentReview(Models.VocabularyEntry entry, EntryEnrichmentSuggestions suggestions)
     {
+        if (!suggestions.WordRecognized)
+        {
+            AlertDialog.Show(
+                this,
+                $"« {entry.Word} » n'a pas été reconnu comme un mot ou une expression française existante — aucune suggestion n'a pu être générée.",
+                "Enrichissement IA");
+            return;
+        }
+
         var reviewViewModel = new EnrichmentReviewWindowViewModel(
             entry.Definition, entry.Type, entry.Synonyms, entry.ExampleSentences, suggestions);
 
@@ -255,7 +264,7 @@ public partial class MainWindow : Window
                 var updatedEntry = new Models.VocabularyEntry
                 {
                     Id = entry.Id,
-                    Word = entry.Word,
+                    Word = CapitalizeFirstLetter(entry.Word),
                     Definition = result.Definition ?? entry.Definition,
                     Type = result.Type ?? entry.Type,
                     Synonyms = result.Synonyms ?? entry.Synonyms,
@@ -277,6 +286,15 @@ public partial class MainWindow : Window
             ViewModel.IsEditorDialogOpen = false;
         }
     }
+
+    // Plain frontend autocorrect, unrelated to the LLM call itself — just a
+    // courtesy fix-up applied alongside a successful enrichment response
+    // (mirrors EntryEditorWindowViewModel.CapitalizeWordFirstLetter for the
+    // draft flow). Only reached once WordRecognized is confirmed true.
+    private static string CapitalizeFirstLetter(string word) =>
+        word.Length > 0 && !char.IsUpper(word[0])
+            ? char.ToUpperInvariant(word[0]) + word[1..]
+            : word;
 
     private void DeleteEntryButton_Click(object sender, RoutedEventArgs e)
     {

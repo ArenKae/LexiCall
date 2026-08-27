@@ -38,8 +38,12 @@ public sealed record FieldSuggestion<T>(T Value, string? Justification);
 
 // A field absent here (rather than present with a null suggestion) means the
 // API judged it locked or already satisfactory — see POST /enrichment/fields
-// (response_model_exclude_none=True).
+// (response_model_exclude_none=True). WordRecognized is the one exception:
+// always present, and false when the LLM couldn't confirm Word is a real,
+// existing French word/expression — every other field is then absent too
+// (anti-hallucination: no silent "correction" to a similar real word).
 public sealed record EntryEnrichmentSuggestions(
+    [property: JsonPropertyName("word_recognized")] bool WordRecognized,
     FieldSuggestion<string>? Definition,
     FieldSuggestion<VocabularyEntryType>? Type,
     FieldSuggestion<List<string>>? Synonyms,
