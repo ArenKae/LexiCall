@@ -5,7 +5,12 @@ import openai
 from fastapi import APIRouter, Depends, HTTPException
 
 from lexicall_api import enrichment
-from lexicall_api.models.enrichment import EntryEnrichmentRequest, EntryEnrichmentSuggestions
+from lexicall_api.models.enrichment import (
+    EntryEnrichmentRequest,
+    EntryEnrichmentSuggestions,
+    RephraseDefinitionRequest,
+    RephraseDefinitionResult,
+)
 from lexicall_api.security import require_api_key
 
 router = APIRouter(prefix="/enrichment", tags=["enrichment"], dependencies=[Depends(require_api_key)])
@@ -36,5 +41,21 @@ def suggest_entry_fields(payload: EntryEnrichmentRequest) -> dict:
         raise HTTPException(502, f"Erreur OpenAI : {exc}") from exc
     except httpx.HTTPError as exc:
         raise HTTPException(502, f"Erreur Wiktionnaire : {exc}") from exc
+    except RuntimeError as exc:
+        raise HTTPException(502, str(exc)) from exc
+
+
+@router.post("/rephrase-definition", response_model=RephraseDefinitionResult)
+def rephrase_definition(payload: RephraseDefinitionRequest) -> dict:
+    try:
+        return {"definition": enrichment.rephrase_definition(payload.word, payload.definition)}
+    except openai.AuthenticationError as exc:
+        raise HTTPException(502, f"Clé API OpenAI refusée : {exc}") from exc
+    except openai.RateLimitError as exc:
+        raise HTTPException(502, f"Limite de requêtes OpenAI atteinte : {exc}") from exc
+    except openai.APITimeoutError as exc:
+        raise HTTPException(502, "Le modèle OpenAI n'a pas répondu à temps.") from exc
+    except openai.OpenAIError as exc:
+        raise HTTPException(502, f"Erreur OpenAI : {exc}") from exc
     except RuntimeError as exc:
         raise HTTPException(502, str(exc)) from exc

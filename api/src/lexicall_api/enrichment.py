@@ -144,3 +144,36 @@ def _build_entry_enrichment_schema(unlocked: list[str]) -> dict:
         "required": list(properties.keys()),
         "additionalProperties": False,
     }
+
+
+REPHRASE_DEFINITION_INSTRUCTIONS = (
+    "Tu reformules une définition de dictionnaire déjà rédigée pour "
+    "l'application LexiCall, en français. Produis une autre formulation du "
+    "même sens, dans le même style concis de dictionnaire — pas une "
+    "explication développée, pas un résumé plus court ni plus long, juste "
+    "une manière différente de le dire, si possible plus simple à "
+    "comprendre. Ne change jamais le sens, n'ajoute ni ne retire aucune "
+    "information par rapport à la définition fournie. Ne mentionne jamais "
+    "la nature grammaticale du mot. Le texte ne doit contenir aucun lien ni "
+    "balisage markdown, aucune mention explicite d'une source, ni les mots "
+    "« contexte », « source », « Wiktionnaire » ou « recherche web »."
+)
+
+REPHRASE_DEFINITION_SCHEMA = {
+    "type": "object",
+    "properties": {"definition": {"type": "string"}},
+    "required": ["definition"],
+    "additionalProperties": False,
+}
+
+
+def rephrase_definition(word: str, definition: str) -> str:
+    prompt = f"Mot : {word}\nDéfinition actuelle : {definition}"
+    result = llm_client.generate_structured(
+        prompt,
+        schema_name="rephrase_definition",
+        json_schema=REPHRASE_DEFINITION_SCHEMA,
+        instructions=REPHRASE_DEFINITION_INSTRUCTIONS,
+        reasoning_effort="none",
+    )
+    return result["definition"]
