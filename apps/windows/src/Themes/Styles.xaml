@@ -404,6 +404,17 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <!-- "Sans catégorie" hides itself once no unfiled entry remains,
+                 instead of sitting there as a permanently empty node. -->
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding Kind}" Value="{x:Static viewModels:CategoryNodeKind.Uncategorized}" />
+                    <Condition Binding="{Binding EntryCount}" Value="0" />
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Visibility" Value="Collapsed" />
+            </MultiDataTrigger>
+        </Style.Triggers>
     </Style>
 
     <!-- Card: main container for the panels (sidebar, list, detail). -->

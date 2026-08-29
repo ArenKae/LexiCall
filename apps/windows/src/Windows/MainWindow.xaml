@@ -1014,6 +1014,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <DockPanel Grid.Row="0" Margin="0,0,0,18">
@@ -1423,10 +1424,55 @@
                         </TextBlock.Style>
                     </TextBlock>
 
+                    <!-- Dedicated archive-status banner: its own structured row above
+                         the action buttons, rather than a stray inline label — full
+                         width, collapses entirely for a non-archived entry. -->
+                    <Border Grid.Row="2"
+                            Margin="0,18,0,0"
+                            Padding="14,10"
+                            CornerRadius="8"
+                            BorderThickness="1"
+                            BorderBrush="{DynamicResource Brush.Warning}"
+                            Background="{DynamicResource Brush.Surface.Hover}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectedEntry.IsArchived}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Path Grid.Column="0"
+                                  Data="{StaticResource Icon.Solar.archive-check}"
+                                  Fill="{DynamicResource Brush.Warning}"
+                                  Width="16" Height="16" Stretch="Uniform"
+                                  VerticalAlignment="Top"
+                                  Margin="0,2,10,0" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Entrée archivée"
+                                           FontWeight="SemiBold"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource Brush.Warning}" />
+                                <TextBlock Text="Masquée de « Toutes les entrées », toujours visible dans ses catégories."
+                                           FontSize="12"
+                                           TextWrapping="Wrap"
+                                           Margin="0,2,0,0"
+                                           Foreground="{DynamicResource Brush.Text.Secondary}" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
                     <!-- Kept apart from Modifier/Supprimer (top of the column)
                          so that row doesn't grow too wide at reduced window
                          widths. -->
-                    <StackPanel Grid.Row="2"
+                    <StackPanel Grid.Row="3"
                                 Orientation="Horizontal"
                                 HorizontalAlignment="Right"
                                 Margin="0,18,0,0">
@@ -1496,22 +1542,6 @@
                                 </TextBlock>
                             </StackPanel>
                         </Button>
-                        <TextBlock Text="Archivé"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,10,0"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource Brush.Text.Secondary}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding SelectedEntry.IsArchived}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
                         <Button Click="ArchiveEntryButton_Click">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
@@ -1523,7 +1553,7 @@
                                 </Style>
                             </Button.Style>
                             <StackPanel Orientation="Horizontal">
-                                <Path Data="{StaticResource Icon.Phosphor.books}"
+                                <Path Data="{StaticResource Icon.Solar.archive}"
                                       Fill="{DynamicResource Brush.Text.Secondary}"
                                       Width="13" Height="13"
                                       Stretch="Uniform"
