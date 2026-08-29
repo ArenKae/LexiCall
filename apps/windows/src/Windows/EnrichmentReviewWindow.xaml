@@ -117,6 +117,110 @@
                         </ContentControl.Style>
                     </ContentControl>
 
+                    <!-- "Reformuler" is specific to Définition (a rephrase of
+                         the same meaning, see VocabularyApiClient.
+                         TryRephraseDefinitionAsync) — kept outside the shared
+                         card template rather than complicating it with a
+                         per-type condition also used by Synonymes/Exemples. -->
+                    <StackPanel Margin="0,-14,0,20" HorizontalAlignment="Right">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DefinitionCard}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <Button Padding="10,3"
+                                FontSize="12"
+                                HorizontalAlignment="Right"
+                                ToolTip="Régénère une autre formulation de la même définition"
+                                Command="{Binding DefinitionCard.RephraseCommand}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding DefinitionCard.IsRephrasing}" Value="True">
+                                            <Setter Property="IsEnabled" Value="False" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <!-- Spun forever via its own Loaded trigger; only ever
+                                     visible while DefinitionCard.IsRephrasing is true. -->
+                                <Path Width="11" Height="11" Stretch="Uniform"
+                                      Data="{StaticResource Icon.Phosphor.circle-half-tilt}"
+                                      Fill="{DynamicResource Brush.Text.Secondary}"
+                                      Margin="0,0,6,0"
+                                      RenderTransformOrigin="0.5,0.5">
+                                    <Path.RenderTransform>
+                                        <RotateTransform Angle="0" />
+                                    </Path.RenderTransform>
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DefinitionCard.IsRephrasing}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                    <Path.Triggers>
+                                        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation
+                                                        Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                        From="0" To="360" Duration="0:0:0.8"
+                                                        RepeatBehavior="Forever" />
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                    </Path.Triggers>
+                                </Path>
+                                <Path Data="{StaticResource Icon.Phosphor.arrow-clockwise}"
+                                      Fill="{DynamicResource Brush.Text.Secondary}"
+                                      Width="11" Height="11"
+                                      Stretch="Uniform"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,6,0" />
+                                <TextBlock VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Reformuler" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DefinitionCard.IsRephrasing}" Value="True">
+                                                    <Setter Property="Text" Value="Reformulation..." />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Text="{Binding DefinitionCard.RephraseErrorMessage}"
+                                   Margin="0,6,0,0"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Right"
+                                   Foreground="{DynamicResource Brush.Danger}"
+                                   FontSize="12"
+                                   FontWeight="SemiBold">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding DefinitionCard.HasRephraseError}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+
                     <StackPanel Margin="0,0,0,20">
                         <StackPanel.Style>
                             <Style TargetType="StackPanel">

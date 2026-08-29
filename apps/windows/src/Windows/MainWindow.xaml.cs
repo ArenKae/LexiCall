@@ -246,7 +246,7 @@ public partial class MainWindow : Window
         }
 
         var reviewViewModel = new EnrichmentReviewWindowViewModel(
-            entry.Definition, entry.Type, entry.Synonyms, entry.ExampleSentences, suggestions);
+            entry.Word, entry.Definition, entry.Type, entry.Synonyms, entry.ExampleSentences, suggestions, ViewModel.ApiClient);
 
         if (!reviewViewModel.HasAnySuggestion)
         {

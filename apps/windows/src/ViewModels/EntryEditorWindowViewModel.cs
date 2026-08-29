@@ -84,6 +84,10 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 
     public EntryEnrichmentSuggestions? PendingEnrichmentSuggestions { get; private set; }
 
+    // Exposed so the window's code-behind can hand the same client to
+    // EnrichmentReviewWindowViewModel (needed for its "Reformuler" action).
+    public VocabularyApiClient? ApiClient => _apiClient;
+
     public RelayCommand SaveEntryCommand { get; }
 
     public RelayCommand EnrichDraftCommand { get; }

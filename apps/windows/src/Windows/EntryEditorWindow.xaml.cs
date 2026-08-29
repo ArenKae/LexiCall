@@ -42,7 +42,8 @@ public partial class EntryEditorWindow : Window
 
     private void ShowEnrichmentReview()
     {
-        if (_viewModel.PendingEnrichmentSuggestions is not { } suggestions)
+        if (_viewModel.PendingEnrichmentSuggestions is not { } suggestions ||
+            _viewModel.ApiClient is not { } apiClient)
         {
             return;
         }
@@ -57,11 +58,13 @@ public partial class EntryEditorWindow : Window
         }
 
         var reviewViewModel = new EnrichmentReviewWindowViewModel(
+            _viewModel.Word,
             _viewModel.Definition,
             _viewModel.Type,
             TextListParser.ParseCommaSeparatedText(_viewModel.SynonymsText),
             TextListParser.ParseLineSeparatedText(_viewModel.ExampleSentencesText),
-            suggestions);
+            suggestions,
+            apiClient);
 
         if (!reviewViewModel.HasAnySuggestion)
         {

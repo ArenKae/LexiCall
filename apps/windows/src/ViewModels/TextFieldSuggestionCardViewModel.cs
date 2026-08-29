@@ -6,7 +6,9 @@ using System.Runtime.CompilerServices;
 
 namespace LexiCall.Desktop.ViewModels;
 
-public sealed class TextFieldSuggestionCardViewModel : INotifyPropertyChanged
+// Not sealed: DefinitionSuggestionCardViewModel subclasses this to add a
+// "Reformuler" action unique to the Définition card.
+public class TextFieldSuggestionCardViewModel : INotifyPropertyChanged
 {
     private bool _isAccepted = true;
     private string _editableText;
@@ -51,7 +53,10 @@ public sealed class TextFieldSuggestionCardViewModel : INotifyPropertyChanged
         set => SetProperty(ref _editableText, value);
     }
 
-    private bool SetProperty<T>(
+    // Protected (not private): DefinitionSuggestionCardViewModel subclasses
+    // this to add rephrase-specific state, and a field-like PropertyChanged
+    // event can only ever be raised from the class that declares it.
+    protected bool SetProperty<T>(
         ref T field,
         T value,
         [CallerMemberName] string? propertyName = null)
@@ -62,7 +67,10 @@ public sealed class TextFieldSuggestionCardViewModel : INotifyPropertyChanged
         }
 
         field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        OnPropertyChanged(propertyName);
         return true;
     }
+
+    protected void OnPropertyChanged(string? propertyName) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
