@@ -103,6 +103,12 @@ existing French word/expression (random characters, an invented word, an unconfi
 `false` and every other field is absent — the model is explicitly told not to fall back to a
 similar-looking real word to avoid leaving the request empty.
 
+`POST /enrichment/rephrase-definition` takes `{Word, Definition}` and returns another phrasing of
+the same definition, same meaning — no Wiktionary lookup, no `web_search`, no sufficiency judgment,
+so it costs and latencies far less than `/enrichment/fields`. Stateless: the caller is responsible
+for always sending the same anchor definition (never the result of a previous rephrase call), so
+that repeated calls don't drift from the original meaning over successive reformulations.
+
 ## Deployment
 
 `docker-compose.prod.yml` deploys the API only — MongoDB is a shared instance

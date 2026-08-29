@@ -21,21 +21,24 @@ public sealed record EnrichmentReviewResult(
 public sealed class EnrichmentReviewWindowViewModel
 {
     public EnrichmentReviewWindowViewModel(
+        string word,
         string currentDefinition,
         VocabularyEntryType currentType,
         IReadOnlyList<string> currentSynonyms,
         IReadOnlyList<string> currentExampleSentences,
-        EntryEnrichmentSuggestions suggestions)
+        EntryEnrichmentSuggestions suggestions,
+        VocabularyApiClient apiClient)
     {
         SaveCommand = new RelayCommand(Save);
 
         if (suggestions.Definition is { } definitionSuggestion)
         {
-            DefinitionCard = new TextFieldSuggestionCardViewModel(
-                "Définition",
+            DefinitionCard = new DefinitionSuggestionCardViewModel(
                 string.IsNullOrEmpty(currentDefinition) ? null : currentDefinition,
                 definitionSuggestion.Justification,
-                definitionSuggestion.Value);
+                definitionSuggestion.Value,
+                word,
+                apiClient);
         }
 
         if (suggestions.Type is { } typeSuggestion)
@@ -72,7 +75,7 @@ public sealed class EnrichmentReviewWindowViewModel
 
     public RelayCommand SaveCommand { get; }
 
-    public TextFieldSuggestionCardViewModel? DefinitionCard { get; }
+    public DefinitionSuggestionCardViewModel? DefinitionCard { get; }
 
     public TypeSuggestionCardViewModel? TypeCard { get; }
 

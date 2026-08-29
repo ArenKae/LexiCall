@@ -42,3 +42,14 @@ class EntryEnrichmentSuggestions(BaseModel):
     type: TypeFieldSuggestion | None = None
     synonyms: ListFieldSuggestion | None = None
     example_sentences: ListFieldSuggestion | None = None
+
+
+class RephraseDefinitionRequest(BaseModel):
+    word: str = Field(alias="Word", min_length=1)
+    definition: str = Field(alias="Definition", min_length=1)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class RephraseDefinitionResult(BaseModel):
+    definition: str

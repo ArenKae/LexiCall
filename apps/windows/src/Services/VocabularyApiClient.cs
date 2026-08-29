@@ -60,6 +60,19 @@ public sealed record EntryEnrichmentDraft(
     List<string> ExampleSentences,
     List<string> LockedFields);
 
+// Same NotConfigured/Failed/Ok shape as EntryEnrichmentStatus, for the same
+// reason — an explicit user action needs a real error, not a swallowed bool.
+public enum RephraseDefinitionStatus
+{
+    NotConfigured,
+    Failed,
+    Ok
+}
+
+public sealed record RephraseDefinitionRequest(string Word, string Definition);
+
+public sealed record RephraseDefinitionResult(string Definition);
+
 public sealed class VocabularyApiClient
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -258,6 +271,42 @@ public sealed class VocabularyApiClient
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
             return (EntryEnrichmentStatus.Failed, null, ex.Message);
+        }
+    }
+
+    // Regenerates a different phrasing of the same definition — no
+    // Wiktionary lookup, no web_search, no sufficiency judgment on other
+    // fields, so far cheaper/faster than TrySuggestEntryEnrichmentAsync.
+    // Stateless server-side: the caller must always send the same anchor
+    // definition (see DefinitionSuggestionCardViewModel), never a previous
+    // rephrase result, or repeated calls drift from the original meaning.
+    public async Task<(RephraseDefinitionStatus Status, RephraseDefinitionResult? Result, string? ErrorDetail)> TryRephraseDefinitionAsync(RephraseDefinitionRequest request)
+    {
+        if (_enrichmentHttpClient is null)
+        {
+            return (RephraseDefinitionStatus.NotConfigured, null, null);
+        }
+
+        try
+        {
+            using var response = await _enrichmentHttpClient
+                .PostAsJsonAsync("/enrichment/rephrase-definition", request, JsonOptions)
+                .ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorDetail = await ReadErrorDetailAsync(response).ConfigureAwait(false);
+                return (RephraseDefinitionStatus.Failed, null, errorDetail);
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<RephraseDefinitionResult>(JsonOptions).ConfigureAwait(false);
+            return result is null
+                ? (RephraseDefinitionStatus.Failed, null, null)
+                : (RephraseDefinitionStatus.Ok, result, null);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            return (RephraseDefinitionStatus.Failed, null, ex.Message);
         }
     }
 
