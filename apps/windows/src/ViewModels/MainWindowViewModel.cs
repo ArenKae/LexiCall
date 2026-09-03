@@ -1106,6 +1106,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ComputeEntryCounts(rootNode);
         }
 
+        // "Sans catégorie" hides itself when empty (see the TreeViewItem style
+        // in Styles.xaml) — falls back to "Toutes les entrées" rather than
+        // leaving selection on an invisible node.
+        if (selectedKind == CategoryNodeKind.Uncategorized && uncategorizedNode.EntryCount == 0)
+        {
+            selectedKind = null;
+        }
+
         RestoreSelection(selectedKind, selectedCategoryId, allNode);
         OnPropertyChanged(nameof(HasCategories));
     }
