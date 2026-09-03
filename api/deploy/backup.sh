@@ -2,6 +2,10 @@
 # Daily MongoDB backup (mongodump) on the production VPS.
 # Call from a crontab entry, e.g.:
 #   0 3 * * * /path/to/api/deploy/backup.sh >> /var/log/lexicall-backup.log 2>&1
+#
+# Needs root to reach the Docker socket — run this from root's crontab,
+# or route the docker invocation through a privilege-escalation wrapper
+# if the cron user isn't root.
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -15,8 +19,7 @@ mkdir -p "$BACKUP_DIR"
 cd "$SCRIPT_DIR"
 MONGO_URI=$(grep -oP '(?<=^MONGO_URI=).*' .env)
 MONGO_DB_NAME=$(grep -oP '(?<=^MONGO_DB_NAME=).*' .env)
-docker run --rm --network lexicall-db mongo:8.0 \
-    mongodump --uri="$MONGO_URI" --db="$MONGO_DB_NAME" --archive --gzip > "$ARCHIVE"
+sudo -n /usr/local/sbin/lexicall-mongo-backup "$MONGO_URI" "$MONGO_DB_NAME" > "$ARCHIVE"
 
 find "$BACKUP_DIR" -name 'lexicall-*.archive.gz' -mtime "+$RETENTION_DAYS" -delete
 
