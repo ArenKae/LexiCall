@@ -9,6 +9,7 @@
 #             never written to the database.
 # <champs>  : comma-separated subset of Definition, Type, Synonyms,
 #             ExampleSentences (e.g. "Synonyms,Type") to simulate as locked.
+
 import argparse
 import itertools
 import json
