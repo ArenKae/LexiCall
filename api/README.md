@@ -103,6 +103,18 @@ existing French word/expression (random characters, an invented word, an unconfi
 `false` and every other field is absent — the model is explicitly told not to fall back to a
 similar-looking real word to avoid leaving the request empty.
 
+Auto-categorization retrieval runs on embeddings kept in their own `category_embeddings`
+collection, one vector per category, keyed by the category Id (same reasoning as entry images:
+`categories` is pulled on every client sync, so it stays free of bulky fields). A category write
+re-embeds that category and its descendants — renaming a parent rewrites the hierarchical path
+below it — but only when the text actually changed, so an ordinary sync push costs no embeddings
+call. That refresh is deliberately best-effort: it never fails the category write it follows, which
+means a vector can end up missing or stale. `POST /categories/reindex-embeddings` is the repair
+path — a full, idempotent reconciliation pass that re-embeds whatever drifted and drops embeddings
+whose category is gone, returning `{embedded, unchanged, orphans_removed}`. Costs nothing when the
+corpus is already current. The same pass is available on the server as
+`PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.index_category_embeddings [--dry-run]`.
+
 `POST /enrichment/rephrase-definition` takes `{Word, Definition}` and returns another phrasing of
 the same definition, same meaning — no Wiktionary lookup, no `web_search`, no sufficiency judgment,
 so it costs and latencies far less than `/enrichment/fields`. Stateless: the caller is responsible
