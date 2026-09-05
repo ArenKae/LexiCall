@@ -3,94 +3,37 @@
 # own modules directly and isn't part of the installable package.
 #
 # Usage:
-#   PYTHONPATH=src .venv/bin/python tests/debug_pipeline.py <mot> [--locked <champs>]
+#   PYTHONPATH=src .venv/bin/python tests/debug_enrichment.py <mot> [--locked <champs>]
 #
 # <mot>     : any word — simulates a brand-new, all-empty entry for it,
 #             never written to the database.
 # <champs>  : comma-separated subset of Definition, Type, Synonyms,
 #             ExampleSentences (e.g. "Synonyms,Type") to simulate as locked.
 import argparse
-import itertools
 import json
-import shutil
 import sys
-import textwrap
 import time
-from datetime import datetime
 
+from _debug_console import (
+    BOLD,
+    CYAN,
+    DIM,
+    GREEN,
+    RED,
+    YELLOW,
+    c,
+    estimate_cost,
+    kv,
+    kv_wrapped,
+    request_line,
+    response_line,
+    step,
+    step_done,
+)
 from openai import OpenAI
 
 from lexicall_api import enrichment, llm_client, wiktionary_client
 from lexicall_api.config import settings
-
-RESET = "\033[0m"
-BOLD = "\033[1m"
-DIM = "\033[2m"
-RED = "\033[31m"
-GREEN = "\033[32m"
-YELLOW = "\033[33m"
-CYAN = "\033[36m"
-USE_COLOR = sys.stdout.isatty()
-
-WRAP_WIDTH = max(60, min(shutil.get_terminal_size().columns - 6, 120))
-LABEL_WIDTH = 14
-
-# gpt-5.6-luna, standard tier — ballpark debug estimate, not billing-accurate.
-PRICE_PER_MILLION_INPUT = 0.20
-PRICE_PER_MILLION_CACHED_INPUT = 0.02
-PRICE_PER_MILLION_CACHE_WRITE = 0.25  # 1.25x the input rate
-PRICE_PER_MILLION_OUTPUT = 1.20
-PRICE_PER_WEB_SEARCH_CALL = 0.01  # $10 / 1k calls, same across the gpt-5.6 family
-
-_step_counter = itertools.count(1)
-
-
-def c(code: str, text: str) -> str:
-    return f"{code}{text}{RESET}" if USE_COLOR else text
-
-
-def step(title: str) -> float:
-    n = next(_step_counter)
-    now = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-    print(f"\n{c(BOLD + CYAN, f'━━━ [{now}] Étape {n} — {title} ━━━')}")
-    return time.perf_counter()
-
-
-def step_done(start: float) -> float:
-    elapsed = time.perf_counter() - start
-    print(c(DIM, f"  ⏱ {elapsed:.2f}s"))
-    return elapsed
-
-
-def request_line(method: str, url: str) -> None:
-    print(f"  {c(CYAN, f'→ {method} {url}')}")
-
-
-def response_line(outcome: str, ok: bool = True) -> None:
-    print(f"  {c(GREEN if ok else YELLOW, f'← {outcome}')}")
-
-
-def kv(label: str, value: str) -> None:
-    print(f"    {c(DIM, label.ljust(LABEL_WIDTH))} {value}")
-
-
-def kv_wrapped(label: str, value: str, color: str = DIM) -> None:
-    indent = " " * (LABEL_WIDTH + 5)
-    wrapped = textwrap.fill(value, width=WRAP_WIDTH, subsequent_indent=indent)
-    print(f"    {c(DIM, label.ljust(LABEL_WIDTH))} {c(color, wrapped)}")
-
-
-def estimate_cost(usage, web_search_calls: int) -> float:
-    cached = usage.input_tokens_details.cached_tokens
-    cache_write = usage.input_tokens_details.cache_write_tokens
-    plain_input = usage.input_tokens - cached - cache_write
-    token_cost = (
-        plain_input * PRICE_PER_MILLION_INPUT
-        + cached * PRICE_PER_MILLION_CACHED_INPUT
-        + cache_write * PRICE_PER_MILLION_CACHE_WRITE
-        + usage.output_tokens * PRICE_PER_MILLION_OUTPUT
-    ) / 1_000_000
-    return token_cost + web_search_calls * PRICE_PER_WEB_SEARCH_CALL
 
 
 def build_synthetic_entry(word: str, locked_fields: list[str]) -> dict:
