@@ -8,7 +8,7 @@ import logging
 from dataclasses import dataclass
 
 from lexicall_api import embeddings
-from lexicall_api.repositories import categories_repo, category_embeddings_repo
+from lexicall_api.repositories import categories_repo, category_embeddings_repo, entries_repo
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +35,14 @@ def reindex_all(dry_run: bool = False) -> IndexSummary:
     summary = IndexSummary()
     categories = categories_repo.list_categories()
     by_id = {category["Id"]: category for category in categories}
+    words = _words_by_category()
     stored = {doc["Id"]: doc for doc in category_embeddings_repo.list_embeddings()}
 
     pending: list[tuple[str, str]] = []
     for category in categories:
-        source_text = embeddings.build_category_embedding_text(category, by_id)
+        source_text = embeddings.build_category_embedding_text(
+            category, by_id, words.get(category["Id"])
+        )
         existing = stored.get(category["Id"])
         if existing is not None and existing.get("SourceText") == source_text:
             summary.unchanged += 1
@@ -72,13 +75,16 @@ def refresh_subtree(category_id: str) -> None:
     try:
         categories = categories_repo.list_categories()
         by_id = {category["Id"]: category for category in categories}
+        words = _words_by_category()
 
         pending: list[tuple[str, str]] = []
         for affected_id in _with_descendants(category_id, categories):
             category = by_id.get(affected_id)
             if category is None:
                 continue
-            source_text = embeddings.build_category_embedding_text(category, by_id)
+            source_text = embeddings.build_category_embedding_text(
+                category, by_id, words.get(affected_id)
+            )
             stored = category_embeddings_repo.get_embedding(affected_id)
             if stored is not None and stored.get("SourceText") == source_text:
                 continue
@@ -87,6 +93,17 @@ def refresh_subtree(category_id: str) -> None:
         _embed_and_store(pending)
     except Exception:
         logger.exception("Embedding refresh failed for category %s", category_id)
+
+
+def _words_by_category() -> dict[str, list[str]]:
+    """The words actually filed under each category. Categories that only
+    hold sub-categories end up absent here, which is what leaves their
+    embedding text to the path and description alone."""
+    words: dict[str, list[str]] = {}
+    for entry in entries_repo.list_words_with_categories():
+        for category_id in entry.get("CategoryIds", []):
+            words.setdefault(category_id, []).append(entry["Word"])
+    return words
 
 
 def _embed_and_store(pending: list[tuple[str, str]]) -> None:

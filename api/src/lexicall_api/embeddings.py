@@ -21,6 +21,10 @@ from lexicall_api.config import settings
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 
+# Generous: real categories hold a handful of words, and the cap only exists
+# so one oversized category can't drown its own name and description.
+MAX_CATEGORY_SAMPLE_WORDS = 100
+
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
     """Vectorizes each text, in order, in a single API request. Batched
@@ -37,20 +41,46 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
     return [item.embedding for item in response.data]
 
 
-def build_category_embedding_text(category: dict, by_id: dict[str, dict]) -> str:
+def build_category_embedding_text(
+    category: dict,
+    by_id: dict[str, dict],
+    words: list[str] | None = None,
+) -> str:
     """Builds the text that represents a category for embedding: its full
-    hierarchical path, then the nearest available description (its own, or
-    the closest ancestor's). Child categories carry no description in
-    practice, only a compact compound name ("Anatomie et physiologie"), so
-    the ancestors are what give them any real signal."""
+    hierarchical path, the nearest available description (its own, or the
+    closest ancestor's), and the words actually filed under it. Child
+    categories carry no description in practice, only a compact compound
+    name ("Anatomie et physiologie"), so the ancestors are what give them
+    any real signal.
+
+    The member words matter because a category's label describes what it is
+    called, not what it ended up holding — a category only reachable through
+    its name misses words its content would have attracted. Categories that
+    exist to hold sub-categories have no words of their own and simply get
+    no such line."""
     ancestors = _ancestor_chain(category, by_id)
-    path = " › ".join(node["Name"] for node in ancestors)
+    lines = [build_category_path(category, by_id)]
 
     for node in reversed(ancestors):
         description = (node.get("Description") or "").strip()
         if description:
-            return f"{path}\n{node['Name']} : {description}"
-    return path
+            lines.append(f"{node['Name']} : {description}")
+            break
+
+    if words:
+        # Sorted so the text (and therefore the stored SourceText) doesn't
+        # change just because entries came back in a different order.
+        sample = sorted(words, key=str.casefold)[:MAX_CATEGORY_SAMPLE_WORDS]
+        lines.append(f"Mots : {', '.join(sample)}")
+
+    return "\n".join(lines)
+
+
+def build_category_path(category: dict, by_id: dict[str, dict]) -> str:
+    """The category's place in the tree as "Racine › Enfant", which is what
+    identifies it for a human (and for the LLM at decision time): a child's
+    own name is often too terse to stand alone ("Anatomie et physiologie")."""
+    return " › ".join(node["Name"] for node in _ancestor_chain(category, by_id))
 
 
 def _ancestor_chain(category: dict, by_id: dict[str, dict]) -> list[dict]:

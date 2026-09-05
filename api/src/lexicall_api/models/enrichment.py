@@ -44,6 +44,26 @@ class EntryEnrichmentSuggestions(BaseModel):
     example_sentences: ListFieldSuggestion | None = None
 
 
+class CategoryCandidatesRequest(BaseModel):
+    word: str = Field(alias="Word", min_length=1)
+    # Optional but worth sending: a bare word is thin signal next to the
+    # word plus what it means.
+    definition: str = Field(default="", alias="Definition")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class CategoryCandidate(BaseModel):
+    id: str
+    name: str
+    path: str
+    score: float
+
+
+class CategoryCandidatesResult(BaseModel):
+    candidates: list[CategoryCandidate]
+
+
 class RephraseDefinitionRequest(BaseModel):
     word: str = Field(alias="Word", min_length=1)
     definition: str = Field(alias="Definition", min_length=1)

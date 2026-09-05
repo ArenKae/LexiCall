@@ -105,15 +105,43 @@ similar-looking real word to avoid leaving the request empty.
 
 Auto-categorization retrieval runs on embeddings kept in their own `category_embeddings`
 collection, one vector per category, keyed by the category Id (same reasoning as entry images:
-`categories` is pulled on every client sync, so it stays free of bulky fields). A category write
-re-embeds that category and its descendants — renaming a parent rewrites the hierarchical path
-below it — but only when the text actually changed, so an ordinary sync push costs no embeddings
-call. That refresh is deliberately best-effort: it never fails the category write it follows, which
-means a vector can end up missing or stale. `POST /categories/reindex-embeddings` is the repair
-path — a full, idempotent reconciliation pass that re-embeds whatever drifted and drops embeddings
-whose category is gone, returning `{embedded, unchanged, orphans_removed}`. Costs nothing when the
-corpus is already current. The same pass is available on the server as
+`categories` is pulled on every client sync, so it stays free of bulky fields).
+
+What gets vectorized for a category is its hierarchical path, the nearest description available
+(its own, else the closest ancestor's — child categories rarely carry one), and **the words
+actually filed under it**, alphabetically, capped at 100. That last part matters: a category's
+label says what it is called, not what it ended up holding, and a category reachable only through
+its name misses the words its content would have attracted. Measured on a real 42-category corpus,
+adding member words raised similarity scores ~20-25% and fixed the ambiguous cases — a query that
+previously ranked an unrelated family first now puts the correct family in the whole top-3. The
+word list is only added when the category genuinely has entries attached: categories that exist to
+hold sub-categories have none and keep the path-and-description text.
+
+Consequence worth knowing: entry writes are deliberately **not** hooked into re-embedding. Editing
+entries or moving them between categories therefore leaves category vectors describing a slightly
+older membership, and that drift is absorbed by the reindex pass below rather than by an embeddings
+call on the sync-write path (which would fire hundreds of times during a full sync).
+
+A category write does re-embed that category and its descendants — renaming a parent rewrites the
+hierarchical path below it — but only when the text actually changed, so an ordinary sync push
+costs no embeddings call. That refresh is deliberately best-effort: it never fails the category
+write it follows, which means a vector can also end up missing or stale that way.
+
+`POST /categories/reindex-embeddings` reconciles all of it — a full, idempotent pass that re-embeds
+whatever drifted (failed refreshes and membership changes alike) and drops embeddings whose
+category is gone, returning `{embedded, unchanged, orphans_removed}`. Costs nothing when the corpus
+is already current, so it doubles as routine hygiene rather than being purely an error-repair path.
+The same pass is available on the server as
 `PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.index_category_embeddings [--dry-run]`.
+
+`POST /enrichment/category-candidates` is the retrieval half on its own: `{Word, Definition?}` plus
+an optional `k` (default 6) returns the closest categories as `{candidates: [{id, name, path,
+score}]}`. Sending the definition alongside the word is strongly worth it — a bare rare word is
+close to noise to the embedding model, and on a real test ("hune", a nautical term) adding the
+definition moved the correct category from absent to rank 1 while more than doubling its score.
+Scores are only meaningful relative to each other, never as an absolute threshold: word-to-category
+scores sit far below category-to-category ones because the two texts are shaped differently. An
+empty `candidates` list means nothing has been indexed yet, not that nothing matched.
 
 `POST /enrichment/rephrase-definition` takes `{Word, Definition}` and returns another phrasing of
 the same definition, same meaning — no Wiktionary lookup, no `web_search`, no sufficiency judgment,

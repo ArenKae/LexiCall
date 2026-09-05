@@ -1,7 +1,9 @@
 # AI enrichment orchestration: composes llm_client + external context
-# sources (wiktionary_client, ...) into prompts for each enrichment feature.
-from lexicall_api import llm_client, wiktionary_client
+# sources (wiktionary_client, embeddings, ...) into prompts for each
+# enrichment feature.
+from lexicall_api import embeddings, llm_client, wiktionary_client
 from lexicall_api.models.entry import VocabularyEntryType
+from lexicall_api.repositories import categories_repo, category_embeddings_repo
 
 ENRICHABLE_FIELDS = ("Definition", "Type", "Synonyms", "ExampleSentences")
 # PascalCase (matches VocabularyEntry.LockedFields entries / JSON aliases) ->
@@ -177,3 +179,48 @@ def rephrase_definition(word: str, definition: str) -> str:
         reasoning_effort="none",
     )
     return result["definition"]
+
+
+DEFAULT_CATEGORY_CANDIDATES = 6
+
+
+def find_category_candidates(word: str, definition: str, k: int = DEFAULT_CATEGORY_CANDIDATES) -> list[dict]:
+    """The categories closest to a word, best first, as
+    {id, name, path, score}. One embeddings call for the word itself, then a
+    purely local comparison against the stored category vectors — no LLM,
+    and no token cost that grows with the corpus.
+
+    Comes back empty when no category has been indexed yet, which reads the
+    same as "nothing matches": with no category to attach to, proposing a
+    new one is the right answer anyway."""
+    stored = category_embeddings_repo.list_embeddings()
+    if not stored:
+        return []
+
+    query_text = f"{word} — {definition}".strip(" —") if definition.strip() else word
+    query_vector = embeddings.embed_texts([query_text])[0]
+
+    ranked = embeddings.top_similar(
+        query_vector,
+        [(doc["Id"], doc["Vector"]) for doc in stored],
+        k,
+    )
+
+    categories = categories_repo.list_categories()
+    by_id = {category["Id"]: category for category in categories}
+    candidates = []
+    for category_id, score in ranked:
+        category = by_id.get(category_id)
+        # A vector whose category disappeared between the two reads above;
+        # the next reindex drops it.
+        if category is None:
+            continue
+        candidates.append(
+            {
+                "id": category_id,
+                "name": category["Name"],
+                "path": embeddings.build_category_path(category, by_id),
+                "score": score,
+            }
+        )
+    return candidates

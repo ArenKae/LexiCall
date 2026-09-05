@@ -114,6 +114,15 @@ def set_type_archived_images(entry_id: str, type_value: str, is_archived: bool, 
     )
 
 
+def list_words_with_categories() -> list[dict]:
+    # Word + CategoryIds only: category embeddings are built from the words
+    # filed under each category, and nothing else off the entry.
+    docs = get_entries_collection().find(
+        {"IsDeleted": {"$ne": True}}, {"Word": 1, "CategoryIds": 1}
+    )
+    return [strip_mongo_id(doc) for doc in docs]
+
+
 def count_entries_using_category(category_id: str) -> int:
     return get_entries_collection().count_documents(
         {"CategoryIds": category_id, "IsDeleted": {"$ne": True}}
