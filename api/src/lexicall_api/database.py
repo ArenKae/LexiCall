@@ -33,6 +33,10 @@ def get_entry_images_collection() -> Collection:
     return _db["entry_images"]
 
 
+def get_category_embeddings_collection() -> Collection:
+    return _db["category_embeddings"]
+
+
 def ping() -> bool:
     try:
         _client.admin.command("ping")
@@ -71,6 +75,9 @@ def _create_indexes() -> None:
     get_entries_collection().create_index("Id", unique=True)
     get_categories_collection().create_index("Id", unique=True)
     get_entry_images_collection().create_index("Id", unique=True)
+    # No other index: the whole collection is read on every retrieval, never
+    # filtered or sorted.
+    get_category_embeddings_collection().create_index("Id", unique=True)
 
     # Speeds up the updated_since delta query used for sync pulls.
     get_entries_collection().create_index("UpdatedAt")
