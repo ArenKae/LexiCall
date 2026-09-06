@@ -1,11 +1,14 @@
-# AI enrichment routes — every LLM-backed suggestion feature from
-# docs/Roadmap-AI-Enrichment.md lives under this one router as it's built.
+# AI enrichment routes — every LLM-backed suggestion feature
+#  lives under this one router.
 import httpx
 import openai
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from lexicall_api import enrichment
 from lexicall_api.models.enrichment import (
+    CategorizationRequest,
+    CategorizationSuggestion,
+    CategoryCandidatesResult,
     EntryEnrichmentRequest,
     EntryEnrichmentSuggestions,
     RephraseDefinitionRequest,
@@ -25,7 +28,7 @@ router = APIRouter(prefix="/enrichment", tags=["enrichment"], dependencies=[Depe
 def suggest_entry_fields(payload: EntryEnrichmentRequest) -> dict:
     # mode="json" so the Type enum serializes to its plain string value
     # ("Verbe", ...), matching the raw-dict shape suggest_entry_enrichment
-    # already expects (e.g. from debug_pipeline.py's synthetic entries).
+    # already expects (e.g. from debug_enrichment.py's synthetic entries).
     entry = payload.model_dump(mode="json", by_alias=True)
     # Translated into a specific 502 detail instead of letting FastAPI's
     # generic 500 "Internal Server Error" swallow the real cause.
@@ -41,6 +44,45 @@ def suggest_entry_fields(payload: EntryEnrichmentRequest) -> dict:
         raise HTTPException(502, f"Erreur OpenAI : {exc}") from exc
     except httpx.HTTPError as exc:
         raise HTTPException(502, f"Erreur Wiktionnaire : {exc}") from exc
+    except RuntimeError as exc:
+        raise HTTPException(502, str(exc)) from exc
+
+
+# Kept as its own route even though the categorization decision calls the
+# same function internally: it's how the retrieval half can be judged on its
+# own, without an LLM answer in the way.
+@router.post("/category-candidates", response_model=CategoryCandidatesResult)
+def category_candidates(
+    payload: CategorizationRequest,
+    k: int = Query(default=enrichment.DEFAULT_CATEGORY_CANDIDATES, ge=1, le=50),
+) -> dict:
+    try:
+        candidates = enrichment.find_category_candidates(payload.word, payload.definition, k)
+    except openai.AuthenticationError as exc:
+        raise HTTPException(502, f"Clé API OpenAI refusée : {exc}") from exc
+    except openai.RateLimitError as exc:
+        raise HTTPException(502, f"Limite de requêtes OpenAI atteinte : {exc}") from exc
+    except openai.APITimeoutError as exc:
+        raise HTTPException(502, "Le modèle OpenAI n'a pas répondu à temps.") from exc
+    except openai.OpenAIError as exc:
+        raise HTTPException(502, f"Erreur OpenAI : {exc}") from exc
+    except RuntimeError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    return {"candidates": candidates}
+
+
+@router.post("/categorize", response_model=CategorizationSuggestion)
+def categorize(payload: CategorizationRequest) -> dict:
+    try:
+        return enrichment.suggest_category(payload.word, payload.definition)
+    except openai.AuthenticationError as exc:
+        raise HTTPException(502, f"Clé API OpenAI refusée : {exc}") from exc
+    except openai.RateLimitError as exc:
+        raise HTTPException(502, f"Limite de requêtes OpenAI atteinte : {exc}") from exc
+    except openai.APITimeoutError as exc:
+        raise HTTPException(502, "Le modèle OpenAI n'a pas répondu à temps.") from exc
+    except openai.OpenAIError as exc:
+        raise HTTPException(502, f"Erreur OpenAI : {exc}") from exc
     except RuntimeError as exc:
         raise HTTPException(502, str(exc)) from exc
 

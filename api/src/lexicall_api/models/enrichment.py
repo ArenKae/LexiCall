@@ -1,4 +1,6 @@
 # Request/response models for the AI enrichment routes (routers/enrichment.py).
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from lexicall_api.models.entry import VocabularyEntryType
@@ -42,6 +44,39 @@ class EntryEnrichmentSuggestions(BaseModel):
     type: TypeFieldSuggestion | None = None
     synonyms: ListFieldSuggestion | None = None
     example_sentences: ListFieldSuggestion | None = None
+
+
+class CategorizationRequest(BaseModel):
+    word: str = Field(alias="Word", min_length=1)
+    # Optional but worth sending: a bare word is thin signal next to the
+    # word plus what it means.
+    definition: str = Field(default="", alias="Definition")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class CategoryRef(BaseModel):
+    id: str
+    name: str
+    path: str
+
+
+class CategoryCandidate(CategoryRef):
+    score: float
+
+
+class CategoryCandidatesResult(BaseModel):
+    candidates: list[CategoryCandidate]
+
+
+class CategorizationSuggestion(BaseModel):
+    # "existing" fills category; "new" fills new_category_name, and
+    # new_category_parent stays null when the suggestion is a new root.
+    decision: Literal["existing", "new"]
+    category: CategoryRef | None = None
+    new_category_name: str | None = None
+    new_category_parent: CategoryRef | None = None
+    justification: str
 
 
 class RephraseDefinitionRequest(BaseModel):

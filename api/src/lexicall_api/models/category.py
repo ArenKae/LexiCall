@@ -20,6 +20,14 @@ class VocabularyCategoryWrite(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class CategoryReindexResult(BaseModel):
+    # Counters from a full embedding reindex, so the desktop client can tell
+    # "everything was already current" from "12 categories repaired".
+    embedded: int
+    unchanged: int
+    orphans_removed: int
+
+
 class VocabularyCategory(BaseModel):
     id: str = Field(alias="Id")
     name: str = Field(alias="Name")
