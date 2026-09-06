@@ -13,7 +13,7 @@ using LexiCall.Desktop.Utilities;
 namespace LexiCall.Desktop.ViewModels;
 
 public sealed record EnrichmentReviewResult(
-    string? Definition,
+    List<string>? Definition,
     VocabularyEntryType? Type,
     List<string>? Synonyms,
     List<string>? ExampleSentences);
@@ -22,7 +22,7 @@ public sealed class EnrichmentReviewWindowViewModel
 {
     public EnrichmentReviewWindowViewModel(
         string word,
-        string currentDefinition,
+        IReadOnlyList<string> currentDefinition,
         VocabularyEntryType currentType,
         IReadOnlyList<string> currentSynonyms,
         IReadOnlyList<string> currentExampleSentences,
@@ -34,7 +34,7 @@ public sealed class EnrichmentReviewWindowViewModel
         if (suggestions.Definition is { } definitionSuggestion)
         {
             DefinitionCard = new DefinitionSuggestionCardViewModel(
-                string.IsNullOrEmpty(currentDefinition) ? null : currentDefinition,
+                currentDefinition.Count == 0 ? null : TextListParser.FormatLineSeparatedText(currentDefinition),
                 definitionSuggestion.Justification,
                 definitionSuggestion.Value,
                 word,
@@ -90,7 +90,7 @@ public sealed class EnrichmentReviewWindowViewModel
     private void Save()
     {
         Result = new EnrichmentReviewResult(
-            DefinitionCard is { IsAccepted: true } definitionCard ? definitionCard.EditableText.Trim() : null,
+            DefinitionCard is { IsAccepted: true } definitionCard ? definitionCard.ToSenseList() : null,
             TypeCard is { IsAccepted: true } typeCard ? typeCard.SelectedType?.Value : null,
             SynonymsCard is { IsAccepted: true } synonymsCard ? TextListParser.ParseCommaSeparatedText(synonymsCard.EditableText) : null,
             ExampleSentencesCard is { IsAccepted: true } exampleSentencesCard ? TextListParser.ParseLineSeparatedText(exampleSentencesCard.EditableText) : null);
