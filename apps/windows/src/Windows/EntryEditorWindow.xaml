@@ -10,11 +10,7 @@
         FontFamily="Segoe UI"
         Loaded="EntryEditorWindow_Loaded">
     <Window.Resources>
-        <!-- Icon-only toggle for the per-field AI-enrichment lock (see
-             EntryEditorWindowViewModel.IsDefinitionLocked etc.) — no implicit
-             ToggleButton style exists app-wide, so this needs its own
-             chrome-free template (same idea as Styles.xaml's
-             TreeExpanderStyle) rather than the default WPF button look. -->
+        <!-- Field lock toggle -->
         <Style x:Key="FieldLockToggleStyle" TargetType="ToggleButton">
             <Setter Property="Focusable" Value="False" />
             <Setter Property="Cursor" Value="Hand" />
@@ -26,9 +22,6 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
                         <Border Background="Transparent">
-                            <!-- Open padlock by default (field free for AI
-                                 enrichment); switches to closed + accent
-                                 color once locked. -->
                             <Path x:Name="LockIcon"
                                   Data="{StaticResource Icon.Phosphor.lock-key-open}"
                                   Width="13" Height="13" Stretch="Uniform"
@@ -45,14 +38,7 @@
             </Setter>
         </Style>
 
-        <!-- "Enrichir" needs more visual weight than a plain secondary
-             button (it's the entry point to the whole AI review flow, not a
-             minor action) but shouldn't compete with "Enregistrer" — the
-             window's one true primary action. An accent-outlined button
-             (accent border/text, neutral fill at rest, filling solid on
-             press) sits between the two, and is scoped to this window only:
-             this compromise doesn't apply anywhere else "Enrichir avec l'IA"
-             appears (the Détails card keeps its plain button style). -->
+        <!-- Enrich button -->
         <Style x:Key="EnrichButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
             <Setter Property="BorderThickness" Value="1.5" />
@@ -90,20 +76,7 @@
             </Setter>
         </Style>
     </Window.Resources>
-    <!--
-        Modal add/edit entry form. Left column groups the text fields (word,
-        definition, synonyms, examples, notes) in one uninterrupted flow;
-        right column groups the lighter metadata (categories, type, source),
-        with categories given the most vertical room since it's the field
-        most worth showing without scrolling. Images sit in their own
-        full-width section below both, so they don't split the text flow.
-        The two columns are independent StackPanels, not a shared Grid with
-        row-per-field: a shared Auto row stretches every cell in it to match
-        its tallest sibling, which silently mis-sizes (and can overlap)
-        unrelated fields in the other column.
-        Categories are optional and picked via checkboxes, indented by their
-        depth in the hierarchy.
-    -->
+    <!-- Entry editor form -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -134,7 +107,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- ═══ Left column: the text fields, one flow ═══ -->
+                        <!-- ═══ Left column: text fields ═══ -->
                         <StackPanel Grid.Column="0">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -150,7 +123,7 @@
                                       Margin="0,0,10,0" />
                                 <TextBlock Grid.Column="1" Text="Mot *" FontWeight="SemiBold" VerticalAlignment="Center" />
                                 <Button Grid.Column="2"
-                                        ToolTip="Propose Définition/Type/Synonymes/Exemples via l'IA (nécessite une synchronisation API configurée)"
+                                        ToolTip="Suggérer une définition et plus avec l'IA"
                                         Command="{Binding EnrichDraftCommand}">
                                     <Button.Style>
                                         <Style TargetType="Button" BasedOn="{StaticResource EnrichButtonStyle}">
@@ -162,10 +135,6 @@
                                         </Style>
                                     </Button.Style>
                                     <StackPanel Orientation="Horizontal">
-                                        <!-- Same slot as the sparkle icon below (mutually
-                                             exclusive Visibility) so the button never
-                                             grows wider while enriching — spun
-                                             forever via its own Loaded trigger. -->
                                         <Path Width="13" Height="13" Stretch="Uniform"
                                               Data="{StaticResource Icon.Phosphor.circle-half-tilt}"
                                               Fill="{DynamicResource Brush.Accent}"
@@ -308,7 +277,6 @@
                                      VerticalContentAlignment="Top"
                                      Text="{Binding ExampleSentencesText, UpdateSourceTrigger=PropertyChanged}" />
 
-                            <!-- Kept with the other text fields, not pushed after Images. -->
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -331,7 +299,7 @@
                                      Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
-                        <!-- ═══ Right column: lighter metadata ═══ -->
+                        <!-- ═══ Right column: metadata ═══ -->
                         <StackPanel Grid.Column="2">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -347,7 +315,7 @@
                                       Margin="0,0,10,0" />
                                 <TextBlock Grid.Column="1" Text="Catégories" FontWeight="SemiBold" VerticalAlignment="Center" />
                                 <Button Grid.Column="2"
-                                        ToolTip="Propose de rattacher l'entrée à une catégorie existante ou d'en créer une nouvelle (nécessite une synchronisation API configurée)"
+                                        ToolTip="Suggérer une catégorie avec l'IA"
                                         Command="{Binding CategorizeDraftCommand}">
                                     <Button.Style>
                                         <Style TargetType="Button" BasedOn="{StaticResource EnrichButtonStyle}">
@@ -359,10 +327,6 @@
                                         </Style>
                                     </Button.Style>
                                     <StackPanel Orientation="Horizontal">
-                                        <!-- Same slot as the tag icon below (mutually
-                                             exclusive Visibility) so the button never
-                                             grows wider while categorizing — spun
-                                             forever via its own Loaded trigger. -->
                                         <Path Width="13" Height="13" Stretch="Uniform"
                                               Data="{StaticResource Icon.Phosphor.circle-half-tilt}"
                                               Fill="{DynamicResource Brush.Accent}"
@@ -394,7 +358,7 @@
                                                 </EventTrigger>
                                             </Path.Triggers>
                                         </Path>
-                                        <Path Data="{StaticResource Icon.Solar.tag}"
+                                        <Path Data="{StaticResource Icon.Phosphor.sparkle}"
                                               Width="13" Height="13"
                                               Stretch="Uniform"
                                               VerticalAlignment="Center"
@@ -528,8 +492,6 @@
                                           ItemsSource="{Binding AvailableTypes}"
                                           DisplayMemberPath="Label"
                                           SelectedItem="{Binding SelectedTypeOption, Mode=TwoWay}" />
-                                <!-- Tucked beside Type rather than given its own section:
-                                     a low-importance flag, not worth more visual weight. -->
                                 <CheckBox Grid.Column="1"
                                           Content="Archivé"
                                           Margin="12,0,0,0"
@@ -588,10 +550,6 @@
                                                     BorderThickness="1"
                                                     CornerRadius="6"
                                                     Background="{DynamicResource Brush.Input.Background}">
-                                                <!-- CornerRadius alone only rounds the Border's own
-                                                     Background/BorderBrush painting — a child Image still
-                                                     clips to a plain rectangle unless the Border's own Clip
-                                                     is set to a matching rounded geometry. -->
                                                 <Border.Clip>
                                                     <RectangleGeometry RadiusX="6" RadiusY="6">
                                                         <RectangleGeometry.Rect>
@@ -615,8 +573,6 @@
                                                     ToolTip="Retirer cette image"
                                                     Command="{Binding RemoveCommand}" />
                                         </Grid>
-                                        <!-- Wraps across a few lines instead of scrolling sideways in a
-                                             single-line box: captions are often full sentences. -->
                                         <TextBox Margin="0,6,0,0"
                                                  MinHeight="40"
                                                  MaxHeight="76"

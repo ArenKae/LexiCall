@@ -9,10 +9,7 @@
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI"
         Loaded="CategoryEditorWindow_Loaded">
-    <!-- Modal add/edit category form (quick rename happens directly in the
-         main window's tree instead). Field headers use the same icon+label
-         convention as EntryEditorWindow's form and MainWindow's Détails
-         column, for a consistent look across the app's editor dialogs. -->
+    <!-- Category editor form -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -59,11 +56,7 @@
                                  Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                                  VerticalAlignment="Center" />
 
-                        <!-- Icon picker: opens IconPickerWindow, which closes
-                             itself as soon as an icon is chosen. -->
-                        <!-- Vector icons resolve through IconKeyToGeometryConverter; a legacy
-                             emoji (or the default "no icon" tag) falls back to the TextBlock,
-                             since the converter returns null for anything it can't resolve. -->
+                        <!-- Icon picker -->
                         <Button Grid.Column="1"
                                 Width="44" Height="36"
                                 Padding="0"
@@ -126,8 +119,7 @@
                     </Grid>
                     <StackPanel Orientation="Horizontal"
                                 Margin="0,8,0,20">
-                        <!-- Color picker: opens ColorPickerWindow, which closes
-                             itself as soon as a color (or "Automatique") is chosen. -->
+                        <!-- Color picker -->
                         <Button Width="36" Height="36"
                                 Padding="0"
                                 Click="ChooseColorButton_Click"

@@ -9,13 +9,7 @@
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI"
         Loaded="CategorizationReviewWindow_Loaded">
-    <!--
-        Same review paradigm as EnrichmentReviewWindow (accept/correct/reject,
-        one Enregistrer that only ever exposes a Result) but a separate
-        window: the category suggestion is a two-mode picker with a side
-        effect, not a field value with a before/after — see
-        CategorizationReviewWindowViewModel's header comment.
-    -->
+    <!-- Category suggestion review -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -67,10 +61,7 @@
                                   VerticalAlignment="Center"
                                   IsChecked="{Binding CategoryCard.IsNewCategory, Mode=TwoWay}" />
 
-                        <!-- Icon picker lives here, next to the checkbox that
-                             gates it, instead of its own full-width row below
-                             — keeps the card short enough to see the
-                             justification without scrolling. -->
+                        <!-- Icon picker -->
                         <Grid Grid.Column="1" HorizontalAlignment="Right">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />

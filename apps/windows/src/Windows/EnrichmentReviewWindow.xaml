@@ -9,18 +9,9 @@
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI"
         Loaded="EnrichmentReviewWindow_Loaded">
-    <!--
-        Single review mechanism for every AI enrichment suggestion in the
-        app (see EnrichmentReviewWindowViewModel) — one card per field the
-        API actually returned a suggestion for; a field the model judged
-        locked/already-satisfactory just never gets a card. Each card is
-        pre-checked ("Appliquer") and independently correctable before
-        Enregistrer is clicked.
-    -->
+    <!-- AI suggestion review -->
     <Window.Resources>
-        <!-- Shared layout for the three text-shaped cards (Définition/
-             Synonymes/Exemples) — Type gets its own block below since it's a
-             ComboBox choice, not free text. -->
+        <!-- Text field card template -->
         <DataTemplate x:Key="TextFieldSuggestionCardTemplate">
             <StackPanel Margin="0,0,0,20">
                 <Grid>
@@ -118,11 +109,7 @@
                         </ContentControl.Style>
                     </ContentControl>
 
-                    <!-- "Reformuler" is specific to Définition (a rephrase of
-                         the same meaning, see VocabularyApiClient.
-                         TryRephraseDefinitionAsync) — kept outside the shared
-                         card template rather than complicating it with a
-                         per-type condition also used by Synonymes/Exemples. -->
+                    <!-- Reformuler button -->
                     <StackPanel Margin="0,-14,0,20" HorizontalAlignment="Right">
                         <StackPanel.Style>
                             <Style TargetType="StackPanel">
@@ -149,10 +136,6 @@
                                 </Style>
                             </Button.Style>
                             <StackPanel Orientation="Horizontal">
-                                <!-- Same slot as the arrow-clockwise icon below (mutually
-                                     exclusive Visibility) so the button never grows wider
-                                     while rephrasing — spun forever via its own Loaded
-                                     trigger. -->
                                 <Path Width="11" Height="11" Stretch="Uniform"
                                       Data="{StaticResource Icon.Phosphor.circle-half-tilt}"
                                       Fill="{DynamicResource Brush.Text.Secondary}"

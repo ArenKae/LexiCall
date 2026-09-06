@@ -11,10 +11,7 @@
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI"
         KeyDown="Window_KeyDown">
-    <!-- Sync history modal (opened from the footer's connection indicator):
-         recaps recent push/pull/delete operations per entry/category. Binds
-         directly to MainWindowViewModel.SyncHistory, so a live operation
-         (e.g. from the periodic resync) appears while this window is open. -->
+    <!-- Sync history modal -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -59,9 +56,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
-                            <!-- Icon shape encodes the operation (push/pull/delete),
-                                 its color encodes the outcome — same Success/Danger
-                                 brushes as the footer's connection dot. -->
+                            <!-- Operation icon -->
                             <Path Grid.Column="0"
                                   Width="16" Height="16"
                                   Margin="0,0,10,0"
@@ -143,9 +138,7 @@
                                         </TextBlock.Style>
                                     </TextBlock>
 
-                                    <!-- Data-level change behind a push/pull; absent
-                                         (ChangeKind null) for Delete rows, where it
-                                         would only repeat what "suppression" already says. -->
+                                    <!-- Change kind -->
                                     <TextBlock FontSize="12"
                                                Foreground="{DynamicResource Brush.Text.Secondary}">
                                         <TextBlock.Style>
@@ -165,9 +158,7 @@
                                         </TextBlock.Style>
                                     </TextBlock>
 
-                                    <!-- Redundant with the icon's color, on purpose:
-                                         a color-only failure signal is easy to miss
-                                         at a glance in a dense list. -->
+                                    <!-- Failure suffix -->
                                     <TextBlock Text=" · Échec"
                                                FontSize="12"
                                                FontWeight="SemiBold"
