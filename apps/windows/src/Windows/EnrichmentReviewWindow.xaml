@@ -1,7 +1,7 @@
 <Window x:Class="LexiCall.Desktop.Windows.EnrichmentReviewWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Enrichissement IA"
+        Title="Enrichissement automatique"
         Height="720" Width="640"
         MinHeight="480" MinWidth="520"
         WindowStartupLocation="CenterOwner"
@@ -89,11 +89,12 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0">
-            <TextBlock Text="Enrichissement IA"
+            <TextBlock Text="Enrichissement automatique"
                        FontSize="26"
                        FontWeight="SemiBold" />
-            <TextBlock Text="Relis les suggestions ci-dessous, corrige-les si besoin, puis choisis lesquelles appliquer."
+            <TextBlock Text="Des suggestions ont été générées pour cette entrée ; chacune peut être ajustée ou ignorée avant l'enregistrement."
                        Margin="0,4,0,0"
+                       TextWrapping="Wrap"
                        Foreground="{DynamicResource Brush.Text.Secondary}" />
         </StackPanel>
 
@@ -148,8 +149,10 @@
                                 </Style>
                             </Button.Style>
                             <StackPanel Orientation="Horizontal">
-                                <!-- Spun forever via its own Loaded trigger; only ever
-                                     visible while DefinitionCard.IsRephrasing is true. -->
+                                <!-- Same slot as the arrow-clockwise icon below (mutually
+                                     exclusive Visibility) so the button never grows wider
+                                     while rephrasing — spun forever via its own Loaded
+                                     trigger. -->
                                 <Path Width="11" Height="11" Stretch="Uniform"
                                       Data="{StaticResource Icon.Phosphor.circle-half-tilt}"
                                       Fill="{DynamicResource Brush.Text.Secondary}"
@@ -182,23 +185,23 @@
                                     </Path.Triggers>
                                 </Path>
                                 <Path Data="{StaticResource Icon.Phosphor.arrow-clockwise}"
-                                      Fill="{DynamicResource Brush.Text.Secondary}"
                                       Width="11" Height="11"
                                       Stretch="Uniform"
                                       VerticalAlignment="Center"
-                                      Margin="0,0,6,0" />
-                                <TextBlock VerticalAlignment="Center">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Reformuler" />
+                                      Margin="0,0,6,0">
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Setter Property="Fill" Value="{DynamicResource Brush.Text.Secondary}" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding DefinitionCard.IsRephrasing}" Value="True">
-                                                    <Setter Property="Text" Value="Reformulation..." />
+                                                    <Setter Property="Visibility" Value="Collapsed" />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
+                                    </Path.Style>
+                                </Path>
+                                <TextBlock Text="Reformuler" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                         <TextBlock Text="{Binding DefinitionCard.RephraseErrorMessage}"
