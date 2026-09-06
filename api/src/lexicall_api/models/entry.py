@@ -38,7 +38,8 @@ class VocabularyEntryImage(BaseModel):
 
 class VocabularyEntryWrite(BaseModel):
     word: str = Field(alias="Word", min_length=1)
-    definition: str = Field(alias="Definition", min_length=1)
+    # One element per distinct sense of the word.
+    definition: list[str] = Field(alias="Definition", min_length=1)
     synonyms: list[str] = Field(default_factory=list, alias="Synonyms")
     example_sentences: list[str] = Field(default_factory=list, alias="ExampleSentences")
     notes: str = Field(default="", alias="Notes")
@@ -60,6 +61,14 @@ class VocabularyEntryWrite(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
+    @field_validator("definition")
+    @classmethod
+    def _validate_definition(cls, value: list[str]) -> list[str]:
+        senses = [sense.strip() for sense in value if sense.strip()]
+        if not senses:
+            raise ValueError("Definition must hold at least one non-empty sense.")
+        return senses
+
     @field_validator("images")
     @classmethod
     def _validate_max_images(cls, value: list[VocabularyEntryImageWrite]) -> list[VocabularyEntryImageWrite]:
@@ -71,7 +80,7 @@ class VocabularyEntryWrite(BaseModel):
 class VocabularyEntrySummary(BaseModel):
     id: str = Field(alias="Id")
     word: str = Field(alias="Word")
-    definition: str = Field(alias="Definition")
+    definition: list[str] = Field(alias="Definition")
     synonyms: list[str] = Field(default_factory=list, alias="Synonyms")
     example_sentences: list[str] = Field(default_factory=list, alias="ExampleSentences")
     notes: str = Field(default="", alias="Notes")

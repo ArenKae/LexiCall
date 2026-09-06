@@ -90,6 +90,13 @@ Structured Outputs in strict mode requires `additionalProperties: false` and eve
 in `required` — the wrapper passes the schema through as-is, so a schema that doesn't follow this
 shape is rejected by OpenAI, not caught locally.
 
+`Definition` is a list of senses, one element per distinct meaning — a single string couldn't
+represent a word like "ladre" (leper / miser), and every consumer downstream needs the senses
+apart rather than fused. `migration/split_definitions.py` converts an existing corpus, splitting
+only on newlines the user wrote themselves (never on punctuation, which on real data separates a
+rephrasing far more often than a sense) and leaving `UpdatedAt` untouched, since a schema change
+is not a user edit.
+
 `POST /enrichment/fields` judges, per field (Definition/Type/Synonyms/ExampleSentences), whether
 the given current value is worth suggesting a replacement for — conservative by default, a
 non-empty field is only touched when there's a real gap. Takes the field values in the request
@@ -152,6 +159,11 @@ an optional `k` (default 6) returns the closest categories as `{candidates: [{id
 score}]}`. Sending the definition alongside the word is strongly worth it — a bare rare word is
 close to noise to the embedding model, and on a real test ("hune", a nautical term) adding the
 definition moved the correct category from absent to rank 1 while more than doubling its score.
+**Each sense is vectorized and ranked separately**, then the per-sense top-k are merged: one vector
+for a word meaning two different things lands between the two and surfaces neither. Measured on
+"ladre", the second sense's category sat at rank 9 of 42 with the senses fused, and at rank 5 once
+split. `k` is therefore per sense, and the returned list can hold up to `k` per sense — trimming
+the excess by global score would push the low-scoring sense straight back out of reach.
 Scores are only meaningful relative to each other, never as an absolute threshold: word-to-category
 scores sit far below category-to-category ones because the two texts are shaped differently. An
 empty `candidates` list means nothing has been indexed yet, not that nothing matched.

@@ -39,7 +39,7 @@ from lexicall_api.config import settings
 def build_synthetic_entry(word: str, locked_fields: list[str]) -> dict:
     return {
         "Word": word,
-        "Definition": "",
+        "Definition": [],
         "Type": "Undefined",
         "Synonyms": [],
         "ExampleSentences": [],
