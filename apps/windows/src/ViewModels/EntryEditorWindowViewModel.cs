@@ -18,6 +18,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     private readonly VocabularyEntry? _existingEntry;
     private readonly VocabularyApiClient? _apiClient;
     private readonly HashSet<string> _lockedFields;
+    private readonly List<VocabularyCategory> _availableCategories;
     private string _word = string.Empty;
     private string _definition = string.Empty;
     private string _synonymsText = string.Empty;
@@ -29,6 +30,8 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     private string _errorMessage = string.Empty;
     private bool _isEnrichingDraft;
     private string _enrichmentErrorMessage = string.Empty;
+    private bool _isCategorizingDraft;
+    private string _categorizationErrorMessage = string.Empty;
 
     public EntryEditorWindowViewModel(
         VocabularyEntry? existingEntry = null,
@@ -39,13 +42,15 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         _existingEntry = existingEntry;
         _apiClient = apiClient;
         _lockedFields = new HashSet<string>(existingEntry?.LockedFields ?? []);
+        _availableCategories = (availableCategories ?? []).ToList();
         SaveEntryCommand = new RelayCommand(SaveEntry);
         EnrichDraftCommand = new RelayCommand(async () => await EnrichDraftAsync());
+        CategorizeDraftCommand = new RelayCommand(async () => await CategorizeDraftAsync());
 
         // Categories are optional (CategoryIds may stay empty). On creation,
         // initialCategoryId pre-checks the category selected in the tree.
         CategorySelections = new ObservableCollection<CategorySelectionViewModel>(
-            CategoryHierarchy.Flatten((availableCategories ?? []).ToList(), CategoryOrderStore.LoadAll())
+            CategoryHierarchy.Flatten(_availableCategories, CategoryOrderStore.LoadAll())
             .Select(item => new CategorySelectionViewModel(
                 item.Category,
                 existingEntry is not null
@@ -84,13 +89,24 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 
     public EntryEnrichmentSuggestions? PendingEnrichmentSuggestions { get; private set; }
 
+    public event EventHandler? CategorizationSuggestionsReady;
+
+    public CategorizationSuggestion? PendingCategorizationSuggestion { get; private set; }
+
     // Exposed so the window's code-behind can hand the same client to
     // EnrichmentReviewWindowViewModel (needed for its "Reformuler" action).
     public VocabularyApiClient? ApiClient => _apiClient;
 
+    // Exposed so the window's code-behind can build CategorizationReviewWindowViewModel's
+    // category picker — CategorySelections alone isn't enough, it only knows
+    // Id/Name/IsSelected, not the raw VocabularyCategory objects.
+    public IReadOnlyList<VocabularyCategory> AvailableCategories => _availableCategories;
+
     public RelayCommand SaveEntryCommand { get; }
 
     public RelayCommand EnrichDraftCommand { get; }
+
+    public RelayCommand CategorizeDraftCommand { get; }
 
     public ObservableCollection<CategorySelectionViewModel> CategorySelections { get; }
 
@@ -128,6 +144,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             {
                 ClearError();
                 OnPropertyChanged(nameof(CanEnrichDraft));
+                OnPropertyChanged(nameof(CanCategorizeDraft));
             }
         }
     }
@@ -235,6 +252,37 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 
     public bool CanEnrichDraft =>
         !IsEnrichingDraft &&
+        !string.IsNullOrWhiteSpace(Word) &&
+        (_apiClient?.IsConfigured ?? false);
+
+    public bool IsCategorizingDraft
+    {
+        get => _isCategorizingDraft;
+        private set
+        {
+            if (SetProperty(ref _isCategorizingDraft, value))
+            {
+                OnPropertyChanged(nameof(CanCategorizeDraft));
+            }
+        }
+    }
+
+    public string CategorizationErrorMessage
+    {
+        get => _categorizationErrorMessage;
+        private set
+        {
+            if (SetProperty(ref _categorizationErrorMessage, value))
+            {
+                OnPropertyChanged(nameof(HasCategorizationError));
+            }
+        }
+    }
+
+    public bool HasCategorizationError => !string.IsNullOrEmpty(CategorizationErrorMessage);
+
+    public bool CanCategorizeDraft =>
+        !IsCategorizingDraft &&
         !string.IsNullOrWhiteSpace(Word) &&
         (_apiClient?.IsConfigured ?? false);
 
@@ -407,6 +455,80 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         {
             ExampleSentencesText = TextListParser.FormatLineSeparatedText(exampleSentences);
         }
+    }
+
+    private async Task CategorizeDraftAsync()
+    {
+        var word = Word.Trim();
+        if (string.IsNullOrWhiteSpace(word) || _apiClient is null)
+        {
+            return;
+        }
+
+        CategorizationErrorMessage = string.Empty;
+        IsCategorizingDraft = true;
+
+        var request = new CategorizationRequest(word, Definition.Trim());
+        var (status, suggestion, errorDetail) = await _apiClient.TryCategorizeEntryAsync(request);
+
+        IsCategorizingDraft = false;
+
+        switch (status)
+        {
+            case CategorizationStatus.Ok when suggestion is not null:
+                PendingCategorizationSuggestion = suggestion;
+                CategorizationSuggestionsReady?.Invoke(this, EventArgs.Empty);
+                break;
+            case CategorizationStatus.NotConfigured:
+                CategorizationErrorMessage = "La catégorisation nécessite une synchronisation API configurée (voir Options).";
+                break;
+            default:
+                CategorizationErrorMessage = string.IsNullOrWhiteSpace(errorDetail)
+                    ? "Impossible d'obtenir une suggestion de catégorie pour le moment. Réessaie plus tard."
+                    : $"Impossible d'obtenir une suggestion de catégorie : {errorDetail}";
+                break;
+        }
+    }
+
+    // Called by EntryEditorWindow's code-behind once the categorization
+    // review is saved. createdCategory is non-null only when the code-behind
+    // already created it (via the saveCategory delegate) — that write is
+    // real and immediate, unlike everything else here: only the form's own
+    // state changes, nothing is persisted for the entry itself.
+    public void ApplyCategorization(CategorySuggestionResult result, VocabularyCategory? createdCategory)
+    {
+        if (createdCategory is not null)
+        {
+            _availableCategories.Add(createdCategory);
+            RebuildCategorySelections(alsoSelect: createdCategory.Id);
+            return;
+        }
+
+        if (result.ExistingCategoryId is { } id)
+        {
+            var match = CategorySelections.FirstOrDefault(category => category.CategoryId == id);
+            if (match is not null)
+            {
+                match.IsSelected = true;
+            }
+        }
+    }
+
+    private void RebuildCategorySelections(Guid alsoSelect)
+    {
+        var selectedIds = CategorySelections
+            .Where(category => category.IsSelected)
+            .Select(category => category.CategoryId)
+            .ToHashSet();
+        selectedIds.Add(alsoSelect);
+
+        CategorySelections.Clear();
+        foreach (var (category, depth) in CategoryHierarchy.Flatten(_availableCategories, CategoryOrderStore.LoadAll()))
+        {
+            CategorySelections.Add(new CategorySelectionViewModel(category, selectedIds.Contains(category.Id), depth));
+        }
+
+        OnPropertyChanged(nameof(HasAvailableCategories));
     }
 
     private void SaveEntry()

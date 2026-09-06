@@ -1,4 +1,4 @@
-<!-- Light theme: same brush keys as Colors.Dark.xaml, light values. -->
+<!-- Light theme -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
@@ -13,8 +13,7 @@
     <SolidColorBrush x:Key="Brush.Text.Muted" Color="#A39880" />
     <SolidColorBrush x:Key="Brush.Text.OnAccent" Color="#FFFFFF" />
 
-    <!-- Raw Color (not a Brush): needed wherever a property isn't Brush-typed,
-         e.g. the TextBox focus glow's DropShadowEffect.Color in Styles.xaml. -->
+    <!-- Accent -->
     <Color x:Key="Color.Accent">#2F5FA8</Color>
     <SolidColorBrush x:Key="Brush.Accent" Color="{StaticResource Color.Accent}" />
     <SolidColorBrush x:Key="Brush.Accent.Hover" Color="#3A6FBE" />
@@ -27,7 +26,6 @@
     <SolidColorBrush x:Key="Brush.Chip.Neutral.Background" Color="#EDE6D6" />
     <SolidColorBrush x:Key="Brush.Chip.Neutral.Foreground" Color="#5C5546" />
 
-    <!-- Synonym chips: Surface + 5% (subtle overlay, not a distinct "surface" tone). -->
     <SolidColorBrush x:Key="Brush.Chip.Synonym.Background" Color="#EFEEE8" />
 
     <SolidColorBrush x:Key="Brush.Selection.Background" Color="#DCE7F8" />
@@ -35,11 +33,6 @@
 
     <SolidColorBrush x:Key="Brush.Input.Background" Color="#FFFFFF" />
 
-    <!-- Fixed neutral grey for non-colorable vector icons (virtual category
-         nodes, "All entries"/"Uncategorized"): same value in both themes, an
-         OKLCH grey (L=0.58, C=0) chosen for roughly equal contrast against
-         both backgrounds, since category colors themselves aren't
-         theme-aware either (see CategoryColorResolver). -->
     <SolidColorBrush x:Key="Brush.Icon.Neutral" Color="#7A7A7A" />
 
 </ResourceDictionary>

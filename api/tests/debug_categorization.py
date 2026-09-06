@@ -4,11 +4,13 @@
 # package.
 #
 # Usage:
-#   PYTHONPATH=src .venv/bin/python tests/debug_categorization.py <mot> [--definition <texte>] [-k <n>] [--retrieval-only]
+#   PYTHONPATH=src .venv/bin/python tests/debug_categorization.py <mot> [--definition <sens>]... [-k <n>] [--retrieval-only]
 #
 # <mot>     : the word to categorize. Nothing is ever written to the database.
 # --definition : strongly recommended — a bare rare word is close to noise to
 #             the embedding model, the definition is what makes retrieval work.
+#             Repeat it once per sense; each is vectorized and ranked on its
+#             own, which is how a two-sense word reaches both lexical fields.
 # -k        : how many candidates to retrieve (default: the API's own).
 # --retrieval-only : stop after the ranking, skipping the paid LLM decision.
 #
@@ -44,28 +46,30 @@ from lexicall_api.repositories import categories_repo, category_embeddings_repo
 client = OpenAI(api_key=settings.openai_api_key)
 
 
-def embedding_step(word: str, definition: str) -> tuple[list[float], float]:
-    """Vectorizes the query the same way find_category_candidates does, but
-    through the SDK directly so the token usage is visible."""
-    query_text = f"{word} — {definition}".strip(" —") if definition.strip() else word
+def embedding_step(word: str, senses: list[str]) -> tuple[list[list[float]], float]:
+    """Vectorizes one query per sense, the same way find_category_candidates
+    does, but through the SDK directly so the token usage is visible."""
+    query_texts = [f"{word} — {sense}".strip(" —") for sense in senses if sense.strip()] or [word]
 
-    t0 = step("Vectorisation de la requête")
+    t0 = step("Vectorisation de la requête (un vecteur par sens)")
     request_line("POST", "https://api.openai.com/v1/embeddings")
     kv("modèle", embeddings.EMBEDDING_MODEL)
-    kv_wrapped("texte vectorisé", query_text, color=CYAN)
+    kv("sens", f"{len(query_texts)} — un seul appel groupé")
+    for i, text in enumerate(query_texts, start=1):
+        kv_wrapped(f"  texte {i}", text, color=CYAN)
 
-    response = client.embeddings.create(model=embeddings.EMBEDDING_MODEL, input=[query_text])
-    vector = response.data[0].embedding
+    response = client.embeddings.create(model=embeddings.EMBEDDING_MODEL, input=query_texts)
+    vectors = [item.embedding for item in response.data]
     cost = estimate_embedding_cost(response.usage.total_tokens)
 
-    response_line(f"vecteur de {len(vector)} dimensions")
+    response_line(f"{len(vectors)} vecteur(s) de {len(vectors[0])} dimensions")
     kv("tokens", str(response.usage.total_tokens))
     kv("coût", f"${cost:.8f}")
     step_done(t0)
-    return vector, cost
+    return vectors, cost
 
 
-def retrieval_step(query_vector: list[float], k: int) -> list[dict]:
+def retrieval_step(query_vectors: list[list[float]], k: int) -> list[dict]:
     t0 = step("Retrieval — similarité cosinus locale (aucun appel réseau)")
     stored = category_embeddings_repo.list_embeddings()
     kv("vecteurs stockés", str(len(stored)))
@@ -75,7 +79,18 @@ def retrieval_step(query_vector: list[float], k: int) -> list[dict]:
         step_done(t0)
         return []
 
-    ranked = embeddings.top_similar(query_vector, [(d["Id"], d["Vector"]) for d in stored], k)
+    # Top-k per sense, merged on the best score — same rule as
+    # find_category_candidates, so the debug output matches the endpoint.
+    pairs = [(d["Id"], d["Vector"]) for d in stored]
+    best_by_id: dict[str, float] = {}
+    for rank, query_vector in enumerate(query_vectors, start=1):
+        per_sense = embeddings.top_similar(query_vector, pairs, k)
+        if len(query_vectors) > 1:
+            kv(f"top-{k} du sens {rank}", ", ".join(f"{score:.3f}" for _id, score in per_sense))
+        for category_id, score in per_sense:
+            if score > best_by_id.get(category_id, float("-inf")):
+                best_by_id[category_id] = score
+    ranked = sorted(best_by_id.items(), key=lambda item: item[1], reverse=True)
     categories = categories_repo.list_categories()
     by_id = {category["Id"]: category for category in categories}
 
@@ -123,8 +138,8 @@ def roots_step() -> list[dict]:
     return roots
 
 
-def decision_step(word: str, definition: str, candidates: list[dict], roots: list[dict]) -> tuple[dict, object]:
-    prompt = enrichment._build_categorization_prompt(word, definition, candidates, roots)
+def decision_step(word: str, senses: list[str], candidates: list[dict], roots: list[dict]) -> tuple[dict, object]:
+    prompt = enrichment._build_categorization_prompt(word, senses, candidates, roots)
     schema = enrichment._build_categorization_schema(
         [candidate["id"] for candidate in candidates],
         [root["id"] for root in roots],
@@ -191,18 +206,25 @@ def main() -> None:
         description="Debug complet du pipeline de catégorisation (embedding + retrieval + décision LLM)."
     )
     parser.add_argument("word", help="Mot à catégoriser")
-    parser.add_argument("--definition", default="", help="Définition du mot (fortement recommandée)")
+    parser.add_argument(
+        "--definition",
+        action="append",
+        default=[],
+        metavar="SENS",
+        help="Un sens du mot ; répéter l'option pour un mot polysémique (fortement recommandé).",
+    )
     parser.add_argument("-k", type=int, default=enrichment.DEFAULT_CATEGORY_CANDIDATES, help="Nombre de candidats")
     parser.add_argument("--retrieval-only", action="store_true", help="S'arrête avant la décision LLM (payante).")
     args = parser.parse_args()
 
     pipeline_start = time.perf_counter()
     print(c(BOLD, f"Pipeline de catégorisation — mot : {c(CYAN, args.word)}"))
-    if not args.definition.strip():
+    senses = [sense for sense in args.definition if sense.strip()]
+    if not senses:
         print(c(YELLOW, "Aucune définition fournie — le retrieval sera nettement moins fiable."))
 
-    query_vector, embedding_cost = embedding_step(args.word, args.definition)
-    candidates = retrieval_step(query_vector, args.k)
+    query_vectors, embedding_cost = embedding_step(args.word, senses)
+    candidates = retrieval_step(query_vectors, args.k)
     roots = roots_step()
 
     if args.retrieval_only:
@@ -212,7 +234,7 @@ def main() -> None:
         kv("durée totale", f"{time.perf_counter() - pipeline_start:.2f}s")
         return
 
-    result, response = decision_step(args.word, args.definition, candidates, roots)
+    result, response = decision_step(args.word, senses, candidates, roots)
     resolution_step(result)
 
     step("Résumé")

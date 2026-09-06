@@ -9,9 +9,7 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!-- Icon picker: themed collections (CategoryIconCatalog) filterable by
-         keyword. Clicking an icon selects it immediately (no separate
-         confirm button). -->
+    <!-- Category icon picker -->
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

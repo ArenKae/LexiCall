@@ -60,6 +60,40 @@ public sealed record EntryEnrichmentDraft(
     List<string> ExampleSentences,
     List<string> LockedFields);
 
+public sealed record CategoryRef(string Id, string Name, string Path);
+
+// Same NotConfigured/Failed/Ok shape as EntryEnrichmentStatus, for the same
+// reason — an explicit user action needs a real error, not a swallowed bool.
+public enum CategorizationStatus
+{
+    NotConfigured,
+    Failed,
+    Ok
+}
+
+public sealed record CategorizationRequest(string Word, string Definition);
+
+// "existing" fills Category; "new" fills NewCategoryName, and
+// NewCategoryParent stays null when the suggestion is a new root.
+public sealed record CategorizationSuggestion(
+    string Decision,
+    CategoryRef? Category,
+    [property: JsonPropertyName("new_category_name")] string? NewCategoryName,
+    [property: JsonPropertyName("new_category_parent")] CategoryRef? NewCategoryParent,
+    string Justification);
+
+public enum CategoryReindexStatus
+{
+    NotConfigured,
+    Failed,
+    Ok
+}
+
+public sealed record CategoryReindexResult(
+    int Embedded,
+    int Unchanged,
+    [property: JsonPropertyName("orphans_removed")] int OrphansRemoved);
+
 // Same NotConfigured/Failed/Ok shape as EntryEnrichmentStatus, for the same
 // reason — an explicit user action needs a real error, not a swallowed bool.
 public enum RephraseDefinitionStatus
@@ -307,6 +341,76 @@ public sealed class VocabularyApiClient
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
             return (RephraseDefinitionStatus.Failed, null, ex.Message);
+        }
+    }
+
+    // Retrieval (embeddings + cosine similarity, purely local) plus one LLM
+    // decision on the resulting top-K — see the categorization pipeline in
+    // Docs/Plan-Phase-3-Auto-Categorisation.md. Word/Definition here are
+    // whatever the caller currently has (a draft's bound fields, or an
+    // already-saved entry's) — this call never looks anything up itself.
+    public async Task<(CategorizationStatus Status, CategorizationSuggestion? Suggestion, string? ErrorDetail)> TryCategorizeEntryAsync(CategorizationRequest request)
+    {
+        if (_enrichmentHttpClient is null)
+        {
+            return (CategorizationStatus.NotConfigured, null, null);
+        }
+
+        try
+        {
+            using var response = await _enrichmentHttpClient
+                .PostAsJsonAsync("/enrichment/categorize", request, JsonOptions)
+                .ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorDetail = await ReadErrorDetailAsync(response).ConfigureAwait(false);
+                return (CategorizationStatus.Failed, null, errorDetail);
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<CategorizationSuggestion>(JsonOptions).ConfigureAwait(false);
+            return result is null
+                ? (CategorizationStatus.Failed, null, null)
+                : (CategorizationStatus.Ok, result, null);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            return (CategorizationStatus.Failed, null, ex.Message);
+        }
+    }
+
+    // Full reconciliation pass, repairing whatever the best-effort refresh
+    // after a category write missed (see api/README.md "AI enrichment") —
+    // explicit user action, so failures surface instead of being swallowed
+    // the way that write-time refresh is. No body: the server recomputes
+    // everything that drifted on its own.
+    public async Task<(CategoryReindexStatus Status, CategoryReindexResult? Result, string? ErrorDetail)> TryReindexCategoryEmbeddingsAsync()
+    {
+        if (_enrichmentHttpClient is null)
+        {
+            return (CategoryReindexStatus.NotConfigured, null, null);
+        }
+
+        try
+        {
+            using var response = await _enrichmentHttpClient
+                .PostAsync("/categories/reindex-embeddings", content: null)
+                .ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorDetail = await ReadErrorDetailAsync(response).ConfigureAwait(false);
+                return (CategoryReindexStatus.Failed, null, errorDetail);
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<CategoryReindexResult>(JsonOptions).ConfigureAwait(false);
+            return result is null
+                ? (CategoryReindexStatus.Failed, null, null)
+                : (CategoryReindexStatus.Ok, result, null);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            return (CategoryReindexStatus.Failed, null, ex.Message);
         }
     }
 

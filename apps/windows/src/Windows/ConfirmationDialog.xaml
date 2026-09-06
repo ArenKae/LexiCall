@@ -9,8 +9,7 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!-- Themed Yes/No confirmation: replaces MessageBox, a native Win32 box
-         that can't be reskinned in XAML. -->
+    <!-- Yes/No confirmation dialog -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

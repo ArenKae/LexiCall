@@ -11,18 +11,13 @@ from lexicall_api.models.entry import VocabularyEntryType
 # an already-saved entry.
 class EntryEnrichmentRequest(BaseModel):
     word: str = Field(alias="Word", min_length=1)
-    definition: str = Field(default="", alias="Definition")
+    definition: list[str] = Field(default_factory=list, alias="Definition")
     type: VocabularyEntryType = Field(default=VocabularyEntryType.UNDEFINED, alias="Type")
     synonyms: list[str] = Field(default_factory=list, alias="Synonyms")
     example_sentences: list[str] = Field(default_factory=list, alias="ExampleSentences")
     locked_fields: list[str] = Field(default_factory=list, alias="LockedFields")
 
     model_config = ConfigDict(populate_by_name=True)
-
-
-class TextFieldSuggestion(BaseModel):
-    value: str
-    justification: str | None = None
 
 
 class TypeFieldSuggestion(BaseModel):
@@ -40,7 +35,7 @@ class EntryEnrichmentSuggestions(BaseModel):
     # word/expression — every other field is then absent, no suggestion
     # content is sent even if the model produced some.
     word_recognized: bool = True
-    definition: TextFieldSuggestion | None = None
+    definition: ListFieldSuggestion | None = None
     type: TypeFieldSuggestion | None = None
     synonyms: ListFieldSuggestion | None = None
     example_sentences: ListFieldSuggestion | None = None
@@ -49,8 +44,9 @@ class EntryEnrichmentSuggestions(BaseModel):
 class CategorizationRequest(BaseModel):
     word: str = Field(alias="Word", min_length=1)
     # Optional but worth sending: a bare word is thin signal next to the
-    # word plus what it means.
-    definition: str = Field(default="", alias="Definition")
+    # word plus what it means. One element per sense — each is retrieved
+    # separately, so a two-sense word reaches both its lexical fields.
+    definition: list[str] = Field(default_factory=list, alias="Definition")
 
     model_config = ConfigDict(populate_by_name=True)
 

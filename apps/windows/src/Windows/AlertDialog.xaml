@@ -9,8 +9,7 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!-- Themed single-OK-button notice: replaces MessageBox, a native Win32 box
-         that can't be reskinned in XAML. -->
+    <!-- Notice dialog -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

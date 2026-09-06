@@ -38,8 +38,18 @@ ENTRY_ENRICHMENT_INSTRUCTIONS = (
     "de doute, ne propose rien pour ce champ (laisse sa valeur à null). "
     "Quand tu proposes une valeur pour un champ non vide, inclus toujours une "
     "courte justification. Pour un champ vide, la justification peut rester "
-    "vide. La définition ne doit jamais mentionner la nature grammaticale du "
-    "mot. Aucun champ de la réponse (définition, justification, synonymes, "
+    "vide. La définition est une liste : un élément par sens distinct, et un "
+    "seul élément quand le mot n'en a qu'un — c'est le cas le plus fréquent. "
+    "Trois sens au maximum, et uniquement ceux qu'un lecteur rencontrera "
+    "réellement dans un texte : garde les sens littéraires ou vieillis, qui "
+    "sont précisément ceux qu'on croise en lisant, mais écarte les "
+    "acceptions techniques très spécialisées ou anecdotiques (vocabulaire de "
+    "métier, cas particuliers d'une espèce animale...), même attestées. "
+    "Fusionne en un seul élément les "
+    "variantes grammaticales d'un même sens (l'adjectif et le nom "
+    "correspondant ne font qu'un sens). Ne découpe jamais un sens unique en "
+    "plusieurs morceaux pour étoffer la liste. La définition ne doit jamais "
+    "mentionner la nature grammaticale du mot. Aucun champ de la réponse (définition, justification, synonymes, "
     "exemples) ne doit jamais contenir de lien ni de balisage markdown (pas "
     "de \"[texte](url)\") ni de mention explicite d'une source : écris "
     "uniquement du texte brut partout, y compris quand tu t'appuies sur la "
@@ -95,6 +105,14 @@ _CURRENT_VALUE_LABELS = {
 
 def _current_value_text(entry: dict, field: str) -> str:
     value = entry.get(field)
+    if field == "Definition":
+        # Numbered so the model sees the senses as distinct entries rather
+        # than one run-on definition.
+        if not value:
+            return "vide"
+        if len(value) == 1:
+            return value[0]
+        return "\n" + "\n".join(f"  {i}. {sense}" for i, sense in enumerate(value, start=1))
     if field in ("Synonyms", "ExampleSentences"):
         return ", ".join(value) if value else "aucun"
     return value if value else "vide"
@@ -117,9 +135,8 @@ def _field_value_schema(field: str) -> dict:
             "type": "string",
             "enum": [t.value for t in VocabularyEntryType if t != VocabularyEntryType.UNDEFINED],
         }
-    if field in ("Synonyms", "ExampleSentences"):
-        return {"type": "array", "items": {"type": "string"}}
-    return {"type": "string"}  # Definition
+    # Definition included: one array element per sense.
+    return {"type": "array", "items": {"type": "string"}}
 
 
 def _build_entry_enrichment_schema(unlocked: list[str]) -> dict:
@@ -184,11 +201,19 @@ def rephrase_definition(word: str, definition: str) -> str:
 DEFAULT_CATEGORY_CANDIDATES = 6
 
 
-def find_category_candidates(word: str, definition: str, k: int = DEFAULT_CATEGORY_CANDIDATES) -> list[dict]:
+def find_category_candidates(word: str, senses: list[str], k: int = DEFAULT_CATEGORY_CANDIDATES) -> list[dict]:
     """The categories closest to a word, best first, as
-    {id, name, path, score}. One embeddings call for the word itself, then a
-    purely local comparison against the stored category vectors — no LLM,
-    and no token cost that grows with the corpus.
+    {id, name, path, score}. One embeddings call, then a purely local
+    comparison against the stored category vectors — no LLM, and no token
+    cost that grows with the corpus.
+
+    Each sense is vectorized and ranked separately, then the top-k of each
+    are merged: a single vector for a word meaning two different things
+    lands between the two and surfaces neither. Measured on "ladre" (leper /
+    miser), the second sense's category sat at rank 9 of 42 when both senses
+    shared one vector, and at rank 3 once split. k is therefore per sense,
+    and the returned list can hold up to k per sense — dropping the excess
+    by global score would put the low-scoring sense right back out of reach.
 
     Comes back empty when no category has been indexed yet, which reads the
     same as "nothing matches": with no category to attach to, proposing a
@@ -197,14 +222,16 @@ def find_category_candidates(word: str, definition: str, k: int = DEFAULT_CATEGO
     if not stored:
         return []
 
-    query_text = f"{word} — {definition}".strip(" —") if definition.strip() else word
-    query_vector = embeddings.embed_texts([query_text])[0]
+    query_texts = [f"{word} — {sense}".strip(" —") for sense in senses if sense.strip()] or [word]
+    query_vectors = embeddings.embed_texts(query_texts)
 
-    ranked = embeddings.top_similar(
-        query_vector,
-        [(doc["Id"], doc["Vector"]) for doc in stored],
-        k,
-    )
+    pairs = [(doc["Id"], doc["Vector"]) for doc in stored]
+    best_by_id: dict[str, float] = {}
+    for query_vector in query_vectors:
+        for category_id, score in embeddings.top_similar(query_vector, pairs, k):
+            if score > best_by_id.get(category_id, float("-inf")):
+                best_by_id[category_id] = score
+    ranked = sorted(best_by_id.items(), key=lambda item: item[1], reverse=True)
 
     categories = categories_repo.list_categories()
     by_id = {category["Id"]: category for category in categories}
@@ -246,13 +273,13 @@ CATEGORIZATION_INSTRUCTIONS = (
 )
 
 
-def suggest_category(word: str, definition: str) -> dict:
+def suggest_category(word: str, senses: list[str]) -> dict:
     """Decides where a word belongs: an existing category, or a new one to
     create. Only the closest candidates reach the LLM — that's what keeps
     the token cost flat as the corpus grows — plus every root category, so a
     new category can still be parented sensibly when similarity didn't
     surface the right branch at all."""
-    candidates = find_category_candidates(word, definition)
+    candidates = find_category_candidates(word, senses)
 
     categories = categories_repo.list_categories()
     by_id = {category["Id"]: category for category in categories}
@@ -266,7 +293,7 @@ def suggest_category(word: str, definition: str) -> dict:
         if by_id.get(category.get("ParentId")) is None
     ]
 
-    prompt = _build_categorization_prompt(word, definition, candidates, roots)
+    prompt = _build_categorization_prompt(word, senses, candidates, roots)
     schema = _build_categorization_schema(
         [candidate["id"] for candidate in candidates],
         [root["id"] for root in roots],
@@ -282,13 +309,17 @@ def suggest_category(word: str, definition: str) -> dict:
 
 def _build_categorization_prompt(
     word: str,
-    definition: str,
+    senses: list[str],
     candidates: list[dict],
     roots: list[dict],
 ) -> str:
     lines = [f"Mot : {word}"]
-    if definition.strip():
-        lines.append(f"Définition : {definition}")
+    written = [sense for sense in senses if sense.strip()]
+    if len(written) == 1:
+        lines.append(f"Définition : {written[0]}")
+    elif written:
+        lines.append("Définition (plusieurs sens) :")
+        lines.extend(f"  {i}. {sense}" for i, sense in enumerate(written, start=1))
 
     if candidates:
         lines.append("\nCatégories candidates (de la plus proche à la moins proche) :")

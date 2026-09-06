@@ -241,6 +241,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(SelectedEntrySyncIsSynced));
                 OnPropertyChanged(nameof(ArchiveButtonText));
                 OnPropertyChanged(nameof(CanEnrichEntry));
+                OnPropertyChanged(nameof(CanCategorizeEntry));
             }
         }
     }
@@ -278,6 +279,34 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public bool CanEnrichEntry => !IsEnrichingEntry && SelectedEntry is not null && ApiClient.IsConfigured;
+
+    private bool _isCategorizingEntry;
+
+    // Independent from IsEnrichingEntry so the two Détails-card buttons
+    // animate/disable separately — they're separate pipelines (see
+    // Roadmap-AI-Enrichment.md "Architecture UI verrouillée").
+    public bool IsCategorizingEntry
+    {
+        get => _isCategorizingEntry;
+        set
+        {
+            if (SetProperty(ref _isCategorizingEntry, value))
+            {
+                OnPropertyChanged(nameof(CanCategorizeEntry));
+            }
+        }
+    }
+
+    public bool CanCategorizeEntry => !IsCategorizingEntry && SelectedEntry is not null && ApiClient.IsConfigured;
+
+    private bool _isReindexingCategories;
+
+    // Drives the category column footer's "Mettre à jour la catégorisation automatique" row.
+    public bool IsReindexingCategories
+    {
+        get => _isReindexingCategories;
+        set => SetProperty(ref _isReindexingCategories, value);
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

@@ -10,11 +10,7 @@
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI"
         KeyDown="Window_KeyDown">
-    <!-- Enlarged preview of an entry's image(s) (opened by clicking a
-         thumbnail in the Detail column). MaxWidth/MaxHeight are set in
-         code-behind as a fraction of the work area, so it never overflows
-         the screen. Previous/Next cycle through the owning entry's other
-         images when it has more than one. -->
+    <!-- Enlarged image preview -->
     <StackPanel Margin="24">
         <Grid>
             <Image x:Name="PreviewImage"

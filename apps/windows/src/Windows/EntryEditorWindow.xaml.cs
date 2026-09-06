@@ -12,13 +12,24 @@ public partial class EntryEditorWindow : Window
 {
     private readonly EntryEditorWindowViewModel _viewModel;
 
+    private readonly Func<VocabularyCategory, string?>? _saveCategory;
+
+    // Enrichment/categorization requests outlive the window when the user
+    // cancels before the response arrives (Annuler closes the window
+    // immediately, the HTTP call keeps running) — without this guard, the
+    // completion handler opens a review dialog with Owner set to an
+    // already-closed window, which WPF throws on and crashes the app.
+    private bool _isClosed;
+
     public EntryEditorWindow(
         VocabularyEntry? existingEntry = null,
         IEnumerable<VocabularyCategory>? availableCategories = null,
         Guid? initialCategoryId = null,
-        VocabularyApiClient? apiClient = null)
+        VocabularyApiClient? apiClient = null,
+        Func<VocabularyCategory, string?>? saveCategory = null)
     {
         _viewModel = new EntryEditorWindowViewModel(existingEntry, availableCategories, initialCategoryId, apiClient);
+        _saveCategory = saveCategory;
 
         InitializeComponent();
         DataContext = _viewModel;
@@ -32,16 +43,21 @@ public partial class EntryEditorWindow : Window
             Close();
         };
 
-        // Same reasoning: the ViewModel can't open EnrichmentReviewWindow
-        // itself, so it just signals "suggestions are ready" and the window
-        // does the rest, then reports back via ApplyEnrichmentResult.
         _viewModel.EnrichmentSuggestionsReady += (_, _) => ShowEnrichmentReview();
+        _viewModel.CategorizationSuggestionsReady += (_, _) => ShowCategorizationReview();
+
+        Closed += (_, _) => _isClosed = true;
     }
 
     public VocabularyEntry? SavedEntry => _viewModel.SavedEntry;
 
     private void ShowEnrichmentReview()
     {
+        if (_isClosed)
+        {
+            return;
+        }
+
         if (_viewModel.PendingEnrichmentSuggestions is not { } suggestions ||
             _viewModel.ApiClient is not { } apiClient)
         {
@@ -80,10 +96,69 @@ public partial class EntryEditorWindow : Window
         }
     }
 
+    private void ShowCategorizationReview()
+    {
+        if (_isClosed)
+        {
+            return;
+        }
+
+        if (_viewModel.PendingCategorizationSuggestion is not { } suggestion)
+        {
+            return;
+        }
+
+        var currentCategoryNames = _viewModel.CategorySelections
+            .Where(category => category.IsSelected)
+            .Select(category => category.Name)
+            .ToList();
+
+        var reviewViewModel = new CategorizationReviewWindowViewModel(suggestion, _viewModel.AvailableCategories, currentCategoryNames);
+        var dialog = new CategorizationReviewWindow(reviewViewModel) { Owner = this };
+
+        if (dialog.ShowDialog() != true || reviewViewModel.Result is not { } result)
+        {
+            return;
+        }
+
+        VocabularyCategory? createdCategory = null;
+
+        if (result.NewCategoryName is { } newName)
+        {
+            var newCategory = new VocabularyCategory
+            {
+                Id = Guid.NewGuid(),
+                Name = newName,
+                ParentId = result.NewCategoryParentId,
+                Description = result.NewCategoryDescription ?? string.Empty,
+                IconGlyph = result.NewCategoryIconGlyph ?? string.Empty,
+                CreatedAt = DateTimeOffset.Now,
+                UpdatedAt = DateTimeOffset.Now
+            };
+
+            var error = _saveCategory?.Invoke(newCategory);
+            if (error is not null)
+            {
+                AlertDialog.Show(this, error, "Création de catégorie impossible");
+            }
+            else
+            {
+                createdCategory = newCategory;
+            }
+        }
+
+        _viewModel.ApplyCategorization(result, createdCategory);
+    }
+
     // Caps the window to 80% of the owner's size — Owner is only guaranteed
     // set by the time the window is shown, not at construction.
     private void EntryEditorWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        if (_viewModel.CategorySelections.FirstOrDefault(category => category.IsSelected) is { } firstSelected)
+        {
+            CategoryList.ScrollIntoView(firstSelected);
+        }
+
         if (Owner is null)
         {
             return;

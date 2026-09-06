@@ -145,7 +145,8 @@ public partial class MainWindow : Window
         var dialog = new EntryEditorWindow(
             availableCategories: ViewModel.Categories,
             initialCategoryId: ViewModel.SelectedCategoryNode?.Category?.Id,
-            apiClient: ViewModel.ApiClient)
+            apiClient: ViewModel.ApiClient,
+            saveCategory: ViewModel.SaveCategory)
         {
             Owner = this
         };
@@ -167,6 +168,26 @@ public partial class MainWindow : Window
         }
     }
 
+    private void DetailCardText_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount < 3)
+        {
+            return;
+        }
+
+        var node = e.OriginalSource as DependencyObject;
+        while (node is not null and not TextBox)
+        {
+            node = VisualTreeHelper.GetParent(node);
+        }
+
+        if (node is TextBox textBox)
+        {
+            textBox.SelectAll();
+            e.Handled = true;
+        }
+    }
+
     private void EditEntryButton_Click(object sender, RoutedEventArgs e)
     {
         if (ViewModel.SelectedEntry is null)
@@ -174,7 +195,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dialog = new EntryEditorWindow(ViewModel.SelectedEntry, ViewModel.Categories, apiClient: ViewModel.ApiClient)
+        var dialog = new EntryEditorWindow(ViewModel.SelectedEntry, ViewModel.Categories, apiClient: ViewModel.ApiClient, saveCategory: ViewModel.SaveCategory)
         {
             Owner = this
         };
@@ -295,6 +316,136 @@ public partial class MainWindow : Window
         word.Length > 0 && !char.IsUpper(word[0])
             ? char.ToUpperInvariant(word[0]) + word[1..]
             : word;
+
+    private async void CategorizeEntryButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedEntry is not { } entry)
+        {
+            return;
+        }
+
+        var request = new CategorizationRequest(entry.Word, entry.Definition);
+
+        ViewModel.IsCategorizingEntry = true;
+        var (status, suggestion, errorDetail) = await ViewModel.ApiClient.TryCategorizeEntryAsync(request);
+        ViewModel.IsCategorizingEntry = false;
+
+        switch (status)
+        {
+            case CategorizationStatus.Ok when suggestion is not null:
+                ShowCategorizationReview(entry, suggestion);
+                break;
+            case CategorizationStatus.NotConfigured:
+                AlertDialog.Show(this, "La catégorisation nécessite une synchronisation API configurée (voir Options).", "Catégorisation IA");
+                break;
+            default:
+                var message = string.IsNullOrWhiteSpace(errorDetail)
+                    ? "Impossible d'obtenir une suggestion de catégorie pour le moment. Réessaie plus tard."
+                    : $"Impossible d'obtenir une suggestion de catégorie : {errorDetail}";
+                AlertDialog.Show(this, message, "Catégorisation IA");
+                break;
+        }
+    }
+
+    private void ShowCategorizationReview(Models.VocabularyEntry entry, CategorizationSuggestion suggestion)
+    {
+        var currentCategoryNames = entry.CategoryIds
+            .Select(id => ViewModel.Categories.FirstOrDefault(category => category.Id == id)?.Name)
+            .Where(name => name is not null)
+            .Select(name => name!)
+            .ToList();
+
+        var reviewViewModel = new CategorizationReviewWindowViewModel(suggestion, ViewModel.Categories, currentCategoryNames);
+        var dialog = new CategorizationReviewWindow(reviewViewModel) { Owner = this };
+
+        ViewModel.IsEditorDialogOpen = true;
+        try
+        {
+            if (dialog.ShowDialog() != true || reviewViewModel.Result is not { } result)
+            {
+                return;
+            }
+
+            Guid? categoryIdToAttach = result.ExistingCategoryId;
+
+            if (result.NewCategoryName is { } newName)
+            {
+                var newCategory = new Models.VocabularyCategory
+                {
+                    Id = Guid.NewGuid(),
+                    Name = newName,
+                    ParentId = result.NewCategoryParentId,
+                    Description = result.NewCategoryDescription ?? string.Empty,
+                    IconGlyph = result.NewCategoryIconGlyph ?? string.Empty,
+                    CreatedAt = DateTimeOffset.Now,
+                    UpdatedAt = DateTimeOffset.Now
+                };
+
+                var error = ViewModel.SaveCategory(newCategory);
+                if (error is not null)
+                {
+                    AlertDialog.Show(this, error, "Création de catégorie impossible");
+                }
+                else
+                {
+                    categoryIdToAttach = newCategory.Id;
+                }
+            }
+
+            if (categoryIdToAttach is not { } id || entry.CategoryIds.Contains(id))
+            {
+                return;
+            }
+
+            var updatedEntry = new Models.VocabularyEntry
+            {
+                Id = entry.Id,
+                Word = entry.Word,
+                Definition = entry.Definition,
+                Type = entry.Type,
+                Synonyms = entry.Synonyms,
+                ExampleSentences = entry.ExampleSentences,
+                Notes = entry.Notes,
+                Source = entry.Source,
+                CategoryIds = entry.CategoryIds.Append(id).ToList(),
+                IsArchived = entry.IsArchived,
+                LockedFields = entry.LockedFields,
+                Images = entry.Images,
+                CreatedAt = entry.CreatedAt,
+                UpdatedAt = DateTimeOffset.Now
+            };
+            ViewModel.UpdateEntry(updatedEntry);
+        }
+        finally
+        {
+            ViewModel.IsEditorDialogOpen = false;
+        }
+    }
+
+    private async void ReindexCategoriesRow_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (ViewModel.IsReindexingCategories)
+        {
+            return;
+        }
+
+        ViewModel.IsReindexingCategories = true;
+        var (status, result, errorDetail) = await ViewModel.ApiClient.TryReindexCategoryEmbeddingsAsync();
+        ViewModel.IsReindexingCategories = false;
+
+        var message = status switch
+        {
+            CategoryReindexStatus.Ok when result is not null =>
+                $"{result.Embedded} recalculée(s), {result.Unchanged} déjà à jour, {result.OrphansRemoved} orpheline(s) supprimée(s).",
+            CategoryReindexStatus.NotConfigured =>
+                "Cette action nécessite une synchronisation API configurée (voir Options).",
+            _ => string.IsNullOrWhiteSpace(errorDetail)
+                ? "Impossible de mettre à jour la catégorisation automatique pour le moment. Réessaie plus tard."
+                : $"Impossible de mettre à jour la catégorisation automatique : {errorDetail}"
+        };
+
+        AlertDialog.Show(this, message, "Mise à jour de la catégorisation automatique");
+    }
 
     private void DeleteEntryButton_Click(object sender, RoutedEventArgs e)
     {

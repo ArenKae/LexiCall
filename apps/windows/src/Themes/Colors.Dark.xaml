@@ -1,6 +1,4 @@
-<!-- Dark theme: same brush keys as Colors.Light.xaml. Warm charcoal palette
-     (values calibrated against the target mockups in Templates/) instead of
-     Discord's cold blue-gray, with a muted indigo accent. -->
+<!-- Dark theme -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
@@ -15,12 +13,7 @@
     <SolidColorBrush x:Key="Brush.Text.Muted" Color="#8E8880" />
     <SolidColorBrush x:Key="Brush.Text.OnAccent" Color="#FFFFFF" />
 
-    <!-- Raw Color (not a Brush): needed wherever a property isn't Brush-typed,
-         e.g. the TextBox focus glow's DropShadowEffect.Color in Styles.xaml.
-         Hue matches the app icon's "ribbon blue" (see AppIcon.ico, and the
-         near-identical light-theme Accent below) rather than the mockup's
-         own violet — same saturation/lightness as that first sample, just
-         rotated onto the icon's actual hue for brand consistency. -->
+    <!-- Accent -->
     <Color x:Key="Color.Accent">#557EB4</Color>
     <SolidColorBrush x:Key="Brush.Accent" Color="{StaticResource Color.Accent}" />
     <SolidColorBrush x:Key="Brush.Accent.Hover" Color="#7194C1" />
@@ -33,7 +26,6 @@
     <SolidColorBrush x:Key="Brush.Chip.Neutral.Background" Color="#4A443B" />
     <SolidColorBrush x:Key="Brush.Chip.Neutral.Foreground" Color="#BDB6AC" />
 
-    <!-- Synonym chips: Surface + 5% (subtle overlay, not a distinct "surface" tone). -->
     <SolidColorBrush x:Key="Brush.Chip.Synonym.Background" Color="#322F2B" />
 
     <SolidColorBrush x:Key="Brush.Selection.Background" Color="#3F3A32" />
@@ -41,12 +33,6 @@
 
     <SolidColorBrush x:Key="Brush.Input.Background" Color="#272420" />
 
-    <!-- Fixed neutral grey for non-colorable vector icons (virtual category
-         nodes, "All entries"/"Uncategorized"): lighter than the light-theme
-         value (OKLCH L=0.72 vs L=0.58) to read with the same vividness dark
-         theme's colored category icons already target. A flat grey with the
-         same absolute lightness as the light-theme value reads visibly
-         dimmer against this darker background. -->
     <SolidColorBrush x:Key="Brush.Icon.Neutral" Color="#A4A4A4" />
 
 </ResourceDictionary>

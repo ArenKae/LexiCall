@@ -10,8 +10,7 @@
         Background="{DynamicResource Brush.Window.Background}"
         Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI">
-    <!-- Options window (opened from the main window's gear button): theme
-         toggle, API sync settings, and data folder access. -->
+    <!-- Options window -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
