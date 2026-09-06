@@ -154,6 +154,11 @@ public partial class EntryEditorWindow : Window
     // set by the time the window is shown, not at construction.
     private void EntryEditorWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        if (_viewModel.CategorySelections.FirstOrDefault(category => category.IsSelected) is { } firstSelected)
+        {
+            CategoryList.ScrollIntoView(firstSelected);
+        }
+
         if (Owner is null)
         {
             return;

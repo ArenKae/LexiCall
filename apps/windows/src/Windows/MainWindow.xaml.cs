@@ -168,6 +168,26 @@ public partial class MainWindow : Window
         }
     }
 
+    private void DetailCardText_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount < 3)
+        {
+            return;
+        }
+
+        var node = e.OriginalSource as DependencyObject;
+        while (node is not null and not TextBox)
+        {
+            node = VisualTreeHelper.GetParent(node);
+        }
+
+        if (node is TextBox textBox)
+        {
+            textBox.SelectAll();
+            e.Handled = true;
+        }
+    }
+
     private void EditEntryButton_Click(object sender, RoutedEventArgs e)
     {
         if (ViewModel.SelectedEntry is null)
@@ -418,13 +438,13 @@ public partial class MainWindow : Window
             CategoryReindexStatus.Ok when result is not null =>
                 $"{result.Embedded} recalculée(s), {result.Unchanged} déjà à jour, {result.OrphansRemoved} orpheline(s) supprimée(s).",
             CategoryReindexStatus.NotConfigured =>
-                "La resynchronisation nécessite une synchronisation API configurée (voir Options).",
+                "Cette action nécessite une synchronisation API configurée (voir Options).",
             _ => string.IsNullOrWhiteSpace(errorDetail)
-                ? "Impossible de resynchroniser les catégories pour le moment. Réessaie plus tard."
-                : $"Impossible de resynchroniser les catégories : {errorDetail}"
+                ? "Impossible de mettre à jour la catégorisation automatique pour le moment. Réessaie plus tard."
+                : $"Impossible de mettre à jour la catégorisation automatique : {errorDetail}"
         };
 
-        AlertDialog.Show(this, message, "Resynchronisation des catégories");
+        AlertDialog.Show(this, message, "Mise à jour de la catégorisation automatique");
     }
 
     private void DeleteEntryButton_Click(object sender, RoutedEventArgs e)

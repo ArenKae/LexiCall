@@ -301,7 +301,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool _isReindexingCategories;
 
-    // Drives the category column footer's "Resynchroniser les catégories" row.
+    // Drives the category column footer's "Mettre à jour la catégorisation automatique" row.
     public bool IsReindexingCategories
     {
         get => _isReindexingCategories;

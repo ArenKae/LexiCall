@@ -448,21 +448,38 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
-                                    <ListBox ItemsSource="{Binding CategorySelections}"
+                                    <ListBox x:Name="CategoryList"
+                                             ItemsSource="{Binding CategorySelections}"
                                              Height="330"
                                              Padding="8"
                                              ScrollViewer.VerticalScrollBarVisibility="Auto">
                                         <ListBox.ItemContainerStyle>
                                             <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
-                                                <Setter Property="Padding" Value="4,3" />
+                                                <Setter Property="Padding" Value="2,1" />
                                                 <Setter Property="Margin" Value="0" />
                                             </Style>
                                         </ListBox.ItemContainerStyle>
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
-                                                <CheckBox Content="{Binding Name}"
-                                                          Margin="{Binding Depth, Converter={StaticResource DepthToIndentConverter}}"
-                                                          IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <Border CornerRadius="4"
+                                                        Padding="4,2"
+                                                        BorderThickness="3,0,0,0">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="Transparent" />
+                                                            <Setter Property="BorderBrush" Value="Transparent" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                    <Setter Property="Background" Value="{DynamicResource Brush.Selection.Background}" />
+                                                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <CheckBox Content="{Binding Name}"
+                                                              Margin="{Binding Depth, Converter={StaticResource DepthToIndentConverter}}"
+                                                              IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                </Border>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>
