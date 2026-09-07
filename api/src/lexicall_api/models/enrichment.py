@@ -12,7 +12,9 @@ from lexicall_api.models.entry import VocabularyEntryType
 class EntryEnrichmentRequest(BaseModel):
     word: str = Field(alias="Word", min_length=1)
     definition: list[str] = Field(default_factory=list, alias="Definition")
-    type: VocabularyEntryType = Field(default=VocabularyEntryType.UNDEFINED, alias="Type")
+    type: list[VocabularyEntryType] = Field(
+        default_factory=lambda: [VocabularyEntryType.UNDEFINED], alias="Type"
+    )
     synonyms: list[str] = Field(default_factory=list, alias="Synonyms")
     example_sentences: list[str] = Field(default_factory=list, alias="ExampleSentences")
     locked_fields: list[str] = Field(default_factory=list, alias="LockedFields")
@@ -21,7 +23,9 @@ class EntryEnrichmentRequest(BaseModel):
 
 
 class TypeFieldSuggestion(BaseModel):
-    value: VocabularyEntryType
+    # Kept apart from ListFieldSuggestion so the enum still validates each
+    # entry, rather than accepting any string.
+    value: list[VocabularyEntryType]
     justification: str | None = None
 
 

@@ -97,6 +97,17 @@ only on newlines the user wrote themselves (never on punctuation, which on real 
 rephrasing far more often than a sense) and leaving `UpdatedAt` untouched, since a schema change
 is not a user edit.
 
+`Type` is a list too, but at the entry level rather than per sense: a word can genuinely work as
+several parts of speech ("rose": noun and adjective) without each sense needing its own type — the
+definition rules deliberately merge an adjective and its corresponding noun into a single sense, so
+per-sense typing would fight them. Capped at two via `maxItems` in the schema, which is safe here
+though not on the free-text lists: each item must be an exact enum value, so a capped array can't
+be worked around by cramming two answers into one element. `["Undefined"]` is how an untyped entry
+is stored, and it never coexists with a real type. `Nom` sits alongside `Nom masculin`/`Nom
+féminin` for words used in both genders ("un/une juste", "la rose" the flower vs "le rose" the
+colour), where picking a gender would be arbitrary. `migration/wrap_entry_types.py` converts an
+existing corpus by plain wrapping, inferring no second type.
+
 `POST /enrichment/fields` judges, per field (Definition/Type/Synonyms/ExampleSentences), whether
 the given current value is worth suggesting a replacement for — conservative by default, a
 non-empty field is only touched when there's a real gap. Takes the field values in the request

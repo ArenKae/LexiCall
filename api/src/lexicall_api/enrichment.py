@@ -6,6 +6,10 @@ from lexicall_api.models.entry import VocabularyEntryType
 from lexicall_api.repositories import categories_repo, category_embeddings_repo
 
 ENRICHABLE_FIELDS = ("Definition", "Type", "Synonyms", "ExampleSentences")
+
+# A word taking three genuine grammatical natures is already rare; beyond
+# that the model is enumerating its word family rather than the word.
+MAX_ENTRY_TYPES = 2
 # PascalCase (matches VocabularyEntry.LockedFields entries / JSON aliases) ->
 # snake_case (matches the JSON schema sent to the LLM and the response dict
 # key expected by EntryEnrichmentSuggestions).
@@ -70,6 +74,33 @@ ENTRY_ENRICHMENT_INSTRUCTIONS = (
     "lisant ; n'écarte que les emplois régionaux, argotiques ou propres à "
     "une espèce animale, qu'un lecteur francophone ne rencontrera "
     "pratiquement jamais. "
+    "RÈGLES IMPÉRATIVES POUR LE TYPE, une liste de natures grammaticales "
+    "portant sur le mot entier et non sur un sens précis : "
+    "(1) UN SEUL type est le cas normal. Deux uniquement pour les mots "
+    "vraiment bi-catégoriels (« rose » nom et adjectif, « bien » adverbe et "
+    "nom). Jamais plus de deux, sauf nécessité absolue. "
+    "(2) TEST À APPLIQUER AVANT CHAQUE TYPE : ce mot, écrit exactement "
+    "comme il t'est donné, s'emploie-t-il couramment sous cette nature dans "
+    "une phrase ? Si tu dois changer sa terminaison pour que ça marche, "
+    "c'est un autre mot de la même famille et il ne compte pas — « bruine » "
+    "est un nom, « bruiner » est un verbe différent ; « carte » est un nom, "
+    "il n'y a pas de verbe « carte ». "
+    "(3) Quand un nom s'emploie aux deux genres (« un ou une juste », « un "
+    "ou une ladre »), utilise le type « Nom » : ne mets jamais « Nom "
+    "masculin » et « Nom féminin » ensemble, et ne choisis pas un genre "
+    "arbitrairement. Réserve « Nom masculin » et « Nom féminin » aux mots "
+    "dont le genre est fixe. N'ajoute par ailleurs une nature nominale à un "
+    "adjectif que si cet emploi nominal est vraiment courant. "
+    "(3 bis) Cite toujours la nature principale du mot en premier, celle "
+    "sous laquelle on le rencontre le plus souvent : « juste » et « ladre » "
+    "sont avant tout des adjectifs. Si tu dois t'arrêter à deux, c'est la "
+    "nature secondaire qui saute, jamais la principale. "
+    "(4) Ne déduis pas un type par sens : plusieurs sens d'une même nature "
+    "ne donnent qu'un seul type. "
+    "(5) Ne retiens Verbe que si le mot t'est donné à l'infinitif. Une forme "
+    "conjuguée n'est pas un verbe pour ce champ : « bruine » est un nom, "
+    "même si c'est aussi la forme conjuguée de « bruiner » — il faudrait que "
+    "le mot saisi soit « bruiner » pour que Verbe s'applique. "
     "La définition ne doit jamais "
     "mentionner la nature grammaticale du mot. Aucun champ de la réponse (définition, justification, synonymes, "
     "exemples) ne doit jamais contenir de lien ni de balisage markdown (pas "
@@ -135,7 +166,7 @@ def _current_value_text(entry: dict, field: str) -> str:
         if len(value) == 1:
             return value[0]
         return "\n" + "\n".join(f"  {i}. {sense}" for i, sense in enumerate(value, start=1))
-    if field in ("Synonyms", "ExampleSentences"):
+    if field in ("Type", "Synonyms", "ExampleSentences"):
         return ", ".join(value) if value else "aucun"
     return value if value else "vide"
 
@@ -153,9 +184,16 @@ def _build_entry_enrichment_prompt(entry: dict, unlocked: list[str], context: st
 
 def _field_value_schema(field: str) -> dict:
     if field == "Type":
+        # maxItems is safe here, unlike on the free-text lists: each item
+        # must be an exact enum value, so a capped array can't be worked
+        # around by cramming two answers into one element.
         return {
-            "type": "string",
-            "enum": [t.value for t in VocabularyEntryType if t != VocabularyEntryType.UNDEFINED],
+            "type": "array",
+            "maxItems": MAX_ENTRY_TYPES,
+            "items": {
+                "type": "string",
+                "enum": [t.value for t in VocabularyEntryType if t != VocabularyEntryType.UNDEFINED],
+            },
         }
     # Definition included: one array element per sense.
     return {"type": "array", "items": {"type": "string"}}

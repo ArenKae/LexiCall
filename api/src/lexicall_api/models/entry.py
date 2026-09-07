@@ -12,6 +12,9 @@ MAX_IMAGES_PER_ENTRY = 4
 class VocabularyEntryType(str, Enum):
     NOM_MASCULIN = "Nom masculin"
     NOM_FEMININ = "Nom féminin"
+    # For nouns used in both genders ("un/une juste"), where picking a
+    # gender would be arbitrary.
+    NOM = "Nom"
     VERBE = "Verbe"
     ADJECTIF = "Adjectif"
     ADVERBE = "Adverbe"
@@ -45,9 +48,10 @@ class VocabularyEntryWrite(BaseModel):
     notes: str = Field(default="", alias="Notes")
     source: str = Field(default="", alias="Source")
     category_ids: list[str] = Field(default_factory=list, alias="CategoryIds")
-    # No default: every push must state a type explicitly (Undefined is a
-    # real enum member, not a silent fallback at this layer).
-    type: VocabularyEntryType = Field(alias="Type")
+    # One element per grammatical nature the word genuinely takes ("rose":
+    # noun and adjective). No default: every push states it explicitly, and
+    # ["Undefined"] is how an untyped entry is stored.
+    type: list[VocabularyEntryType] = Field(alias="Type", min_length=1)
     is_archived: bool = Field(default=False, alias="IsArchived")
     images: list[VocabularyEntryImageWrite] = Field(default_factory=list, alias="Images")
     # Field names excluded from AI enrichment requests (see enrichment.py) —
@@ -60,6 +64,16 @@ class VocabularyEntryWrite(BaseModel):
     created_at: datetime | None = Field(default=None, alias="CreatedAt")
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("type")
+    @classmethod
+    def _validate_type(cls, value: list[VocabularyEntryType]) -> list[VocabularyEntryType]:
+        # Deduplicated, and Undefined dropped as soon as a real type is
+        # present: "untyped plus adjective" says nothing the adjective alone
+        # doesn't.
+        types = list(dict.fromkeys(value))
+        real = [t for t in types if t != VocabularyEntryType.UNDEFINED]
+        return real or [VocabularyEntryType.UNDEFINED]
 
     @field_validator("definition")
     @classmethod
@@ -89,7 +103,9 @@ class VocabularyEntrySummary(BaseModel):
     # Defaults kept even though the type is conceptually required: a safety
     # net for any document the migration hasn't backfilled yet (belt-and-
     # suspenders alongside the strict deploy-after-migration rollout order).
-    type: VocabularyEntryType = Field(default=VocabularyEntryType.UNDEFINED, alias="Type")
+    type: list[VocabularyEntryType] = Field(
+        default_factory=lambda: [VocabularyEntryType.UNDEFINED], alias="Type"
+    )
     is_archived: bool = Field(default=False, alias="IsArchived")
     images: list[VocabularyEntryImage] = Field(default_factory=list, alias="Images")
     locked_fields: list[str] = Field(default_factory=list, alias="LockedFields")
