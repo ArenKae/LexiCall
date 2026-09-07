@@ -1,14 +1,19 @@
 # AI enrichment orchestration: composes llm_client + external context
 # sources (wiktionary_client, embeddings, ...) into prompts for each
 # enrichment feature.
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from typing import Literal
+
 from lexicall_api import embeddings, llm_client, wiktionary_client
 from lexicall_api.models.entry import VocabularyEntryType
 from lexicall_api.repositories import categories_repo, category_embeddings_repo
 
 ENRICHABLE_FIELDS = ("Definition", "Type", "Synonyms", "ExampleSentences")
 
-# A word taking three genuine grammatical natures is already rare; beyond
-# that the model is enumerating its word family rather than the word.
+# A word taking three genuine grammatical natures is already rare, and an
+# extra slot gets filled whether or not it is warranted: the model reaches
+# for a marginal nature rather than leaving it empty.
 MAX_ENTRY_TYPES = 2
 # PascalCase (matches VocabularyEntry.LockedFields entries / JSON aliases) ->
 # snake_case (matches the JSON schema sent to the LLM and the response dict
@@ -20,29 +25,47 @@ _FIELD_SCHEMA_KEYS = {
     "ExampleSentences": "example_sentences",
 }
 
-ENTRY_ENRICHMENT_INSTRUCTIONS = (
-    "Avant toute proposition, vérifie que « Mot » est un mot ou une "
+_RECOGNITION_GATE = (
+    "Avant toute chose, vérifie que « Mot » est un mot ou une "
     "expression française réelle et attestée — pas une suite de caractères "
-    "aléatoire, un mot inventé, ou une faute de frappe non confirmée. Si le "
-    "contexte fourni ne porte pas sur ce mot précis et que tu n'as pas de "
-    "certitude raisonnable de son existence réelle (y compris après "
-    "recherche web), réponds word_recognized=false et laisse tous les "
-    "autres champs à null : ne te rabats jamais sur un mot proche qui "
+    "aléatoire, un mot inventé, ou une faute de frappe non confirmée. Si tu "
+    "n'as pas de certitude raisonnable de son existence réelle après "
+    "recherche web, réponds word_recognized=false et laisse brief à null : ne "
+    "te rabats jamais sur un mot proche qui "
     "existe pour combler l'absence de résultat, ce serait présenter une "
     "supposition comme un fait. Sinon, réponds word_recognized=true et "
     "poursuis normalement. "
-    "Tu proposes des améliorations aux champs d'une entrée de vocabulaire "
-    "pour l'application LexiCall : Définition, Type grammatical, Synonymes, "
-    "Exemples. Pour chaque champ présent dans le schéma de sortie, décide "
-    "s'il mérite une suggestion. Règle par défaut : reste conservateur et "
-    "paresseux. Un champ vide reçoit toujours une proposition. Un champ non "
-    "vide ne doit être retouché que si c'est réellement justifié : faute, "
-    "ponctuation manquante, sens manifestement absent — jamais une simple "
-    "reformulation stylistique d'un contenu déjà correct et complet. En cas "
-    "de doute, ne propose rien pour ce champ (laisse sa valeur à null). "
-    "Quand tu proposes une valeur pour un champ non vide, inclus toujours une "
-    "courte justification. Pour un champ vide, la justification peut rester "
-    "vide. "
+)
+
+_GROUNDING_BRIEF = (
+    "Rédige alors dans brief un exposé factuel de tout ce qui est attesté sur "
+    "ce mot : chacun de ses sens, ses natures grammaticales, ses synonymes, "
+    "et des exemples d'emploi réels. Ce texte est la matière première d'un "
+    "traitement ultérieur qui fera lui-même le tri, pas une réponse destinée "
+    "à un lecteur : n'y applique aucune sélection ni aucune synthèse, préfère "
+    "l'exhaustivité à la concision, et n'omets aucun sens, y compris rare, "
+    "littéraire, vieilli, technique, spécialisé ou régional. "
+)
+
+
+def _suggestion_policy(fields_label: str) -> str:
+    return (
+        "Tu proposes des améliorations aux champs d'une entrée de vocabulaire "
+        f"pour l'application LexiCall : {fields_label}. Pour chaque champ "
+        "présent dans le schéma de sortie, décide "
+        "s'il mérite une suggestion. Règle par défaut : reste conservateur et "
+        "paresseux. Un champ vide reçoit toujours une proposition. Un champ non "
+        "vide ne doit être retouché que si c'est réellement justifié : faute, "
+        "ponctuation manquante, sens manifestement absent — jamais une simple "
+        "reformulation stylistique d'un contenu déjà correct et complet. En cas "
+        "de doute, ne propose rien pour ce champ (laisse sa valeur à null). "
+        "Quand tu proposes une valeur pour un champ non vide, inclus toujours une "
+        "courte justification. Pour un champ vide, la justification peut rester "
+        "vide. "
+    )
+
+
+_DEFINITION_RULES = (
     "RÈGLES IMPÉRATIVES POUR LA DÉFINITION, une liste de sens : "
     "(1) UN SEUL sens est le cas normal, c'est ce que tu dois renvoyer par "
     "défaut. N'ajoute un élément supplémentaire que si le mot a "
@@ -74,35 +97,67 @@ ENTRY_ENRICHMENT_INSTRUCTIONS = (
     "lisant ; n'écarte que les emplois régionaux, argotiques ou propres à "
     "une espèce animale, qu'un lecteur francophone ne rencontrera "
     "pratiquement jamais. "
+    "La définition ne doit jamais "
+    "mentionner la nature grammaticale du mot. "
+)
+
+_TYPE_RULES = (
     "RÈGLES IMPÉRATIVES POUR LE TYPE, une liste de natures grammaticales "
     "portant sur le mot entier et non sur un sens précis : "
     "(1) UN SEUL type est le cas normal. Deux uniquement pour les mots "
     "vraiment bi-catégoriels (« rose » nom et adjectif, « bien » adverbe et "
-    "nom). Jamais plus de deux, sauf nécessité absolue. "
+    "nom), ou dont le genre distingue deux sens (règle 3). Jamais plus de "
+    "deux, sauf nécessité absolue. "
     "(2) TEST À APPLIQUER AVANT CHAQUE TYPE : ce mot, écrit exactement "
     "comme il t'est donné, s'emploie-t-il couramment sous cette nature dans "
     "une phrase ? Si tu dois changer sa terminaison pour que ça marche, "
     "c'est un autre mot de la même famille et il ne compte pas — « bruine » "
     "est un nom, « bruiner » est un verbe différent ; « carte » est un nom, "
     "il n'y a pas de verbe « carte ». "
-    "(3) Quand un nom s'emploie aux deux genres (« un ou une juste », « un "
-    "ou une ladre »), utilise le type « Nom » : ne mets jamais « Nom "
-    "masculin » et « Nom féminin » ensemble, et ne choisis pas un genre "
-    "arbitrairement. Réserve « Nom masculin » et « Nom féminin » aux mots "
-    "dont le genre est fixe. N'ajoute par ailleurs une nature nominale à un "
+    "(3) LE GENRE, test à appliquer : changer le genre change-t-il le sens du "
+    "mot ? Si OUI, cite « Nom masculin » ET « Nom féminin », ce sont deux "
+    "emplois distincts (« la foudre » l'éclair et « le foudre » le grand "
+    "tonneau ; « la platine » la pièce plate et « le platine » le métal ; "
+    "« la tour » l'édifice et « le tour » la rotation). Si NON, parce que le "
+    "mot désigne la même chose et s'accorde seulement avec la personne (« un "
+    "ou une juste », « un ou une ladre », « un ou une élève », « un ou une "
+    "enfant »), utilise « Nom » seul : ne choisis "
+    "jamais un genre arbitrairement, et ne cite surtout pas les deux genres. "
+    "Si le mot n'a qu'un genre, cite ce seul "
+    "genre. N'ajoute par ailleurs une nature nominale à un "
     "adjectif que si cet emploi nominal est vraiment courant. "
     "(3 bis) Cite toujours la nature principale du mot en premier, celle "
     "sous laquelle on le rencontre le plus souvent : « juste » et « ladre » "
     "sont avant tout des adjectifs. Si tu dois t'arrêter à deux, c'est la "
     "nature secondaire qui saute, jamais la principale. "
     "(4) Ne déduis pas un type par sens : plusieurs sens d'une même nature "
-    "ne donnent qu'un seul type. "
+    "ne donnent qu'un seul type, sauf quand c'est le genre lui-même qui les "
+    "distingue (règle 3). "
     "(5) Ne retiens Verbe que si le mot t'est donné à l'infinitif. Une forme "
     "conjuguée n'est pas un verbe pour ce champ : « bruine » est un nom, "
     "même si c'est aussi la forme conjuguée de « bruiner » — il faudrait que "
     "le mot saisi soit « bruiner » pour que Verbe s'applique. "
-    "La définition ne doit jamais "
-    "mentionner la nature grammaticale du mot. Aucun champ de la réponse (définition, justification, synonymes, "
+)
+
+_LEXICAL_RULES = (
+    "RÈGLES IMPÉRATIVES POUR LES SYNONYMES : un synonyme doit pouvoir "
+    "remplacer le mot dans une phrase sans en changer le sens. N'y mets "
+    "jamais une expression construite à partir du mot lui-même (« rose des "
+    "vents » n'est pas un synonyme de « rose »), ni une définition déguisée "
+    "en un ou deux mots, ni un terme si rare ou technique qu'un lecteur "
+    "francophone ne le reconnaîtrait pas. SIX AU MAXIMUM, du plus courant au "
+    "plus rare, en couvrant les différents sens du mot s'il en a plusieurs. "
+    "Renvoie une liste vide plutôt qu'un à-peu-près : beaucoup de mots n'ont "
+    "aucun synonyme véritable. "
+    "RÈGLES IMPÉRATIVES POUR LES EXEMPLES : des phrases courtes et "
+    "autonomes, qui montrent le mot employé naturellement. Ni définition "
+    "déguisée en phrase, ni citation littéraire, ni phrase qui explique le "
+    "mot au lieu de s'en servir. TROIS AU MAXIMUM, un par sens illustré, en "
+    "commençant par le sens le plus courant. "
+)
+
+_STYLE_RULES = (
+    "Aucun champ de la réponse (définition, justification, synonymes, "
     "exemples) ne doit jamais contenir de lien ni de balisage markdown (pas "
     "de \"[texte](url)\") ni de mention explicite d'une source : écris "
     "uniquement du texte brut partout, y compris quand tu t'appuies sur la "
@@ -111,41 +166,123 @@ ENTRY_ENRICHMENT_INSTRUCTIONS = (
     "référence à la façon dont tu as obtenu l'information : rédige comme si "
     "tu connaissais directement le sens du mot, jamais comme si tu "
     "répondais à partir d'un texte fourni — l'utilisateur ne voit jamais ce "
-    "texte et une telle référence n'aurait aucun sens pour lui. Si un "
-    "contexte est fourni, appuie-toi dessus. Si aucun contexte n'est fourni, "
-    "utilise la recherche web pour te documenter avant de répondre."
+    "texte et une telle référence n'aurait aucun sens pour lui. "
 )
+
+_CONTEXT_USE = "Si un contexte est fourni, appuie-toi dessus."
+
+GROUNDING_INSTRUCTIONS = _RECOGNITION_GATE + _GROUNDING_BRIEF + _STYLE_RULES
+
+GROUNDING_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "word_recognized": {"type": "boolean"},
+        "brief": {"type": ["string", "null"]},
+    },
+    "required": ["word_recognized", "brief"],
+    "additionalProperties": False,
+}
+
+# Field groups, each becoming one LLM call carrying only its own rules.
+# Synonyms and ExampleSentences share a call: same kind of output, and their
+# rules are short enough not to crowd each other.
+_TASK_GROUPS = (
+    (("Definition",), _DEFINITION_RULES),
+    (("Type",), _TYPE_RULES),
+    (("Synonyms", "ExampleSentences"), _LEXICAL_RULES),
+)
+
+_FIELD_PROMPT_LABELS = {
+    "Definition": "Définition",
+    "Type": "Type grammatical",
+    "Synonyms": "Synonymes",
+    "ExampleSentences": "Exemples",
+}
+
+_CONTEXT_LABELS = {
+    "wiktionary": "Contexte (wikitext brut du Wiktionnaire) :",
+    "web": "Contexte (informations attestées sur le mot) :",
+}
+
+
+@dataclass(frozen=True)
+class Grounding:
+    recognized: bool
+    context: str | None
+    source: Literal["wiktionary", "web", "none"]
+
+
+def _ground_word(word: str) -> Grounding:
+    """Settles both whether the word is real and what context the enrichment
+    calls run on. Holds the pipeline's only web_search — every call
+    downstream receives a context, so none of them needs a tool of its own."""
+    context = wiktionary_client.fetch_definition_context(word)
+    if context:
+        return Grounding(True, context, "wiktionary")
+
+    # tool_choice="required" because "auto" doesn't reliably trigger a real
+    # search, leaving the model on internal memory alone.
+    result = llm_client.generate_structured(
+        f"Mot : {word}",
+        schema_name="grounding",
+        json_schema=GROUNDING_SCHEMA,
+        instructions=GROUNDING_INSTRUCTIONS,
+        tools=[{"type": "web_search"}],
+        tool_choice="required",
+    )
+    if not result["word_recognized"]:
+        return Grounding(False, None, "none")
+    brief = (result["brief"] or "").strip()
+    return Grounding(True, brief or None, "web" if brief else "none")
 
 
 def suggest_entry_enrichment(entry: dict) -> dict:
+    """Grounds the word once, then fans the unlocked fields out into
+    concurrent calls, each carrying only the rules of the fields it covers."""
     locked = set(entry.get("LockedFields", []))
     unlocked = [f for f in ENRICHABLE_FIELDS if f not in locked]
     if not unlocked:
         return {}
 
-    word = entry["Word"]
-    context = wiktionary_client.fetch_definition_context(word)
-    prompt = _build_entry_enrichment_prompt(entry, unlocked, context)
-    schema = _build_entry_enrichment_schema(unlocked)
-    # No Wiktionary context to ground the answer: force a real web search
-    # rather than letting the model silently fall back to internal memory
-    # alone (tool_choice="auto" doesn't reliably trigger it).
-    tools = None if context is not None else [{"type": "web_search"}]
-    tool_choice = None if context is not None else "required"
-    result = llm_client.generate_structured(
-        prompt,
-        schema_name="entry_enrichment",
-        json_schema=schema,
-        instructions=ENTRY_ENRICHMENT_INSTRUCTIONS,
-        tools=tools,
-        tool_choice=tool_choice,
-    )
-    # Enforced here too, not just via the prompt: a model that ignores the
-    # instruction and returns word_recognized=false alongside real-looking
-    # field values must not leak them to the caller.
-    if not result.pop("word_recognized", True):
+    grounding = _ground_word(entry["Word"])
+    if not grounding.recognized:
         return {"word_recognized": False}
-    return result
+
+    tasks = []
+    for group, rules in _TASK_GROUPS:
+        fields = [field for field in group if field in unlocked]
+        if fields:
+            tasks.append((fields, rules))
+
+    suggestions: dict = {}
+    first_error: Exception | None = None
+    with ThreadPoolExecutor(max_workers=len(tasks)) as pool:
+        futures = [
+            pool.submit(_run_enrichment_task, entry, fields, rules, grounding)
+            for fields, rules in tasks
+        ]
+        for future in futures:
+            try:
+                suggestions.update(future.result())
+            except Exception as exc:
+                first_error = first_error or exc
+
+    # One failed call just leaves its field unsuggested, which the client
+    # already renders as "nothing to propose". Every call failing produced
+    # nothing at all, and has to surface as an error instead.
+    if first_error is not None and not suggestions:
+        raise first_error
+    return suggestions
+
+
+def _run_enrichment_task(entry: dict, fields: list[str], rules: str, grounding: Grounding) -> dict:
+    label = ", ".join(_FIELD_PROMPT_LABELS[field] for field in fields)
+    return llm_client.generate_structured(
+        _build_entry_enrichment_prompt(entry, fields, grounding),
+        schema_name="entry_" + "_".join(_FIELD_SCHEMA_KEYS[field] for field in fields),
+        json_schema=_build_entry_enrichment_schema(fields),
+        instructions=_suggestion_policy(label) + rules + _STYLE_RULES + _CONTEXT_USE,
+    )
 
 
 _CURRENT_VALUE_LABELS = {
@@ -171,14 +308,14 @@ def _current_value_text(entry: dict, field: str) -> str:
     return value if value else "vide"
 
 
-def _build_entry_enrichment_prompt(entry: dict, unlocked: list[str], context: str | None) -> str:
+def _build_entry_enrichment_prompt(entry: dict, fields: list[str], grounding: Grounding) -> str:
     lines = [f"Mot : {entry['Word']}"]
-    for field in unlocked:
+    for field in fields:
         lines.append(f"{_CURRENT_VALUE_LABELS[field]} : {_current_value_text(entry, field)}")
-    if context is not None:
-        lines.append(f"Contexte (wikitext brut du Wiktionnaire) :\n{context}")
+    if grounding.context:
+        lines.append(f"{_CONTEXT_LABELS[grounding.source]}\n{grounding.context}")
     else:
-        lines.append("Aucun contexte Wiktionnaire disponible.")
+        lines.append("Aucun contexte disponible.")
     return "\n".join(lines)
 
 
@@ -199,9 +336,9 @@ def _field_value_schema(field: str) -> dict:
     return {"type": "array", "items": {"type": "string"}}
 
 
-def _build_entry_enrichment_schema(unlocked: list[str]) -> dict:
-    properties = {"word_recognized": {"type": "boolean"}}
-    for field in unlocked:
+def _build_entry_enrichment_schema(fields: list[str]) -> dict:
+    properties = {}
+    for field in fields:
         key = _FIELD_SCHEMA_KEYS[field]
         properties[key] = {
             "anyOf": [
@@ -425,10 +562,6 @@ def _id_enum_schema(ids: list[str]) -> dict:
 
 
 def _build_categorization_schema(candidate_ids: list[str], root_ids: list[str]) -> dict:
-    # No maxItems on the array, deliberately: the API accepts it, but a
-    # capped array makes the model cram what it wanted to say into the last
-    # element rather than drop it (checked against the real API). The count
-    # is bounded by the prompt and trimmed in _resolve_categorization.
     return {
         "type": "object",
         "properties": {

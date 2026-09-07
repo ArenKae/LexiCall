@@ -1,5 +1,6 @@
-# Fetches wikitext from the French Wiktionary (action=parse), with a
-# near-match search fallback when the exact word has no page. Trims to the
+# Fetches wikitext from the French Wiktionary (action=parse), falling back to
+# alternate spellings of the title then to a near-match search when the exact
+# word has no page. Trims to the
 # French-language section and strips subsections with no defining content
 # (etymology, translations, pronunciation, references...); keeps synonyms
 # and a capped number of literary citations as context for the Synonyms/
@@ -52,13 +53,25 @@ def _cap_citations(text: str, max_citations: int = MAX_CITATIONS_PER_ENTRY) -> s
 
 
 def fetch_definition_context(word: str) -> str | None:
-    wikitext = _parse_wikitext(word)
-    if wikitext is not None:
-        return wikitext
+    for title in _candidate_titles(word):
+        wikitext = _parse_wikitext(title)
+        if wikitext is not None:
+            return wikitext
     near_title = _search_nearmatch(word)
     if near_title is None:
         return None
     return _parse_wikitext(near_title)
+
+
+def _candidate_titles(word: str) -> list[str]:
+    # Page titles are case-sensitive, and an entry often stores joined
+    # variants ("Nareux, nareuse") that have no page under the whole string.
+    # Tried before _search_nearmatch, which is fuzzier and likelier to land
+    # on an unrelated page.
+    titles = [word, word.lower()]
+    first_variant = re.split(r"[,/]", word, maxsplit=1)[0].strip()
+    titles += [first_variant, first_variant.lower()]
+    return list(dict.fromkeys(title for title in titles if title))
 
 
 def _parse_wikitext(title: str) -> str | None:

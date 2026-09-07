@@ -2,12 +2,20 @@
 # output, reasoning effort, and the built-in web_search tool for every
 # LLM-backed feature (definition suggestion, field enrichment, categorization).
 import json
+from functools import lru_cache
 
 from openai import OpenAI
 
 from lexicall_api.config import settings
 
 MODEL = "gpt-5.6-luna"
+
+
+@lru_cache(maxsize=1)
+def _client() -> OpenAI:
+    # Shared across calls so a single enrichment, which now fans out into
+    # several concurrent requests, reuses one connection pool.
+    return OpenAI(api_key=settings.openai_api_key)
 
 
 def generate_structured(
@@ -27,9 +35,8 @@ def generate_structured(
         # OpenAI-side failure, so it's worth being explicit about.
         raise RuntimeError("OPENAI_API_KEY n'est pas configurée côté serveur (voir api/.env).")
 
-    client = OpenAI(api_key=settings.openai_api_key)
     extra_kwargs = {} if tool_choice is None else {"tool_choice": tool_choice}
-    response = client.responses.create(
+    response = _client().responses.create(
         model=MODEL,
         input=input,
         instructions=instructions,
