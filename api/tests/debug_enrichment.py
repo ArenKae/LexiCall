@@ -1,6 +1,10 @@
-# Manual debug tool for the entry-enrichment pipeline (Wiktionary lookup +
-# LLM call). Not a pytest test — lives here because it exercises the API's
-# own modules directly and isn't part of the installable package.
+# Manual debug tool for the entry-enrichment pipeline (grounding + the
+# specialized LLM calls). Not a pytest test — lives here because it exercises
+# the API's own modules directly and isn't part of the installable package.
+#
+# Runs the real suggest_entry_enrichment and reports every HTTP call it made,
+# by intercepting the OpenAI and Wiktionary clients rather than rebuilding the
+# pipeline here, so it cannot drift from the code it debugs.
 #
 # Usage:
 #   PYTHONPATH=src .venv/bin/python tests/debug_enrichment.py <mot> [--locked <champs>]
@@ -12,6 +16,7 @@
 import argparse
 import json
 import sys
+import threading
 import time
 
 from _debug_console import (
@@ -30,10 +35,50 @@ from _debug_console import (
     step,
     step_done,
 )
-from openai import OpenAI
 
 from lexicall_api import enrichment, llm_client, wiktionary_client
-from lexicall_api.config import settings
+
+_lock = threading.Lock()
+_llm_calls: list[dict] = []
+_wiktionary_titles: list[tuple[str, bool]] = []
+
+
+class _RecordingResponses:
+    def __init__(self, inner):
+        self._inner = inner
+
+    def create(self, **payload):
+        started = time.perf_counter()
+        response = self._inner.create(**payload)
+        with _lock:
+            _llm_calls.append(
+                {
+                    "started": started,
+                    "elapsed": time.perf_counter() - started,
+                    "payload": payload,
+                    "response": response,
+                }
+            )
+        return response
+
+
+class _RecordingClient:
+    def __init__(self, inner):
+        self.responses = _RecordingResponses(inner.responses)
+
+
+def install_recorders() -> None:
+    real_openai = llm_client.OpenAI
+    llm_client.OpenAI = lambda **kwargs: _RecordingClient(real_openai(**kwargs))
+
+    real_parse = wiktionary_client._parse_wikitext
+
+    def recording_parse(title: str):
+        wikitext = real_parse(title)
+        _wiktionary_titles.append((title, wikitext is not None))
+        return wikitext
+
+    wiktionary_client._parse_wikitext = recording_parse
 
 
 def build_synthetic_entry(word: str, locked_fields: list[str]) -> dict:
@@ -47,99 +92,46 @@ def build_synthetic_entry(word: str, locked_fields: list[str]) -> dict:
     }
 
 
-def wiktionary_parse_step(title: str, page: str) -> str | None:
-    t0 = step(title)
+def report_wiktionary() -> None:
+    t0 = step("Wiktionnaire — titres candidats essayés")
     request_line("GET", wiktionary_client.WIKTIONARY_API_URL)
-    kv("paramètres", f"action=parse  page={page!r}  prop=wikitext  redirects=1  format=json  formatversion=2")
-    wikitext = wiktionary_client._parse_wikitext(page)
-    if wikitext is not None:
-        response_line(f"trouvé — {len(wikitext)} caractères (après nettoyage)")
-        kv_wrapped("aperçu", wikitext[:200] + "...")
-    else:
-        response_line("introuvable ou sans section française", ok=False)
-    step_done(t0)
-    return wikitext
-
-
-def wiktionary_nearmatch_step(word: str) -> str | None:
-    t0 = step("Wiktionnaire — recherche de titres proches (action=query, srwhat=nearmatch)")
-    request_line("GET", wiktionary_client.WIKTIONARY_API_URL)
-    kv("paramètres", f"action=query  list=search  srsearch={word!r}  srwhat=nearmatch  srlimit=1  format=json  formatversion=2")
-    near_title = wiktionary_client._search_nearmatch(word)
-    if near_title:
-        response_line(f"titre proche trouvé : {near_title!r}")
-    else:
-        response_line("aucun titre proche", ok=False)
-    step_done(t0)
-    return near_title
-
-
-def llm_step(entry: dict, context: str | None) -> tuple[dict, object] | None:
-    locked = set(entry.get("LockedFields", []))
-    unlocked = [f for f in enrichment.ENRICHABLE_FIELDS if f not in locked]
-
-    t0 = step("Analyse des champs verrouillés")
-    kv("déverrouillés", ", ".join(unlocked) if unlocked else "aucun")
-    kv("verrouillés", ", ".join(locked) if locked else "aucun")
+    if not _wiktionary_titles:
+        response_line("aucune requête", ok=False)
+    for title, found in _wiktionary_titles:
+        response_line(f"{title!r} — {'section française trouvée' if found else 'rien'}", ok=found)
     step_done(t0)
 
-    if not unlocked:
-        print(c(YELLOW, "\n  Tous les champs sont verrouillés — aucun appel LLM (comportement réel de suggest_entry_enrichment)."))
-        return None
 
-    uses_web_search = context is None
-    prompt = enrichment._build_entry_enrichment_prompt(entry, unlocked, context)
-    schema = enrichment._build_entry_enrichment_schema(unlocked)
-    payload = {
-        "model": llm_client.MODEL,
-        "input": prompt,
-        "instructions": enrichment.ENTRY_ENRICHMENT_INSTRUCTIONS,
-        "text": {
-            "format": {
-                "type": "json_schema",
-                "name": "entry_enrichment",
-                "schema": schema,
-                "strict": True,
-            },
-        },
-        "reasoning": {"effort": "low"},
-        "tools": [{"type": "web_search"}] if uses_web_search else [],
-    }
-    if uses_web_search:
-        payload["tool_choice"] = "required"
-
-    title = f"Appel LLM ({llm_client.MODEL})" + (" — web_search forcé" if uses_web_search else "")
-    t0 = step(title)
+def report_llm_call(call: dict) -> None:
+    payload = call["payload"]
+    name = payload["text"]["format"]["name"]
+    tools = payload.get("tools") or []
+    title = f"Appel LLM — {name}" + (" (web_search forcé)" if tools else "")
+    step(title)
     request_line("POST", "https://api.openai.com/v1/responses")
     kv("reasoning", payload["reasoning"]["effort"])
-    kv("tools", "web_search (tool_choice=required)" if uses_web_search else "aucun")
-    kv("schéma — champs", ", ".join(schema["properties"].keys()))
+    kv("tools", "web_search (tool_choice=required)" if tools else "aucun")
+    kv("instructions", f"{len(payload['instructions'])} caractères")
     kv_wrapped("instructions", payload["instructions"])
-    kv_wrapped("input", prompt)
-    kv_wrapped("schéma JSON", json.dumps(schema, ensure_ascii=False))
+    kv_wrapped("input", payload["input"])
+    kv_wrapped("schéma JSON", json.dumps(payload["text"]["format"]["schema"], ensure_ascii=False))
 
-    client = OpenAI(api_key=settings.openai_api_key)
-    response = client.responses.create(**payload)
-
+    response = call["response"]
     result = json.loads(response.output_text)
     response_line("200 OK")
     kv("items", ", ".join(item.type for item in response.output))
-    word_recognized = result.get("word_recognized", True)
-    kv("word_recognized", c(GREEN, "true") if word_recognized else c(RED, "false"))
-    for field_key, suggestion in result.items():
-        if field_key == "word_recognized":
-            continue
-        if suggestion is None:
-            kv(field_key, c(DIM, "aucune suggestion"))
+    for key, value in result.items():
+        if value is None:
+            kv(key, c(DIM, "aucune suggestion"))
+        elif isinstance(value, dict):
+            kv_wrapped(key, f"{value['value']!r} — {value['justification'] or 'sans justification'}")
         else:
-            kv_wrapped(field_key, f"{suggestion['value']!r} — {suggestion['justification'] or 'sans justification'}")
-    step_done(t0)
-
-    return result, response
+            kv_wrapped(key, str(value))
+    print(c(DIM, f"  ⏱ {call['elapsed']:.2f}s"))
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Debug complet du pipeline d'enrichissement d'entrée (Wiktionnaire + LLM).")
+    parser = argparse.ArgumentParser(description="Debug complet du pipeline d'enrichissement d'entrée.")
     parser.add_argument("word", help="Mot à tester (simule une entrée vide pour ce mot, jamais écrite en base)")
     parser.add_argument(
         "--locked",
@@ -147,58 +139,55 @@ def main() -> None:
         help=f"Champs à simuler verrouillés, séparés par des virgules, parmi : {', '.join(enrichment.ENRICHABLE_FIELDS)}",
     )
     args = parser.parse_args()
-    word = args.word
     locked_fields = [f.strip() for f in args.locked.split(",") if f.strip()]
 
-    pipeline_start = time.perf_counter()
-    print(c(BOLD, f"Pipeline d'enrichissement — mot : {c(CYAN, word)}"))
+    install_recorders()
+    print(c(BOLD, f"Pipeline d'enrichissement — mot : {c(CYAN, args.word)}"))
     if locked_fields:
         print(c(YELLOW, f"Champs verrouillés simulés : {', '.join(locked_fields)}"))
 
-    entry = build_synthetic_entry(word, locked_fields)
+    entry = build_synthetic_entry(args.word, locked_fields)
+    pipeline_start = time.perf_counter()
+    result = enrichment.suggest_entry_enrichment(entry)
+    total_elapsed = time.perf_counter() - pipeline_start
 
-    wikitext = wiktionary_parse_step("Wiktionnaire — recherche exacte (action=parse)", word)
-
-    if wikitext is None:
-        near_title = wiktionary_nearmatch_step(word)
-        if near_title:
-            wikitext = wiktionary_parse_step(f"Wiktionnaire — nouvelle tentative avec {near_title!r}", near_title)
-
-    context = wikitext
-    llm_result = llm_step(entry, context)
+    report_wiktionary()
+    for call in sorted(_llm_calls, key=lambda call: call["started"]):
+        report_llm_call(call)
 
     step("Résumé")
-    total_elapsed = time.perf_counter() - pipeline_start
-    kv("mot", word)
-    kv("contexte", "Wiktionnaire" if context else c(YELLOW, "aucun (web_search utilisé)"))
-
-    if llm_result is None:
+    kv("mot", args.word)
+    if not _llm_calls:
         kv("résultat", c(YELLOW, "aucun appel LLM (tous les champs verrouillés)"))
-        kv("durée totale", f"{total_elapsed:.2f}s")
-        return
-
-    result, response = llm_result
-    if not result.get("word_recognized", True):
-        kv("word_recognized", c(RED, "false") + " — mot non reconnu, aucune suggestion retournée par l'endpoint réel")
+    elif not result.get("word_recognized", True):
+        kv("résultat", c(RED, "word_recognized=false") + " — mot non reconnu, aucune suggestion")
     else:
-        for field_key in ("definition", "type", "synonyms", "example_sentences"):
-            suggestion = result.get(field_key)
-            if field_key not in result:
-                kv(field_key, c(DIM, "verrouillé"))
+        for field in enrichment.ENRICHABLE_FIELDS:
+            key = enrichment._FIELD_SCHEMA_KEYS[field]
+            suggestion = result.get(key)
+            if key not in result:
+                kv(key, c(DIM, "verrouillé ou appel échoué"))
             elif suggestion is None:
-                kv(field_key, c(DIM, "aucune suggestion"))
+                kv(key, c(DIM, "aucune suggestion"))
             else:
-                kv_wrapped(field_key, str(suggestion["value"]), color=GREEN)
+                kv_wrapped(key, str(suggestion["value"]), color=GREEN)
                 if suggestion["justification"]:
-                    kv_wrapped(f"{field_key} (justif.)", suggestion["justification"])
+                    kv_wrapped(f"{key} (justif.)", suggestion["justification"])
 
-    web_search_calls = sum(1 for item in response.output if item.type == "web_search_call")
-    cost = estimate_cost(response.usage, web_search_calls)
-    usage = response.usage
-    kv("tokens entrée", f"{usage.input_tokens} (dont {usage.input_tokens_details.cached_tokens} lus depuis le cache,"
-       f" {usage.input_tokens_details.cache_write_tokens} écrits en cache)")
-    kv("tokens sortie", f"{usage.output_tokens} (dont {usage.output_tokens_details.reasoning_tokens} de raisonnement)")
-    kv("web_search", str(web_search_calls) + " appel(s)")
+    web_calls = sum(
+        1 for call in _llm_calls for item in call["response"].output if item.type == "web_search_call"
+    )
+    cost = sum(
+        estimate_cost(
+            call["response"].usage,
+            sum(1 for item in call["response"].output if item.type == "web_search_call"),
+        )
+        for call in _llm_calls
+    )
+    kv("appels LLM", str(len(_llm_calls)))
+    kv("tokens entrée", str(sum(call["response"].usage.input_tokens for call in _llm_calls)))
+    kv("tokens sortie", str(sum(call["response"].usage.output_tokens for call in _llm_calls)))
+    kv("web_search", f"{web_calls} appel(s)")
     kv("coût estimé", c(BOLD, f"${cost:.6f}") + " (tarif standard gpt-5.6-luna, cache et web_search inclus)")
     kv("durée totale", f"{total_elapsed:.2f}s")
 
