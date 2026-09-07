@@ -12,7 +12,9 @@ from lexicall_api.models.entry import VocabularyEntryType
 class EntryEnrichmentRequest(BaseModel):
     word: str = Field(alias="Word", min_length=1)
     definition: list[str] = Field(default_factory=list, alias="Definition")
-    type: VocabularyEntryType = Field(default=VocabularyEntryType.UNDEFINED, alias="Type")
+    type: list[VocabularyEntryType] = Field(
+        default_factory=lambda: [VocabularyEntryType.UNDEFINED], alias="Type"
+    )
     synonyms: list[str] = Field(default_factory=list, alias="Synonyms")
     example_sentences: list[str] = Field(default_factory=list, alias="ExampleSentences")
     locked_fields: list[str] = Field(default_factory=list, alias="LockedFields")
@@ -21,7 +23,9 @@ class EntryEnrichmentRequest(BaseModel):
 
 
 class TypeFieldSuggestion(BaseModel):
-    value: VocabularyEntryType
+    # Kept apart from ListFieldSuggestion so the enum still validates each
+    # entry, rather than accepting any string.
+    value: list[VocabularyEntryType]
     justification: str | None = None
 
 
@@ -65,7 +69,7 @@ class CategoryCandidatesResult(BaseModel):
     candidates: list[CategoryCandidate]
 
 
-class CategorizationSuggestion(BaseModel):
+class CategorySuggestion(BaseModel):
     # "existing" fills category; "new" fills new_category_name, and
     # new_category_parent stays null when the suggestion is a new root.
     decision: Literal["existing", "new"]
@@ -73,6 +77,17 @@ class CategorizationSuggestion(BaseModel):
     new_category_name: str | None = None
     new_category_parent: CategoryRef | None = None
     justification: str
+
+
+class CategorizationSuggestions(BaseModel):
+    # False when the LLM couldn't confirm Word is a real, existing French
+    # word/expression — suggestions is then empty, no category proposed and
+    # none invented to house it.
+    word_recognized: bool = True
+    # Usually one. Several only when the word carries genuinely distinct
+    # senses across different lexical fields ("ladre": leper / miser), each
+    # saying which sense it covers.
+    suggestions: list[CategorySuggestion]
 
 
 class RephraseDefinitionRequest(BaseModel):

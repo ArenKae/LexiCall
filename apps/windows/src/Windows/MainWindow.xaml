@@ -1132,13 +1132,45 @@
                                                  FontStyle="Italic"
                                                  Foreground="{DynamicResource Brush.Text.Secondary}"
                                                  Margin="0,2,0,0" />
-                                        <TextBox Text="{Binding Definition, Mode=OneWay}"
-                                                 Style="{StaticResource SelectableTextStyle}"
-                                                 FontFamily="{StaticResource Font.Serif}"
-                                                 FontWeight="Normal"
-                                                 Margin="0,20,0,0"
-                                                 FontSize="16"
-                                                 TextWrapping="Wrap" />
+                                        <!-- One row per sense, numbered only
+                                             when there are several to tell apart. -->
+                                        <ItemsControl ItemsSource="{Binding DataContext.SelectedEntrySenses, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      Margin="0,20,0,0">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,0,0,4">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0"
+                                                                   Text="{Binding NumberDisplay}"
+                                                                   FontFamily="{StaticResource Font.Serif}"
+                                                                   FontSize="16"
+                                                                   Margin="0,0,8,0"
+                                                                   Foreground="{DynamicResource Brush.Text.Secondary}">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding ShowNumber}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBox Grid.Column="1"
+                                                                 Text="{Binding Text, Mode=OneWay}"
+                                                                 Style="{StaticResource SelectableTextStyle}"
+                                                                 FontFamily="{StaticResource Font.Serif}"
+                                                                 FontWeight="Normal"
+                                                                 FontSize="16"
+                                                                 TextWrapping="Wrap" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
 
                                         <!-- Category chips -->
                                         <ItemsControl ItemsSource="{Binding DataContext.SelectedEntryCategories, RelativeSource={RelativeSource AncestorType=Window}}"

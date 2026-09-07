@@ -75,7 +75,7 @@ public partial class EntryEditorWindow : Window
 
         var reviewViewModel = new EnrichmentReviewWindowViewModel(
             _viewModel.Word,
-            _viewModel.Definition,
+            _viewModel.DefinitionSenses.ToSenseList(),
             _viewModel.Type,
             TextListParser.ParseCommaSeparatedText(_viewModel.SynonymsText),
             TextListParser.ParseLineSeparatedText(_viewModel.ExampleSentencesText),

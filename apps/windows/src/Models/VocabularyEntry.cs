@@ -14,7 +14,8 @@ public sealed class VocabularyEntry
 
     public VocabularyEntryType Type { get; set; } = VocabularyEntryType.Undefined;
 
-    public required string Definition { get; set; }
+    // One element per distinct sense of the word.
+    public required List<string> Definition { get; set; }
 
     public List<Guid> CategoryIds { get; init; } = [];
 

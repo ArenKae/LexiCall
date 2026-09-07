@@ -1,14 +1,12 @@
-// One review card for a text-shaped enrichment suggestion (Définition,
-// Synonymes, Exemples) in EnrichmentReviewWindow — Synonymes/Exemples arrive
-// already formatted as editable text by the caller (TextListParser).
+// One review card for a text-shaped enrichment suggestion (Synonymes,
+// Exemples) in EnrichmentReviewWindow — both arrive already formatted as
+// editable text by the caller (TextListParser).
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 namespace LexiCall.Desktop.ViewModels;
 
-// Not sealed: DefinitionSuggestionCardViewModel subclasses this to add a
-// "Reformuler" action unique to the Définition card.
-public class TextFieldSuggestionCardViewModel : INotifyPropertyChanged
+public sealed class TextFieldSuggestionCardViewModel : INotifyPropertyChanged
 {
     private bool _isAccepted = true;
     private string _editableText;
@@ -53,10 +51,7 @@ public class TextFieldSuggestionCardViewModel : INotifyPropertyChanged
         set => SetProperty(ref _editableText, value);
     }
 
-    // Protected (not private): DefinitionSuggestionCardViewModel subclasses
-    // this to add rephrase-specific state, and a field-like PropertyChanged
-    // event can only ever be raised from the class that declares it.
-    protected bool SetProperty<T>(
+    private bool SetProperty<T>(
         ref T field,
         T value,
         [CallerMemberName] string? propertyName = null)
@@ -71,6 +66,6 @@ public class TextFieldSuggestionCardViewModel : INotifyPropertyChanged
         return true;
     }
 
-    protected void OnPropertyChanged(string? propertyName) =>
+    private void OnPropertyChanged(string? propertyName) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }

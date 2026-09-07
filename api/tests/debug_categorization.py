@@ -181,24 +181,37 @@ def resolution_step(result: dict) -> dict | None:
     coherence the enums can't: "existing" must actually name a category."""
     t0 = step("Résolution des ids et contrôle de cohérence")
     by_id = {category["Id"]: category for category in categories_repo.list_categories()}
+
+    # Same gate as suggest_category: an unrecognized word never reaches the
+    # resolution at all, so nothing gets proposed for it.
+    if not result.get("word_recognized", True):
+        kv("word_recognized", c(RED, "false") + " — mot non reconnu, aucune suggestion")
+        step_done(t0)
+        return {"suggestions": []}
+
     try:
-        suggestion = enrichment._resolve_categorization(result, by_id)
+        resolved = enrichment._resolve_categorization(result, by_id)
     except RuntimeError as exc:
         response_line(f"rejeté (deviendrait un 502) : {exc}", ok=False)
         step_done(t0)
         return None
 
-    if suggestion["decision"] == "existing":
-        kv("décision", c(GREEN, "RATTACHER"))
-        kv("catégorie", c(GREEN, suggestion["category"]["path"]))
-    else:
-        parent = suggestion["new_category_parent"]
-        kv("décision", c(YELLOW, "CRÉER"))
-        kv("nouveau nom", c(YELLOW, suggestion["new_category_name"]))
-        kv("parent", parent["path"] if parent else "(racine)")
-    kv_wrapped("justification", suggestion["justification"])
+    suggestions = resolved["suggestions"]
+    raw_count = len(result.get("suggestions", []))
+    kv("word_recognized", c(GREEN, "true"))
+    kv("suggestions", f"{len(suggestions)} retenue(s) sur {raw_count} renvoyée(s) par le modèle")
+    for rank, suggestion in enumerate(suggestions, start=1):
+        if suggestion["decision"] == "existing":
+            kv(f"#{rank} décision", c(GREEN, "RATTACHER"))
+            kv(f"#{rank} catégorie", c(GREEN, suggestion["category"]["path"]))
+        else:
+            parent = suggestion["new_category_parent"]
+            kv(f"#{rank} décision", c(YELLOW, "CRÉER"))
+            kv(f"#{rank} nouveau nom", c(YELLOW, suggestion["new_category_name"]))
+            kv(f"#{rank} parent", parent["path"] if parent else "(racine)")
+        kv_wrapped(f"#{rank} justification", suggestion["justification"])
     step_done(t0)
-    return suggestion
+    return resolved
 
 
 def main() -> None:

@@ -10,34 +10,6 @@
         FontFamily="Segoe UI"
         Loaded="EntryEditorWindow_Loaded">
     <Window.Resources>
-        <!-- Field lock toggle -->
-        <Style x:Key="FieldLockToggleStyle" TargetType="ToggleButton">
-            <Setter Property="Focusable" Value="False" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Width" Value="24" />
-            <Setter Property="Height" Value="24" />
-            <Setter Property="ToolTip" Value="Exclure ce champ de l'enrichissement IA" />
-            <Setter Property="ToolTipService.InitialShowDelay" Value="500" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ToggleButton">
-                        <Border Background="Transparent">
-                            <Path x:Name="LockIcon"
-                                  Data="{StaticResource Icon.Phosphor.lock-key-open}"
-                                  Width="13" Height="13" Stretch="Uniform"
-                                  Fill="{DynamicResource Brush.Text.Secondary}" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="LockIcon" Property="Data" Value="{StaticResource Icon.Phosphor.lock-key}" />
-                                <Setter TargetName="LockIcon" Property="Fill" Value="{DynamicResource Brush.Danger}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <!-- Enrich button -->
         <Style x:Key="EnrichButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
@@ -224,13 +196,57 @@
                                               Style="{StaticResource FieldLockToggleStyle}"
                                               IsChecked="{Binding IsDefinitionLocked, Mode=TwoWay}" />
                             </Grid>
-                            <TextBox Margin="0,8,0,20"
-                                     Height="96"
-                                     AcceptsReturn="True"
-                                     TextWrapping="Wrap"
-                                     VerticalScrollBarVisibility="Auto"
-                                     VerticalContentAlignment="Top"
-                                     Text="{Binding Definition, UpdateSourceTrigger=PropertyChanged}" />
+                            <!-- One TextBox per sense: a definition is a list,
+                                 and the form mirrors that shape. -->
+                            <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding DefinitionSenses.Items}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0"
+                                                     TextWrapping="Wrap"
+                                                     AcceptsReturn="False"
+                                                     VerticalContentAlignment="Top"
+                                                     Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" />
+                                            <Button Grid.Column="1"
+                                                    Content="✕"
+                                                    Width="22" Height="22"
+                                                    Padding="0"
+                                                    Margin="6,0,0,0"
+                                                    VerticalAlignment="Top"
+                                                    ToolTip="Retirer ce sens"
+                                                    Command="{Binding RemoveCommand}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource DangerButtonStyle}">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding CanRemove}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button HorizontalAlignment="Left"
+                                    Margin="0,2,0,20"
+                                    Command="{Binding DefinitionSenses.AddSenseCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource Icon.Phosphor.plus}"
+                                          Fill="{DynamicResource Brush.Text.Secondary}"
+                                          Width="11" Height="11"
+                                          Stretch="Uniform"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,8,0" />
+                                    <TextBlock Text="Ajouter un sens" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
 
                             <Grid>
                                 <Grid.ColumnDefinitions>

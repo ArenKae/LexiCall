@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from lexicall_api import enrichment
 from lexicall_api.models.enrichment import (
     CategorizationRequest,
-    CategorizationSuggestion,
+    CategorizationSuggestions,
     CategoryCandidatesResult,
     EntryEnrichmentRequest,
     EntryEnrichmentSuggestions,
@@ -71,7 +71,7 @@ def category_candidates(
     return {"candidates": candidates}
 
 
-@router.post("/categorize", response_model=CategorizationSuggestion)
+@router.post("/categorize", response_model=CategorizationSuggestions)
 def categorize(payload: CategorizationRequest) -> dict:
     try:
         return enrichment.suggest_category(payload.word, payload.definition)

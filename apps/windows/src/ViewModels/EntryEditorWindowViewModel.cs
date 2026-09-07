@@ -20,7 +20,6 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     private readonly HashSet<string> _lockedFields;
     private readonly List<VocabularyCategory> _availableCategories;
     private string _word = string.Empty;
-    private string _definition = string.Empty;
     private string _synonymsText = string.Empty;
     private string _exampleSentencesText = string.Empty;
     private string _notes = string.Empty;
@@ -47,6 +46,9 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         EnrichDraftCommand = new RelayCommand(async () => await EnrichDraftAsync());
         CategorizeDraftCommand = new RelayCommand(async () => await CategorizeDraftAsync());
 
+        DefinitionSenses = new DefinitionSenseListViewModel(existingEntry?.Definition);
+        DefinitionSenses.SenseChanged += (_, _) => ClearError();
+
         // Categories are optional (CategoryIds may stay empty). On creation,
         // initialCategoryId pre-checks the category selected in the tree.
         CategorySelections = new ObservableCollection<CategorySelectionViewModel>(
@@ -66,7 +68,6 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         if (existingEntry is not null)
         {
             Word = existingEntry.Word;
-            Definition = existingEntry.Definition;
             SynonymsText = TextListParser.FormatCommaSeparatedText(existingEntry.Synonyms);
             ExampleSentencesText = TextListParser.FormatLineSeparatedText(existingEntry.ExampleSentences);
             Notes = existingEntry.Notes;
@@ -108,6 +109,8 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 
     public RelayCommand CategorizeDraftCommand { get; }
 
+    public DefinitionSenseListViewModel DefinitionSenses { get; }
+
     public ObservableCollection<CategorySelectionViewModel> CategorySelections { get; }
 
     public ObservableCollection<EntryImageEditorViewModel> Images { get; }
@@ -145,18 +148,6 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
                 ClearError();
                 OnPropertyChanged(nameof(CanEnrichDraft));
                 OnPropertyChanged(nameof(CanCategorizeDraft));
-            }
-        }
-    }
-
-    public string Definition
-    {
-        get => _definition;
-        set
-        {
-            if (SetProperty(ref _definition, value))
-            {
-                ClearError();
             }
         }
     }
@@ -394,7 +385,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 
         var draft = new EntryEnrichmentDraft(
             word,
-            Definition.Trim(),
+            DefinitionSenses.ToSenseList(),
             Type,
             TextListParser.ParseCommaSeparatedText(SynonymsText),
             TextListParser.ParseLineSeparatedText(ExampleSentencesText),
@@ -438,7 +429,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     {
         if (result.Definition is { } definition)
         {
-            Definition = definition;
+            DefinitionSenses.Reset(definition);
         }
 
         if (result.Type is { } type)
@@ -468,7 +459,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         CategorizationErrorMessage = string.Empty;
         IsCategorizingDraft = true;
 
-        var request = new CategorizationRequest(word, Definition.Trim());
+        var request = new CategorizationRequest(word, DefinitionSenses.ToSenseList());
         var (status, suggestion, errorDetail) = await _apiClient.TryCategorizeEntryAsync(request);
 
         IsCategorizingDraft = false;
@@ -534,7 +525,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     private void SaveEntry()
     {
         var word = Word.Trim();
-        var definition = Definition.Trim();
+        var senses = DefinitionSenses.ToSenseList();
 
         // Only the word and definition are required.
         if (string.IsNullOrWhiteSpace(word))
@@ -543,7 +534,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(definition))
+        if (senses.Count == 0)
         {
             ErrorMessage = "La définition est obligatoire.";
             return;
@@ -555,7 +546,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             // Id/CreatedAt kept as-is when editing, generated when creating.
             Id = _existingEntry?.Id ?? Guid.NewGuid(),
             Word = word,
-            Definition = definition,
+            Definition = senses,
             Synonyms = TextListParser.ParseCommaSeparatedText(SynonymsText),
             ExampleSentences = TextListParser.ParseLineSeparatedText(ExampleSentencesText),
             Notes = Notes.Trim(),

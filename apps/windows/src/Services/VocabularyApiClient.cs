@@ -44,7 +44,7 @@ public sealed record FieldSuggestion<T>(T Value, string? Justification);
 // (anti-hallucination: no silent "correction" to a similar real word).
 public sealed record EntryEnrichmentSuggestions(
     [property: JsonPropertyName("word_recognized")] bool WordRecognized,
-    FieldSuggestion<string>? Definition,
+    FieldSuggestion<List<string>>? Definition,
     FieldSuggestion<VocabularyEntryType>? Type,
     FieldSuggestion<List<string>>? Synonyms,
     [property: JsonPropertyName("example_sentences")] FieldSuggestion<List<string>>? ExampleSentences);
@@ -54,7 +54,7 @@ public sealed record EntryEnrichmentSuggestions(
 // EntryEditorWindowViewModel), which has nothing to look up server-side yet.
 public sealed record EntryEnrichmentDraft(
     string Word,
-    string Definition,
+    List<string> Definition,
     VocabularyEntryType Type,
     List<string> Synonyms,
     List<string> ExampleSentences,
@@ -71,7 +71,9 @@ public enum CategorizationStatus
     Ok
 }
 
-public sealed record CategorizationRequest(string Word, string Definition);
+// One element per sense: each is retrieved separately server-side, so a
+// two-sense word reaches both its lexical fields.
+public sealed record CategorizationRequest(string Word, List<string> Definition);
 
 // "existing" fills Category; "new" fills NewCategoryName, and
 // NewCategoryParent stays null when the suggestion is a new root.

@@ -40,7 +40,7 @@ def build_synthetic_entry(word: str, locked_fields: list[str]) -> dict:
     return {
         "Word": word,
         "Definition": [],
-        "Type": "Undefined",
+        "Type": ["Undefined"],
         "Synonyms": [],
         "ExampleSentences": [],
         "LockedFields": locked_fields,

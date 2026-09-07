@@ -97,6 +97,17 @@ only on newlines the user wrote themselves (never on punctuation, which on real 
 rephrasing far more often than a sense) and leaving `UpdatedAt` untouched, since a schema change
 is not a user edit.
 
+`Type` is a list too, but at the entry level rather than per sense: a word can genuinely work as
+several parts of speech ("rose": noun and adjective) without each sense needing its own type — the
+definition rules deliberately merge an adjective and its corresponding noun into a single sense, so
+per-sense typing would fight them. Capped at two via `maxItems` in the schema, which is safe here
+though not on the free-text lists: each item must be an exact enum value, so a capped array can't
+be worked around by cramming two answers into one element. `["Undefined"]` is how an untyped entry
+is stored, and it never coexists with a real type. `Nom` sits alongside `Nom masculin`/`Nom
+féminin` for words used in both genders ("un/une juste", "la rose" the flower vs "le rose" the
+colour), where picking a gender would be arbitrary. `migration/wrap_entry_types.py` converts an
+existing corpus by plain wrapping, inferring no second type.
+
 `POST /enrichment/fields` judges, per field (Definition/Type/Synonyms/ExampleSentences), whether
 the given current value is worth suggesting a replacement for — conservative by default, a
 non-empty field is only touched when there's a real gap. Takes the field values in the request
@@ -169,8 +180,19 @@ scores sit far below category-to-category ones because the two texts are shaped 
 empty `candidates` list means nothing has been indexed yet, not that nothing matched.
 
 `POST /enrichment/categorize` is the decision on top of that retrieval: same `{Word, Definition?}`
-body, and it answers either `{"decision": "existing", "category": {...}}` or `{"decision": "new",
-"new_category_name": ..., "new_category_parent": {...}}`, always with a `justification`. The LLM
+body, and it answers `{"suggestions": [...]}` where each entry is either
+`{"decision": "existing", "category": {...}}` or `{"decision": "new", "new_category_name": ...,
+"new_category_parent": {...}}`, always with its own `justification`. Usually one suggestion; more
+only when the word carries genuinely distinct senses across different lexical fields ("ladre":
+leper / miser), each justification naming the sense it covers. Capped at 3, and the cap is applied
+server-side rather than through the schema: `maxItems` is accepted by the API, but a capped array
+makes the model cram what it can no longer add into the last element instead of leaving it out
+(checked against the real API). Duplicates — the same category, or the same new name twice — are
+dropped, as is any entry contradicting itself ("existing" without naming one); losing *every*
+entry that way raises a 502 rather than passing for "nothing fits". It carries the same
+`word_recognized` gate as `/enrichment/fields`: a word the model can't confirm exists comes back
+`{"word_recognized": false, "suggestions": []}` rather than getting a category invented to house
+it — a definition supplied by the caller doesn't count as proof, since a draft can hold a typo. The LLM
 only ever sees the top-K candidates **plus every root category** — the top-K is what keeps the
 token cost flat as the corpus grows, and the roots are what let it propose a new category under a
 sensible parent even when similarity never surfaced that branch (a word whose whole lexical field

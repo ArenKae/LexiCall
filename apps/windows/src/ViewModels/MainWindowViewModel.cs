@@ -29,6 +29,9 @@ public enum GlobalSyncStatus
     Problem
 }
 
+// One sense of the selected entry's definition, as the detail card renders it.
+public sealed record EntrySenseDisplay(string NumberDisplay, string Text, bool ShowNumber);
+
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private readonly VocabularyRepository _repository;
@@ -152,6 +155,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ? []
         : GetCategories(SelectedEntry.CategoryIds).ToList();
 
+    // Numbering only earns its place once there are several senses to tell
+    // apart, hence ShowNumber rather than a plain index.
+    public IReadOnlyList<EntrySenseDisplay> SelectedEntrySenses => SelectedEntry is null
+        ? []
+        : SelectedEntry.Definition
+            .Select((sense, index) => new EntrySenseDisplay(
+                $"{index + 1}.",
+                sense,
+                SelectedEntry.Definition.Count > 1))
+            .ToList();
+
     // Bottom-left status bar (MainWindow.xaml): empty when there's nothing to
     // show (no selection, or sync not configured) — the whole bar hides
     // instead of showing a misleading state to someone not using sync.
@@ -236,6 +250,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 OnPropertyChanged(nameof(HasSelectedEntry));
                 OnPropertyChanged(nameof(SelectedEntryCategories));
+                OnPropertyChanged(nameof(SelectedEntrySenses));
                 OnPropertyChanged(nameof(EmptyDetailMessage));
                 OnPropertyChanged(nameof(SelectedEntrySyncStatusText));
                 OnPropertyChanged(nameof(SelectedEntrySyncIsSynced));
@@ -1245,7 +1260,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 new VocabularyEntry
             {
                 Word = "Éphémère",
-                Definition = "Qui ne dure qu'un temps très court.",
+                Definition = ["Qui ne dure qu'un temps très court."],
                 Synonyms = { "passager", "fugace", "momentané" },
                 ExampleSentences =
                 {
@@ -1258,7 +1273,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 new VocabularyEntry
             {
                 Word = "Perspicace",
-                Definition = "Qui comprend rapidement et avec justesse.",
+                Definition = ["Qui comprend rapidement et avec justesse."],
                 Synonyms = { "clairvoyant", "sagace", "lucide" },
                 ExampleSentences =
                 {
@@ -1270,7 +1285,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 new VocabularyEntry
             {
                 Word = "Liminal",
-                Definition = "Qui se situe à la limite d'un seuil ou entre deux états.",
+                Definition = ["Qui se situe à la limite d'un seuil ou entre deux états."],
                 Synonyms = { "intermédiaire", "transitoire" },
                 ExampleSentences =
                 {
@@ -1392,7 +1407,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         // Search stays deliberately simple: no index, just an in-memory
         // scan — enough for Phase 1 and a few hundred entries.
         return SearchFieldMatches(entry.Word, normalizedQuery) ||
-            SearchFieldMatches(entry.Definition, normalizedQuery) ||
+            SearchFieldsMatch(entry.Definition, normalizedQuery) ||
             SearchFieldMatches(entry.Notes, normalizedQuery) ||
             SearchFieldMatches(entry.Source, normalizedQuery) ||
             SearchFieldsMatch(entry.Synonyms, normalizedQuery) ||
