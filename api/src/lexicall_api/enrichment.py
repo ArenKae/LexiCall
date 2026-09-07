@@ -38,17 +38,39 @@ ENTRY_ENRICHMENT_INSTRUCTIONS = (
     "de doute, ne propose rien pour ce champ (laisse sa valeur à null). "
     "Quand tu proposes une valeur pour un champ non vide, inclus toujours une "
     "courte justification. Pour un champ vide, la justification peut rester "
-    "vide. La définition est une liste : un élément par sens distinct, et un "
-    "seul élément quand le mot n'en a qu'un — c'est le cas le plus fréquent. "
-    "Trois sens au maximum, et uniquement ceux qu'un lecteur rencontrera "
-    "réellement dans un texte : garde les sens littéraires ou vieillis, qui "
-    "sont précisément ceux qu'on croise en lisant, mais écarte les "
-    "acceptions techniques très spécialisées ou anecdotiques (vocabulaire de "
-    "métier, cas particuliers d'une espèce animale...), même attestées. "
-    "Fusionne en un seul élément les "
-    "variantes grammaticales d'un même sens (l'adjectif et le nom "
-    "correspondant ne font qu'un sens). Ne découpe jamais un sens unique en "
-    "plusieurs morceaux pour étoffer la liste. La définition ne doit jamais "
+    "vide. "
+    "RÈGLES IMPÉRATIVES POUR LA DÉFINITION, une liste de sens : "
+    "(1) UN SEUL sens est le cas normal, c'est ce que tu dois renvoyer par "
+    "défaut. N'ajoute un élément supplémentaire que si le mot a "
+    "vraiment des acceptions sans rapport entre elles. "
+    "(2) CINQ ÉLÉMENTS MAXIMUM, jamais six, quel que soit le nombre de "
+    "sens attestés ailleurs : choisis les plus utiles et ignore le reste. "
+    "Ce plafond est une limite haute pour les mots vraiment polysémiques, "
+    "pas un objectif à atteindre — la plupart des mots restent à un seul "
+    "élément. "
+    "(3) Ne mets jamais deux éléments qui disent la même chose autrement : "
+    "une reformulation, une généralisation ou une nuance d'un élément déjà "
+    "présent n'est pas un sens de plus — c'est le défaut à éviter avant tout, "
+    "celui des dictionnaires qui éclatent un même usage en variantes. "
+    "TEST À APPLIQUER AVANT CHAQUE ÉLÉMENT SUPPLÉMENTAIRE : un lecteur qui a "
+    "compris les éléments déjà écrits saurait-il déjà interpréter cet "
+    "emploi-là ? Si oui, ne l'ajoute pas. "
+    "Comptent pour UN SEUL élément, à fusionner en une seule formulation : "
+    "deux nuances d'une même idée (« d'un rouge éclatant » et « qui brille "
+    "d'un vif éclat ») ; une formulation et sa généralisation (« pluie très "
+    "fine » et « tout ce qui tombe en fines gouttes ») ; un cas particulier "
+    "d'un emploi déjà donné (« se déplacer dans les airs » et « piloter un "
+    "avion ») ; l'adjectif et le nom correspondant ; un verbe et sa forme "
+    "pronominale ; un nom et l'adjectif, la couleur ou le verbe qui en "
+    "dérive ; un sens propre et son extension figurée immédiate. "
+    "(4) Classe les sens du plus courant au plus rare, pour que ce soit "
+    "toujours le plus marginal qui saute si tu dois t'arrêter. Un sens "
+    "spécialisé mais réel a sa place (le canon en musique, le point de "
+    "couture), tout comme les sens littéraires ou vieillis qu'on croise en "
+    "lisant ; n'écarte que les emplois régionaux, argotiques ou propres à "
+    "une espèce animale, qu'un lecteur francophone ne rencontrera "
+    "pratiquement jamais. "
+    "La définition ne doit jamais "
     "mentionner la nature grammaticale du mot. Aucun champ de la réponse (définition, justification, synonymes, "
     "exemples) ne doit jamais contenir de lien ni de balisage markdown (pas "
     "de \"[texte](url)\") ni de mention explicite d'une source : écris "
@@ -199,6 +221,7 @@ def rephrase_definition(word: str, definition: str) -> str:
 
 
 DEFAULT_CATEGORY_CANDIDATES = 6
+MAX_CATEGORY_SUGGESTIONS = 3
 
 
 def find_category_candidates(word: str, senses: list[str], k: int = DEFAULT_CATEGORY_CANDIDATES) -> list[dict]:
@@ -254,19 +277,36 @@ def find_category_candidates(word: str, senses: list[str], k: int = DEFAULT_CATE
 
 
 CATEGORIZATION_INSTRUCTIONS = (
+    "Avant toute suggestion, vérifie que « Mot » est un mot ou une expression "
+    "française réelle et attestée — pas une suite de caractères aléatoire, un "
+    "mot inventé, ou une faute de frappe. Si tu n'as pas de certitude "
+    "raisonnable de son existence, réponds word_recognized=false avec une "
+    "liste de suggestions vide : ne range jamais dans l'arborescence un mot "
+    "dont tu ne peux pas confirmer l'existence, et n'invente surtout pas une "
+    "catégorie pour l'accueillir. Une définition fournie par l'utilisateur ne "
+    "prouve rien à elle seule — c'est l'existence du mot qui compte. Sinon, "
+    "réponds word_recognized=true et poursuis normalement. "
     "Tu ranges un mot de vocabulaire français dans l'arborescence de "
-    "catégories de l'application LexiCall. Deux décisions possibles : le "
-    "rattacher à une catégorie existante, ou proposer d'en créer une "
-    "nouvelle. Préfère toujours une catégorie existante quand l'une d'elles "
+    "catégories de l'application LexiCall. Chaque suggestion porte l'une de "
+    "deux décisions : rattacher le mot à une catégorie existante, ou "
+    "proposer d'en créer une nouvelle. "
+    "Ne renvoie qu'une seule suggestion dans la grande majorité des cas — "
+    "c'est le comportement attendu par défaut. N'en ajoute une deuxième, "
+    "exceptionnellement une troisième (jamais plus), que si le mot a des "
+    "sens réellement distincts relevant de champs lexicaux différents : "
+    "chaque suggestion doit alors dire explicitement quel sens elle couvre. "
+    "Deux facettes d'un même sens ne justifient jamais deux suggestions, et "
+    "une catégorie déjà proposée ne doit jamais être répétée. "
+    "Préfère toujours une catégorie existante quand l'une d'elles "
     "convient réellement ; ne propose une création que si aucune ne "
-    "correspond au champ lexical du mot. Les candidates te sont données par "
+    "correspond au champ lexical visé. Les candidates te sont données par "
     "ordre de proximité calculée, mais cet ordre n'est qu'un indice : juge "
     "sur le sens, la première n'est pas forcément la bonne, et il arrive "
     "qu'aucune ne convienne. Si tu proposes une création, donne un nom dans "
     "le même style que les catégories existantes (un groupe nominal court, "
     "en français) et choisis comme parent la catégorie racine la plus "
     "pertinente parmi celles fournies ; ne laisse le parent vide que si le "
-    "mot n'a sa place sous aucune d'elles. Justifie ta décision en une "
+    "mot n'a sa place sous aucune d'elles. Justifie chaque décision en une "
     "phrase courte. Le texte ne doit contenir aucun lien ni balisage "
     "markdown, ni les mots « contexte », « source », « Wiktionnaire » ou "
     "« recherche web » : l'utilisateur ne voit que ta réponse."
@@ -304,6 +344,11 @@ def suggest_category(word: str, senses: list[str]) -> dict:
         json_schema=schema,
         instructions=CATEGORIZATION_INSTRUCTIONS,
     )
+    # Enforced here too, not just via the prompt: a model that flags the word
+    # as unknown but still fills the list must not get its categories through
+    # — same gate as the entry-enrichment route.
+    if not result.pop("word_recognized", True):
+        return {"word_recognized": False, "suggestions": []}
     return _resolve_categorization(result, by_id)
 
 
@@ -342,51 +387,94 @@ def _id_enum_schema(ids: list[str]) -> dict:
 
 
 def _build_categorization_schema(candidate_ids: list[str], root_ids: list[str]) -> dict:
+    # No maxItems on the array, deliberately: the API accepts it, but a
+    # capped array makes the model cram what it wanted to say into the last
+    # element rather than drop it (checked against the real API). The count
+    # is bounded by the prompt and trimmed in _resolve_categorization.
     return {
         "type": "object",
         "properties": {
-            "decision": {"enum": ["existing", "new"]},
-            "category_id": _id_enum_schema(candidate_ids),
-            "new_category_name": {"type": ["string", "null"]},
-            "new_category_parent_id": _id_enum_schema(root_ids),
-            "justification": {"type": "string"},
+            "word_recognized": {"type": "boolean"},
+            "suggestions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "decision": {"enum": ["existing", "new"]},
+                        "category_id": _id_enum_schema(candidate_ids),
+                        "new_category_name": {"type": ["string", "null"]},
+                        "new_category_parent_id": _id_enum_schema(root_ids),
+                        "justification": {"type": "string"},
+                    },
+                    "required": [
+                        "decision",
+                        "category_id",
+                        "new_category_name",
+                        "new_category_parent_id",
+                        "justification",
+                    ],
+                    "additionalProperties": False,
+                },
+            }
         },
-        "required": [
-            "decision",
-            "category_id",
-            "new_category_name",
-            "new_category_parent_id",
-            "justification",
-        ],
+        "required": ["word_recognized", "suggestions"],
         "additionalProperties": False,
     }
 
 
 def _resolve_categorization(result: dict, by_id: dict[str, dict]) -> dict:
-    """Turns the model's ids back into full categories, and rejects a
-    decision that contradicts itself — the enums keep the ids valid but
-    can't require that "existing" actually names one."""
-    decision = result["decision"]
+    """Turns the model's ids back into full categories, drops the entries it
+    contradicts itself on, and trims to MAX_CATEGORY_SUGGESTIONS. The enums
+    keep every id valid but can't require that "existing" actually names one,
+    nor that the same category isn't proposed twice."""
+    raw_suggestions = result.get("suggestions", [])
+    resolved: list[dict] = []
+    seen_existing: set[str] = set()
+    seen_new: set[str] = set()
+
+    for raw in raw_suggestions:
+        suggestion = _resolve_one_suggestion(raw, by_id, seen_existing, seen_new)
+        if suggestion is not None:
+            resolved.append(suggestion)
+        if len(resolved) == MAX_CATEGORY_SUGGESTIONS:
+            break
+
+    # Dropping the odd malformed entry is fine; dropping every single one
+    # means the answer was unusable, and that should surface rather than
+    # look like "no category fits".
+    if raw_suggestions and not resolved:
+        raise RuntimeError("Le modèle n'a produit aucune suggestion de catégorie exploitable.")
+    return {"suggestions": resolved}
+
+
+def _resolve_one_suggestion(
+    raw: dict,
+    by_id: dict[str, dict],
+    seen_existing: set[str],
+    seen_new: set[str],
+) -> dict | None:
     suggestion = {
-        "decision": decision,
+        "decision": raw["decision"],
         "category": None,
         "new_category_name": None,
         "new_category_parent": None,
-        "justification": result["justification"],
+        "justification": raw["justification"],
     }
 
-    if decision == "existing":
-        category = by_id.get(result["category_id"] or "")
-        if category is None:
-            raise RuntimeError("Le modèle a choisi une catégorie existante sans l'identifier.")
+    if raw["decision"] == "existing":
+        category = by_id.get(raw["category_id"] or "")
+        if category is None or category["Id"] in seen_existing:
+            return None
+        seen_existing.add(category["Id"])
         suggestion["category"] = _category_ref(category, by_id)
         return suggestion
 
-    name = (result["new_category_name"] or "").strip()
-    if not name:
-        raise RuntimeError("Le modèle a proposé une nouvelle catégorie sans nom.")
+    name = (raw["new_category_name"] or "").strip()
+    if not name or name.casefold() in seen_new:
+        return None
+    seen_new.add(name.casefold())
     suggestion["new_category_name"] = name
-    parent = by_id.get(result["new_category_parent_id"] or "")
+    parent = by_id.get(raw["new_category_parent_id"] or "")
     if parent is not None:
         suggestion["new_category_parent"] = _category_ref(parent, by_id)
     return suggestion

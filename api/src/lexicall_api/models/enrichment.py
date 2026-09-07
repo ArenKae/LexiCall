@@ -65,7 +65,7 @@ class CategoryCandidatesResult(BaseModel):
     candidates: list[CategoryCandidate]
 
 
-class CategorizationSuggestion(BaseModel):
+class CategorySuggestion(BaseModel):
     # "existing" fills category; "new" fills new_category_name, and
     # new_category_parent stays null when the suggestion is a new root.
     decision: Literal["existing", "new"]
@@ -73,6 +73,17 @@ class CategorizationSuggestion(BaseModel):
     new_category_name: str | None = None
     new_category_parent: CategoryRef | None = None
     justification: str
+
+
+class CategorizationSuggestions(BaseModel):
+    # False when the LLM couldn't confirm Word is a real, existing French
+    # word/expression — suggestions is then empty, no category proposed and
+    # none invented to house it.
+    word_recognized: bool = True
+    # Usually one. Several only when the word carries genuinely distinct
+    # senses across different lexical fields ("ladre": leper / miser), each
+    # saying which sense it covers.
+    suggestions: list[CategorySuggestion]
 
 
 class RephraseDefinitionRequest(BaseModel):
