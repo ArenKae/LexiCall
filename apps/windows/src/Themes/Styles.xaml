@@ -783,4 +783,55 @@
         </Setter>
     </Style>
 
+    <!-- Closed face of a multi-select dropdown (grammatical types): looks
+         exactly like a ComboBox, but the popup holds checkboxes, so the
+         content is a summary of what is ticked rather than one selected item. -->
+    <Style x:Key="MultiSelectDropdownToggleStyle" TargetType="ToggleButton">
+        <Setter Property="Background" Value="{DynamicResource Brush.Input.Background}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Strong}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="9,6,30,6" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="ClickMode" Value="Press" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            SnapsToDevicePixels="True">
+                        <Grid>
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="Left"
+                                              VerticalAlignment="Center" />
+                            <Path Data="M 3 5 L 8 10 L 13 5"
+                                  Stroke="{DynamicResource Brush.Text.Secondary}"
+                                  StrokeThickness="1.6"
+                                  StrokeLineJoin="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeStartLineCap="Round"
+                                  Width="16"
+                                  Height="14"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,9,0" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

@@ -12,7 +12,9 @@ public sealed class VocabularyEntry
 
     public required string Word { get; set; }
 
-    public VocabularyEntryType Type { get; set; } = VocabularyEntryType.Undefined;
+    // One element per grammatical nature the word has ("rose": noun and
+    // adjective). [Undefined] alone is how an untyped entry is stored.
+    public List<VocabularyEntryType> Type { get; set; } = [VocabularyEntryType.Undefined];
 
     // One element per distinct sense of the word.
     public required List<string> Definition { get; set; }

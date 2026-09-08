@@ -28,7 +28,7 @@ public partial class CategorizationReviewWindow : Window
         };
     }
 
-    public CategorySuggestionResult? Result => _viewModel.Result;
+    public IReadOnlyList<CategorySuggestionResult> Results => _viewModel.Results;
 
     // Caps the window to 80% of the owner's size — Owner is only guaranteed
     // set by the time the window is shown, not at construction.
@@ -43,21 +43,31 @@ public partial class CategorizationReviewWindow : Window
         Width = Math.Min(Width, Owner.ActualWidth * 0.8);
     }
 
+    // Several cards can be on screen: the clicked button's DataContext is the
+    // only thing saying which one owns the icon being picked.
     private void ChooseIconButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new IconPickerWindow(_viewModel.CategoryCard.NewCategoryIconGlyph)
+        if (((FrameworkElement)sender).DataContext is not CategorySuggestionCardViewModel card)
+        {
+            return;
+        }
+
+        var dialog = new IconPickerWindow(card.NewCategoryIconGlyph)
         {
             Owner = this
         };
 
         if (dialog.ShowDialog() == true && dialog.SelectedGlyph is not null)
         {
-            _viewModel.CategoryCard.NewCategoryIconGlyph = dialog.SelectedGlyph;
+            card.NewCategoryIconGlyph = dialog.SelectedGlyph;
         }
     }
 
     private void ClearIconButton_Click(object sender, RoutedEventArgs e)
     {
-        _viewModel.CategoryCard.NewCategoryIconGlyph = string.Empty;
+        if (((FrameworkElement)sender).DataContext is CategorySuggestionCardViewModel card)
+        {
+            card.NewCategoryIconGlyph = string.Empty;
+        }
     }
 }

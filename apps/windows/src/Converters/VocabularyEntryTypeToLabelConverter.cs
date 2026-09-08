@@ -1,4 +1,4 @@
-// Converts a VocabularyEntryType into its displayed French label.
+// Joins an entry's grammatical types into one displayed French label.
 using System.Globalization;
 using System.Windows.Data;
 using LexiCall.Desktop.Models;
@@ -9,7 +9,7 @@ namespace LexiCall.Desktop.Converters;
 public sealed class VocabularyEntryTypeToLabelConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is VocabularyEntryType type ? VocabularyEntryTypeCatalog.GetLabel(type) : null;
+        value is IEnumerable<VocabularyEntryType> types ? VocabularyEntryTypeCatalog.GetLabels(types) : null;
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();

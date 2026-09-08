@@ -327,13 +327,13 @@ public partial class MainWindow : Window
         var request = new CategorizationRequest(entry.Word, entry.Definition);
 
         ViewModel.IsCategorizingEntry = true;
-        var (status, suggestion, errorDetail) = await ViewModel.ApiClient.TryCategorizeEntryAsync(request);
+        var (status, suggestions, errorDetail) = await ViewModel.ApiClient.TryCategorizeEntryAsync(request);
         ViewModel.IsCategorizingEntry = false;
 
         switch (status)
         {
-            case CategorizationStatus.Ok when suggestion is not null:
-                ShowCategorizationReview(entry, suggestion);
+            case CategorizationStatus.Ok when suggestions is not null:
+                ShowCategorizationReview(entry, suggestions);
                 break;
             case CategorizationStatus.NotConfigured:
                 AlertDialog.Show(this, "La catégorisation nécessite une synchronisation API configurée (voir Options).", "Catégorisation IA");
@@ -347,52 +347,77 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ShowCategorizationReview(Models.VocabularyEntry entry, CategorizationSuggestion suggestion)
+    private void ShowCategorizationReview(Models.VocabularyEntry entry, CategorizationSuggestions suggestions)
     {
+        if (!suggestions.WordRecognized)
+        {
+            AlertDialog.Show(
+                this,
+                $"« {entry.Word} » n'a pas été reconnu comme un mot ou une expression française existante — aucune catégorie n'a été proposée.",
+                "Catégorisation automatique");
+            return;
+        }
+
+        if (suggestions.Suggestions.Count == 0)
+        {
+            AlertDialog.Show(this, "Aucune suggestion de catégorie pour cette entrée.", "Catégorisation automatique");
+            return;
+        }
+
         var currentCategoryNames = entry.CategoryIds
             .Select(id => ViewModel.Categories.FirstOrDefault(category => category.Id == id)?.Name)
             .Where(name => name is not null)
             .Select(name => name!)
             .ToList();
 
-        var reviewViewModel = new CategorizationReviewWindowViewModel(suggestion, ViewModel.Categories, currentCategoryNames);
+        var reviewViewModel = new CategorizationReviewWindowViewModel(
+            suggestions.Suggestions, ViewModel.Categories, currentCategoryNames);
         var dialog = new CategorizationReviewWindow(reviewViewModel) { Owner = this };
 
         ViewModel.IsEditorDialogOpen = true;
         try
         {
-            if (dialog.ShowDialog() != true || reviewViewModel.Result is not { } result)
+            if (dialog.ShowDialog() != true || reviewViewModel.Results.Count == 0)
             {
                 return;
             }
 
-            Guid? categoryIdToAttach = result.ExistingCategoryId;
+            var categoryIds = entry.CategoryIds.ToList();
 
-            if (result.NewCategoryName is { } newName)
+            foreach (var result in reviewViewModel.Results)
             {
-                var newCategory = new Models.VocabularyCategory
-                {
-                    Id = Guid.NewGuid(),
-                    Name = newName,
-                    ParentId = result.NewCategoryParentId,
-                    Description = result.NewCategoryDescription ?? string.Empty,
-                    IconGlyph = result.NewCategoryIconGlyph ?? string.Empty,
-                    CreatedAt = DateTimeOffset.Now,
-                    UpdatedAt = DateTimeOffset.Now
-                };
+                Guid? categoryIdToAttach = result.ExistingCategoryId;
 
-                var error = ViewModel.SaveCategory(newCategory);
-                if (error is not null)
+                if (result.NewCategoryName is { } newName)
                 {
-                    AlertDialog.Show(this, error, "Création de catégorie impossible");
-                }
-                else
-                {
+                    var newCategory = new Models.VocabularyCategory
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = newName,
+                        ParentId = result.NewCategoryParentId,
+                        Description = result.NewCategoryDescription ?? string.Empty,
+                        IconGlyph = result.NewCategoryIconGlyph ?? string.Empty,
+                        CreatedAt = DateTimeOffset.Now,
+                        UpdatedAt = DateTimeOffset.Now
+                    };
+
+                    var error = ViewModel.SaveCategory(newCategory);
+                    if (error is not null)
+                    {
+                        AlertDialog.Show(this, error, "Création de catégorie impossible");
+                        continue;
+                    }
+
                     categoryIdToAttach = newCategory.Id;
+                }
+
+                if (categoryIdToAttach is { } id && !categoryIds.Contains(id))
+                {
+                    categoryIds.Add(id);
                 }
             }
 
-            if (categoryIdToAttach is not { } id || entry.CategoryIds.Contains(id))
+            if (categoryIds.Count == entry.CategoryIds.Count)
             {
                 return;
             }
@@ -407,7 +432,7 @@ public partial class MainWindow : Window
                 ExampleSentences = entry.ExampleSentences,
                 Notes = entry.Notes,
                 Source = entry.Source,
-                CategoryIds = entry.CategoryIds.Append(id).ToList(),
+                CategoryIds = categoryIds,
                 IsArchived = entry.IsArchived,
                 LockedFields = entry.LockedFields,
                 Images = entry.Images,

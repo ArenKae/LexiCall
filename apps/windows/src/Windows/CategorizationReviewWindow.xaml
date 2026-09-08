@@ -21,190 +21,204 @@
             <TextBlock Text="Catégorisation automatique"
                        FontSize="26"
                        FontWeight="SemiBold" />
-            <TextBlock Text="Une catégorie a été suggérée pour cette entrée ; elle peut être ajustée avant l'enregistrement."
+            <TextBlock Text="Les catégories suggérées ci-dessous peuvent être ajustées ou ignorées avant l'enregistrement."
                        Margin="0,4,0,0"
                        TextWrapping="Wrap"
                        Foreground="{DynamicResource Brush.Text.Secondary}" />
         </StackPanel>
 
-        <Border Grid.Row="1"
-                Margin="0,20,0,20"
-                Padding="20,20,8,20"
-                Style="{StaticResource CardBorderStyle}">
-            <ScrollViewer VerticalScrollBarVisibility="Auto"
-                          Padding="0,0,24,0">
-                <StackPanel>
-                    <TextBlock Text="{Binding CategoryCard.CurrentCategoriesDisplay, StringFormat='Catégories actuelles : {0}'}"
-                               TextWrapping="Wrap"
-                               Foreground="{DynamicResource Brush.Text.Secondary}"
-                               FontStyle="Italic">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding CategoryCard.HasCurrentCategories}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-
-                    <Grid Margin="0,14,0,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-
-                        <CheckBox Grid.Column="0"
-                                  Content="Créer une nouvelle catégorie"
-                                  VerticalAlignment="Center"
-                                  IsChecked="{Binding CategoryCard.IsNewCategory, Mode=TwoWay}" />
-
-                        <!-- Icon picker -->
-                        <Grid Grid.Column="1" HorizontalAlignment="Right">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.Style>
-                                <Style TargetType="Grid">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding CategoryCard.IsNewCategory}" Value="False">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Grid.Style>
-
-                            <Button Grid.Column="0"
-                                    Width="40" Height="34"
-                                    Padding="0"
-                                    Click="ChooseIconButton_Click"
-                                    ToolTip="Choisir une icône pour cette catégorie.">
-                                <Grid>
-                                    <Path Data="{Binding CategoryCard.IconDisplayGlyph, Converter={StaticResource IconKeyToGeometryConverter}}"
-                                          Fill="{DynamicResource Brush.Text.Primary}"
-                                          Width="16" Height="16" Stretch="Uniform" />
-                                    <TextBlock Text="{Binding CategoryCard.IconDisplayGlyph}"
-                                               FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
-                                               FontSize="16">
+        <ScrollViewer Grid.Row="1"
+                      Margin="0,20,0,20"
+                      Padding="0,0,16,0"
+                      VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding CategoryCards}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource CardBorderStyle}"
+                                    Padding="16"
+                                    Margin="0,0,0,12">
+                                <StackPanel>
+                                    <!-- Per-card "Appliquer": with several senses
+                                         proposed, accepting one and refusing another
+                                         has no other way to be expressed. -->
+                                    <CheckBox Content="Appliquer cette suggestion"
+                                              Margin="0,0,0,10"
+                                              FontWeight="SemiBold"
+                                              IsChecked="{Binding IsAccepted, Mode=TwoWay}" />
+                                    <TextBlock Text="{Binding CurrentCategoriesDisplay, StringFormat='Catégories actuelles : {0}'}"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource Brush.Text.Secondary}"
+                                               FontStyle="Italic">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding CategoryCard.IconDisplayGlyph, Converter={StaticResource IconKeyToGeometryConverter}}" Value="{x:Null}">
+                                                    <DataTrigger Binding="{Binding HasCurrentCategories}" Value="True">
                                                         <Setter Property="Visibility" Value="Visible" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </TextBlock.Style>
                                     </TextBlock>
-                                </Grid>
-                            </Button>
 
-                            <Button Grid.Column="1"
-                                    Width="26" Height="34"
-                                    Padding="0"
-                                    Margin="4,0,0,0"
-                                    Click="ClearIconButton_Click"
-                                    ToolTip="Retirer l'icône">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButtonStyle}">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding CategoryCard.HasIcon}" Value="True">
+                                    <Grid Margin="0,14,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <CheckBox Grid.Column="0"
+                                                  Content="Créer une nouvelle catégorie"
+                                                  VerticalAlignment="Center"
+                                                  IsChecked="{Binding IsNewCategory, Mode=TwoWay}" />
+
+                                        <!-- Icon picker -->
+                                        <Grid Grid.Column="1" HorizontalAlignment="Right">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsNewCategory}" Value="False">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+
+                                            <Button Grid.Column="0"
+                                                    Width="40" Height="34"
+                                                    Padding="0"
+                                                    Click="ChooseIconButton_Click"
+                                                    ToolTip="Choisir une icône pour cette catégorie.">
+                                                <Grid>
+                                                    <Path Data="{Binding IconDisplayGlyph, Converter={StaticResource IconKeyToGeometryConverter}}"
+                                                          Fill="{DynamicResource Brush.Text.Primary}"
+                                                          Width="16" Height="16" Stretch="Uniform" />
+                                                    <TextBlock Text="{Binding IconDisplayGlyph}"
+                                                               FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI"
+                                                               FontSize="16">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IconDisplayGlyph, Converter={StaticResource IconKeyToGeometryConverter}}" Value="{x:Null}">
+                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Grid>
+                                            </Button>
+
+                                            <Button Grid.Column="1"
+                                                    Width="26" Height="34"
+                                                    Padding="0"
+                                                    Margin="4,0,0,0"
+                                                    Click="ClearIconButton_Click"
+                                                    ToolTip="Retirer l'icône">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButtonStyle}">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasIcon}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                                <TextBlock Text="✕" FontSize="10" />
+                                            </Button>
+                                        </Grid>
+                                    </Grid>
+
+                                    <!-- Mode "existante" -->
+                                    <StackPanel Margin="0,0,0,12">
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
                                                 <Setter Property="Visibility" Value="Visible" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                                <TextBlock Text="✕" FontSize="10" />
-                            </Button>
-                        </Grid>
-                    </Grid>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsNewCategory}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Text="Catégorie existante" Margin="0,0,0,6" Foreground="{DynamicResource Brush.Text.Secondary}" />
+                                        <ComboBox ItemsSource="{Binding ExistingCategoryOptions}"
+                                                  SelectedItem="{Binding SelectedExistingCategory, Mode=TwoWay}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Name}" Margin="{Binding Depth, Converter={StaticResource DepthToIndentConverter}}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                </StackPanel>
 
-                    <!-- Mode "existante" -->
-                    <StackPanel Margin="0,0,0,12">
-                        <StackPanel.Style>
-                            <Style TargetType="StackPanel">
-                                <Setter Property="Visibility" Value="Visible" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding CategoryCard.IsNewCategory}" Value="True">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </StackPanel.Style>
-                        <TextBlock Text="Catégorie existante" Margin="0,0,0,6" Foreground="{DynamicResource Brush.Text.Secondary}" />
-                        <ComboBox ItemsSource="{Binding CategoryCard.ExistingCategoryOptions}"
-                                  SelectedItem="{Binding CategoryCard.SelectedExistingCategory, Mode=TwoWay}">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Name}" Margin="{Binding Depth, Converter={StaticResource DepthToIndentConverter}}" />
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                    </StackPanel>
+                                <!-- Mode "nouvelle" -->
+                                <StackPanel Margin="0,0,0,12">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsNewCategory}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
 
-                    <!-- Mode "nouvelle" -->
-                    <StackPanel Margin="0,0,0,12">
-                        <StackPanel.Style>
-                            <Style TargetType="StackPanel">
-                                <Setter Property="Visibility" Value="Visible" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding CategoryCard.IsNewCategory}" Value="False">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </StackPanel.Style>
+                                    <TextBlock Text="Nom" Margin="0,0,0,6" Foreground="{DynamicResource Brush.Text.Secondary}" />
+                                    <TextBox Text="{Binding NewCategoryName, UpdateSourceTrigger=PropertyChanged}"
+                                             Margin="0,0,0,12" />
 
-                        <TextBlock Text="Nom" Margin="0,0,0,6" Foreground="{DynamicResource Brush.Text.Secondary}" />
-                        <TextBox Text="{Binding CategoryCard.NewCategoryName, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,0,0,12" />
+                                    <TextBlock Text="Catégorie parente" Margin="0,0,0,6" Foreground="{DynamicResource Brush.Text.Secondary}" />
+                                    <ComboBox ItemsSource="{Binding ParentCategoryOptions}"
+                                              SelectedItem="{Binding SelectedParentCategory, Mode=TwoWay}"
+                                              Margin="0,0,0,12">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Name}" Margin="{Binding Depth, Converter={StaticResource DepthToIndentConverter}}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
 
-                        <TextBlock Text="Catégorie parente" Margin="0,0,0,6" Foreground="{DynamicResource Brush.Text.Secondary}" />
-                        <ComboBox ItemsSource="{Binding CategoryCard.ParentCategoryOptions}"
-                                  SelectedItem="{Binding CategoryCard.SelectedParentCategory, Mode=TwoWay}"
-                                  Margin="0,0,0,12">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Name}" Margin="{Binding Depth, Converter={StaticResource DepthToIndentConverter}}" />
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
+                                    <TextBlock Text="Description" Margin="0,0,0,6" Foreground="{DynamicResource Brush.Text.Secondary}" />
+                                    <TextBox Text="{Binding NewCategoryDescription, UpdateSourceTrigger=PropertyChanged}"
+                                             Height="70"
+                                             AcceptsReturn="True"
+                                             TextWrapping="Wrap"
+                                             VerticalScrollBarVisibility="Auto"
+                                             VerticalContentAlignment="Top"
+                                             Margin="0,0,0,12" />
+                                </StackPanel>
 
-                        <TextBlock Text="Description" Margin="0,0,0,6" Foreground="{DynamicResource Brush.Text.Secondary}" />
-                        <TextBox Text="{Binding CategoryCard.NewCategoryDescription, UpdateSourceTrigger=PropertyChanged}"
-                                 Height="70"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 VerticalScrollBarVisibility="Auto"
-                                 VerticalContentAlignment="Top"
-                                 Margin="0,0,0,12" />
-                    </StackPanel>
-
-                    <TextBlock Margin="0,6,0,0"
-                               Text="{Binding CategoryCard.Justification}"
-                               TextWrapping="Wrap"
-                               FontSize="12"
-                               Foreground="{DynamicResource Brush.Text.Secondary}">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding CategoryCard.HasJustification}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                </StackPanel>
-            </ScrollViewer>
-        </Border>
+                                <TextBlock Margin="0,6,0,0"
+                                           Text="{Binding Justification}"
+                                           TextWrapping="Wrap"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource Brush.Text.Secondary}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasJustification}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+        </ScrollViewer>
 
         <DockPanel Grid.Row="2">
             <StackPanel DockPanel.Dock="Right"

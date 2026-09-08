@@ -27,5 +27,10 @@ public enum VocabularyEntryType
     Adverbe,
 
     [JsonStringEnumMemberName("Expression")]
-    Expression
+    Expression,
+
+    // Words used in both genders ("un/une juste", "la rose" the flower vs
+    // "le rose" the colour), where picking a gender would be arbitrary.
+    [JsonStringEnumMemberName("Nom")]
+    Nom
 }
