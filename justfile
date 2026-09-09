@@ -37,6 +37,30 @@ release-win:
 clean-win:
     just --justfile apps/windows/justfile --working-directory apps/windows clean
 
+# ------------------------------------------
+# --- apps/android (Expo / React Native) ---
+# ------------------------------------------
+
+# Install npm dependencies.
+[group('app : android')]
+install-android:
+    just --justfile apps/android/justfile --working-directory apps/android install
+
+# Start the Metro dev server (Expo Go / dev client on a connected device).
+[group('app : android')]
+start-android:
+    just --justfile apps/android/justfile --working-directory apps/android start
+
+# Local native build (expo run:android): builds and installs on a connected device.
+[group('app : android')]
+build-android:
+    just --justfile apps/android/justfile --working-directory apps/android build
+
+# Remove node_modules and Expo/Gradle build caches.
+[group('app : android')]
+clean-android:
+    just --justfile apps/android/justfile --working-directory apps/android clean
+
 # -------------------------------------------------------------------------
 # --- api : dev (docker-compose.yml, local Mongo + uvicorn with reload) ---
 # -------------------------------------------------------------------------
