@@ -1138,7 +1138,19 @@
                                                       Margin="0,20,0,0">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Grid Margin="0,0,0,4">
+                                                    <Grid>
+                                                        <!-- Senses only need pulling apart once
+                                                             there are several of them. -->
+                                                        <Grid.Style>
+                                                            <Style TargetType="Grid">
+                                                                <Setter Property="Margin" Value="0,0,0,4" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding ShowNumber}" Value="True">
+                                                                        <Setter Property="Margin" Value="0,0,0,10" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Grid.Style>
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="Auto" />
                                                             <ColumnDefinition Width="*" />
@@ -1147,6 +1159,7 @@
                                                                    Text="{Binding NumberDisplay}"
                                                                    FontFamily="{StaticResource Font.Serif}"
                                                                    FontSize="16"
+                                                                   FontWeight="Bold"
                                                                    Margin="0,0,8,0"
                                                                    Foreground="{DynamicResource Brush.Text.Secondary}">
                                                             <TextBlock.Style>
