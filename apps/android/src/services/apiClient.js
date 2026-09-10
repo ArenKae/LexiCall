@@ -1,11 +1,14 @@
 // API client for the LexiCall backend: X-API-Key auth, connectivity check
-// via /health then /auth.
+// via /health then /auth, and delta pulls of entries and categories.
 
-const TIMEOUT_MS = 2000;
+const CONNECTION_TIMEOUT_MS = 2000;
+// Pulls are given far more room than the connectivity check: the very first one
+// carries the whole collection over a phone's network, not a two-byte reply.
+const PULL_TIMEOUT_MS = 20000;
 
-async function fetchWithTimeout(url, options) {
+async function fetchWithTimeout(url, options, timeoutMs) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, { ...options, signal: controller.signal });
   } finally {
@@ -14,18 +17,24 @@ async function fetchWithTimeout(url, options) {
 }
 
 export function createApiClient(baseUrl, apiKey) {
+  const root = baseUrl.replace(/\/+$/, '');
+
+  const isConfigured = () => root.length > 0 && apiKey.length > 0;
+
   async function testConnection() {
-    if (!baseUrl || !apiKey) {
+    if (!isConfigured()) {
       return 'NotConfigured';
     }
     try {
-      const health = await fetchWithTimeout(`${baseUrl}/health`);
+      const health = await fetchWithTimeout(`${root}/health`, {}, CONNECTION_TIMEOUT_MS);
       if (!health.ok) {
         return 'Unreachable';
       }
-      const auth = await fetchWithTimeout(`${baseUrl}/auth`, {
-        headers: { 'X-API-Key': apiKey },
-      });
+      const auth = await fetchWithTimeout(
+        `${root}/auth`,
+        { headers: { 'X-API-Key': apiKey } },
+        CONNECTION_TIMEOUT_MS
+      );
       if (auth.status === 401 || auth.status === 403) {
         return 'InvalidApiKey';
       }
@@ -35,5 +44,35 @@ export function createApiClient(baseUrl, apiKey) {
     }
   }
 
-  return { testConnection };
+  // Resolves to { records, syncTimestamp }; throws on any failure so the caller
+  // can leave its checkpoint untouched and retry the whole cycle later.
+  async function pull(path, updatedSince) {
+    if (!isConfigured()) {
+      throw new Error('Synchronisation non configurée.');
+    }
+
+    const query = updatedSince ? `?updated_since=${encodeURIComponent(updatedSince)}` : '';
+    const response = await fetchWithTimeout(
+      `${root}${path}${query}`,
+      { headers: { 'X-API-Key': apiKey } },
+      PULL_TIMEOUT_MS
+    );
+
+    if (!response.ok) {
+      throw new Error(`${path} : HTTP ${response.status}`);
+    }
+
+    return {
+      records: await response.json(),
+      // Server-issued token, kept verbatim as the next pull's checkpoint.
+      syncTimestamp: response.headers.get('X-Sync-Timestamp'),
+    };
+  }
+
+  return {
+    isConfigured,
+    testConnection,
+    pullEntries: (updatedSince) => pull('/entries', updatedSince),
+    pullCategories: (updatedSince) => pull('/categories', updatedSince),
+  };
 }
