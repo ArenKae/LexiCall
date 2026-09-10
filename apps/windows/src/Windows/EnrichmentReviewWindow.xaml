@@ -346,10 +346,35 @@
                             </TextBlock.Style>
                         </TextBlock>
 
-                        <ComboBox Margin="0,8,0,0"
-                                  ItemsSource="{Binding TypeCard.AvailableTypes}"
-                                  DisplayMemberPath="Label"
-                                  SelectedItem="{Binding TypeCard.SelectedType, Mode=TwoWay}" />
+                        <Grid Margin="0,8,0,0">
+                            <ToggleButton x:Name="ReviewTypeToggle"
+                                          Style="{StaticResource MultiSelectDropdownToggleStyle}"
+                                          Content="{Binding TypeCard.TypeSelections.SelectionSummary}"
+                                          IsChecked="{Binding IsOpen, ElementName=ReviewTypePopup, Mode=TwoWay}" />
+                            <Popup x:Name="ReviewTypePopup"
+                                   PlacementTarget="{Binding ElementName=ReviewTypeToggle}"
+                                   Placement="Bottom"
+                                   VerticalOffset="4"
+                                   AllowsTransparency="True"
+                                   PopupAnimation="Fade">
+                                <Border Background="{DynamicResource Brush.Surface}"
+                                        BorderBrush="{DynamicResource Brush.Border.Strong}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="4"
+                                        MinWidth="{Binding ActualWidth, ElementName=ReviewTypeToggle}">
+                                    <ItemsControl ItemsSource="{Binding TypeCard.TypeSelections.Items}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox Content="{Binding Label}"
+                                                          Margin="6,4"
+                                                          IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Border>
+                            </Popup>
+                        </Grid>
 
                         <TextBlock Margin="0,6,0,0"
                                    Text="{Binding TypeCard.Justification}"

@@ -45,7 +45,7 @@ public sealed record FieldSuggestion<T>(T Value, string? Justification);
 public sealed record EntryEnrichmentSuggestions(
     [property: JsonPropertyName("word_recognized")] bool WordRecognized,
     FieldSuggestion<List<string>>? Definition,
-    FieldSuggestion<VocabularyEntryType>? Type,
+    FieldSuggestion<List<VocabularyEntryType>>? Type,
     FieldSuggestion<List<string>>? Synonyms,
     [property: JsonPropertyName("example_sentences")] FieldSuggestion<List<string>>? ExampleSentences);
 
@@ -55,7 +55,7 @@ public sealed record EntryEnrichmentSuggestions(
 public sealed record EntryEnrichmentDraft(
     string Word,
     List<string> Definition,
-    VocabularyEntryType Type,
+    List<VocabularyEntryType> Type,
     List<string> Synonyms,
     List<string> ExampleSentences,
     List<string> LockedFields);
@@ -74,6 +74,14 @@ public enum CategorizationStatus
 // One element per sense: each is retrieved separately server-side, so a
 // two-sense word reaches both its lexical fields.
 public sealed record CategorizationRequest(string Word, List<string> Definition);
+
+// WordRecognized false means the LLM couldn't confirm Word is a real French
+// word: Suggestions is then empty, and no category is invented to house it.
+// Several suggestions only when the word carries genuinely distinct senses
+// across different lexical fields ("ladre": leper / miser).
+public sealed record CategorizationSuggestions(
+    [property: JsonPropertyName("word_recognized")] bool WordRecognized,
+    List<CategorizationSuggestion> Suggestions);
 
 // "existing" fills Category; "new" fills NewCategoryName, and
 // NewCategoryParent stays null when the suggestion is a new root.
@@ -351,7 +359,7 @@ public sealed class VocabularyApiClient
     // Docs/Plan-Phase-3-Auto-Categorisation.md. Word/Definition here are
     // whatever the caller currently has (a draft's bound fields, or an
     // already-saved entry's) — this call never looks anything up itself.
-    public async Task<(CategorizationStatus Status, CategorizationSuggestion? Suggestion, string? ErrorDetail)> TryCategorizeEntryAsync(CategorizationRequest request)
+    public async Task<(CategorizationStatus Status, CategorizationSuggestions? Suggestions, string? ErrorDetail)> TryCategorizeEntryAsync(CategorizationRequest request)
     {
         if (_enrichmentHttpClient is null)
         {
@@ -370,7 +378,7 @@ public sealed class VocabularyApiClient
                 return (CategorizationStatus.Failed, null, errorDetail);
             }
 
-            var result = await response.Content.ReadFromJsonAsync<CategorizationSuggestion>(JsonOptions).ConfigureAwait(false);
+            var result = await response.Content.ReadFromJsonAsync<CategorizationSuggestions>(JsonOptions).ConfigureAwait(false);
             return result is null
                 ? (CategorizationStatus.Failed, null, null)
                 : (CategorizationStatus.Ok, result, null);

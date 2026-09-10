@@ -1,0 +1,43 @@
+// Light and dark color palettes for the app theme.
+
+export const lightColors = {
+  background: '#F5EFE4',
+  surface: '#FCFAF4',
+  surfaceHover: '#F0E9DA',
+  borderSubtle: '#E4DAC6',
+  borderStrong: '#CBBFA6',
+  textPrimary: '#16213D',
+  textSecondary: '#7A7264',
+  textMuted: '#A39880',
+  textOnAccent: '#FFFFFF',
+  accent: '#2F5FA8',
+  accentHover: '#3A6FBE',
+  accentPressed: '#254A85',
+  danger: '#B42318',
+  success: '#2E7D46',
+  warning: '#B2650B',
+  selectionBackground: '#DCE7F8',
+  selectionForeground: '#16213D',
+  iconNeutral: '#7A7A7A',
+};
+
+export const darkColors = {
+  background: '#201E1B',
+  surface: '#272420',
+  surfaceHover: '#2E2A25',
+  borderSubtle: '#35312B',
+  borderStrong: '#564F44',
+  textPrimary: '#F2EFE9',
+  textSecondary: '#BDB6AC',
+  textMuted: '#8E8880',
+  textOnAccent: '#FFFFFF',
+  accent: '#557EB4',
+  accentHover: '#7194C1',
+  accentPressed: '#416695',
+  danger: '#E45B58',
+  success: '#4FAE68',
+  warning: '#E0952F',
+  selectionBackground: '#3F3A32',
+  selectionForeground: '#F2EFE9',
+  iconNeutral: '#A4A4A4',
+};

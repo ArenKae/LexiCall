@@ -15,6 +15,7 @@ public static class VocabularyEntryTypeCatalog
     public static IReadOnlyList<VocabularyEntryTypeOption> All { get; } =
     [
         new(VocabularyEntryType.Undefined, "Non défini"),
+        new(VocabularyEntryType.Nom, "Nom"),
         new(VocabularyEntryType.NomMasculin, "Nom masculin"),
         new(VocabularyEntryType.NomFeminin, "Nom féminin"),
         new(VocabularyEntryType.Verbe, "Verbe"),
@@ -23,6 +24,14 @@ public static class VocabularyEntryTypeCatalog
         new(VocabularyEntryType.Expression, "Expression")
     ];
 
+    // Everything a user can actually tick: no entry is ever "Undefined plus
+    // something else", so Undefined is the empty selection, not an option.
+    public static IReadOnlyList<VocabularyEntryTypeOption> SelectableTypes { get; } =
+        All.Where(item => item.Value != VocabularyEntryType.Undefined).ToList();
+
     public static string GetLabel(VocabularyEntryType type) =>
         All.FirstOrDefault(item => item.Value == type)?.Label ?? type.ToString();
+
+    public static string GetLabels(IEnumerable<VocabularyEntryType> types) =>
+        string.Join(", ", types.Select(GetLabel));
 }

@@ -20,6 +20,7 @@ public sealed record CategoryPickerOption(Guid Id, string Name, int Depth)
 
 public sealed class CategorySuggestionCardViewModel : INotifyPropertyChanged
 {
+    private bool _isAccepted = true;
     private bool _isNewCategory;
     private CategoryPickerOption? _selectedExistingCategory;
     private string _newCategoryName;
@@ -55,6 +56,15 @@ public sealed class CategorySuggestionCardViewModel : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    // Pre-checked, and meaningful as soon as the API returns several
+    // suggestions: accepting the "leper" sense while refusing the "miser" one
+    // has no other way to be expressed.
+    public bool IsAccepted
+    {
+        get => _isAccepted;
+        set => SetProperty(ref _isAccepted, value);
+    }
 
     public string? Justification { get; }
 

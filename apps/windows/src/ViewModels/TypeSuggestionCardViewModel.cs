@@ -1,5 +1,5 @@
 // Review card for the Type enrichment suggestion in EnrichmentReviewWindow —
-// unlike the other three fields, this is an enum choice, not free text.
+// unlike the other three fields, this is a set of enum values, not free text.
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using LexiCall.Desktop.Models;
@@ -10,16 +10,15 @@ namespace LexiCall.Desktop.ViewModels;
 public sealed class TypeSuggestionCardViewModel : INotifyPropertyChanged
 {
     private bool _isAccepted = true;
-    private VocabularyEntryTypeOption? _selectedType;
 
     public TypeSuggestionCardViewModel(
         string? currentValueDisplay,
         string? justification,
-        VocabularyEntryType suggestedType)
+        IEnumerable<VocabularyEntryType> suggestedTypes)
     {
         CurrentValueDisplay = currentValueDisplay;
         Justification = justification;
-        _selectedType = VocabularyEntryTypeCatalog.All.FirstOrDefault(option => option.Value == suggestedType);
+        TypeSelections = new TypeSelectionListViewModel(suggestedTypes);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -33,22 +32,17 @@ public sealed class TypeSuggestionCardViewModel : INotifyPropertyChanged
 
     public bool HasJustification => !string.IsNullOrEmpty(Justification);
 
-    public IReadOnlyList<VocabularyEntryTypeOption> AvailableTypes => VocabularyEntryTypeCatalog.All;
-
     public bool IsAccepted
     {
         get => _isAccepted;
         set => SetProperty(ref _isAccepted, value);
     }
 
-    // Pre-selected to the suggested type, but still a real ComboBox — the
-    // user can pick a different one before accepting, same "correction"
-    // affordance as the text fields' editable text.
-    public VocabularyEntryTypeOption? SelectedType
-    {
-        get => _selectedType;
-        set => SetProperty(ref _selectedType, value);
-    }
+    // Pre-ticked with what was suggested, but every box stays editable — the
+    // same "correction" affordance as the text fields' editable text.
+    public TypeSelectionListViewModel TypeSelections { get; }
+
+    public List<VocabularyEntryType> ToTypeList() => TypeSelections.ToTypeList();
 
     private bool SetProperty<T>(
         ref T field,

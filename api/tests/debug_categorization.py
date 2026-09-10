@@ -39,9 +39,11 @@ from _debug_console import (
 )
 from openai import OpenAI
 
-from lexicall_api import embeddings, enrichment, llm_client
-from lexicall_api.config import settings
-from lexicall_api.repositories import categories_repo, category_embeddings_repo
+import embeddings
+import enrichment
+import llm_client
+from config import settings
+from repositories import categories_repo, category_embeddings_repo
 
 client = OpenAI(api_key=settings.openai_api_key)
 

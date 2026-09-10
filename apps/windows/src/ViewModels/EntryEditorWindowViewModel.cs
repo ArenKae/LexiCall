@@ -24,7 +24,6 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     private string _exampleSentencesText = string.Empty;
     private string _notes = string.Empty;
     private string _source = string.Empty;
-    private VocabularyEntryType _type = VocabularyEntryType.Undefined;
     private bool _isArchived;
     private string _errorMessage = string.Empty;
     private bool _isEnrichingDraft;
@@ -47,6 +46,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         CategorizeDraftCommand = new RelayCommand(async () => await CategorizeDraftAsync());
 
         DefinitionSenses = new DefinitionSenseListViewModel(existingEntry?.Definition);
+        TypeSelections = new TypeSelectionListViewModel(existingEntry?.Type);
         DefinitionSenses.SenseChanged += (_, _) => ClearError();
 
         // Categories are optional (CategoryIds may stay empty). On creation,
@@ -72,7 +72,6 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             ExampleSentencesText = TextListParser.FormatLineSeparatedText(existingEntry.ExampleSentences);
             Notes = existingEntry.Notes;
             Source = existingEntry.Source;
-            _type = existingEntry.Type;
             _isArchived = existingEntry.IsArchived;
         }
     }
@@ -92,7 +91,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 
     public event EventHandler? CategorizationSuggestionsReady;
 
-    public CategorizationSuggestion? PendingCategorizationSuggestion { get; private set; }
+    public CategorizationSuggestions? PendingCategorizationSuggestions { get; private set; }
 
     // Exposed so the window's code-behind can hand the same client to
     // EnrichmentReviewWindowViewModel (needed for its "Reformuler" action).
@@ -111,14 +110,13 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
 
     public DefinitionSenseListViewModel DefinitionSenses { get; }
 
+    public TypeSelectionListViewModel TypeSelections { get; }
+
     public ObservableCollection<CategorySelectionViewModel> CategorySelections { get; }
 
     public ObservableCollection<EntryImageEditorViewModel> Images { get; }
 
     public bool CanAddMoreImages => Images.Count < MaxImages;
-
-    public IReadOnlyList<VocabularyEntryTypeOption> AvailableTypes =>
-        VocabularyEntryTypeCatalog.All;
 
     public bool HasAvailableCategories => CategorySelections.Count > 0;
 
@@ -174,29 +172,6 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     {
         get => _source;
         set => SetProperty(ref _source, value);
-    }
-
-    public VocabularyEntryType Type
-    {
-        get => _type;
-        set
-        {
-            if (SetProperty(ref _type, value))
-            {
-                OnPropertyChanged(nameof(SelectedTypeOption));
-            }
-        }
-    }
-
-    // The ComboBox binds SelectedItem to this instead of SelectedValue: WPF's
-    // SelectedValue/SelectedValuePath reflection-based lookup reliably picks
-    // up a user's dropdown click but doesn't always repaint the closed box
-    // when Type is set programmatically (e.g. ApplyEnrichmentResult) —
-    // SelectedItem avoids that lookup path entirely.
-    public VocabularyEntryTypeOption? SelectedTypeOption
-    {
-        get => AvailableTypes.FirstOrDefault(option => option.Value == Type);
-        set => Type = value?.Value ?? VocabularyEntryType.Undefined;
     }
 
     public bool IsArchived
@@ -386,7 +361,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         var draft = new EntryEnrichmentDraft(
             word,
             DefinitionSenses.ToSenseList(),
-            Type,
+            TypeSelections.ToTypeList(),
             TextListParser.ParseCommaSeparatedText(SynonymsText),
             TextListParser.ParseLineSeparatedText(ExampleSentencesText),
             _lockedFields.ToList());
@@ -432,9 +407,9 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             DefinitionSenses.Reset(definition);
         }
 
-        if (result.Type is { } type)
+        if (result.Type is { } types)
         {
-            Type = type;
+            TypeSelections.Reset(types);
         }
 
         if (result.Synonyms is { } synonyms)
@@ -460,14 +435,14 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         IsCategorizingDraft = true;
 
         var request = new CategorizationRequest(word, DefinitionSenses.ToSenseList());
-        var (status, suggestion, errorDetail) = await _apiClient.TryCategorizeEntryAsync(request);
+        var (status, suggestions, errorDetail) = await _apiClient.TryCategorizeEntryAsync(request);
 
         IsCategorizingDraft = false;
 
         switch (status)
         {
-            case CategorizationStatus.Ok when suggestion is not null:
-                PendingCategorizationSuggestion = suggestion;
+            case CategorizationStatus.Ok when suggestions is not null:
+                PendingCategorizationSuggestions = suggestions;
                 CategorizationSuggestionsReady?.Invoke(this, EventArgs.Empty);
                 break;
             case CategorizationStatus.NotConfigured:
@@ -555,7 +530,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
                 .Where(category => category.IsSelected)
                 .Select(category => category.CategoryId)
                 .ToList(),
-            Type = Type,
+            Type = TypeSelections.ToTypeList(),
             IsArchived = IsArchived,
             LockedFields = _lockedFields.ToList(),
             Images = Images

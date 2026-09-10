@@ -1,0 +1,21 @@
+# Dev recipes for the Expo app (apps/android). The root justfile exposes
+# these with the -android suffix.
+
+default:
+    just --list
+
+# Install npm dependencies.
+install:
+    npm install
+
+# Start the Metro dev server (Expo Go / dev client on a connected device).
+start:
+    npm run android
+
+# Local native build (expo run:android): builds and installs on a connected device.
+build:
+    npm run build:android
+
+# Remove node_modules and Expo/Gradle build caches.
+clean:
+    rm -rf node_modules .expo android ios

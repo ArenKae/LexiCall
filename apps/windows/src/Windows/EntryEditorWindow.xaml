@@ -504,10 +504,37 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <ComboBox Grid.Column="0"
-                                          ItemsSource="{Binding AvailableTypes}"
-                                          DisplayMemberPath="Label"
-                                          SelectedItem="{Binding SelectedTypeOption, Mode=TwoWay}" />
+                                <!-- Nothing ticked is the untyped state; a word
+                                     can hold several natures ("rose"). -->
+                                <Grid Grid.Column="0">
+                                    <ToggleButton x:Name="EntryTypeToggle"
+                                                  Style="{StaticResource MultiSelectDropdownToggleStyle}"
+                                                  Content="{Binding TypeSelections.SelectionSummary}"
+                                                  IsChecked="{Binding IsOpen, ElementName=EntryTypePopup, Mode=TwoWay}" />
+                                    <Popup x:Name="EntryTypePopup"
+                                           PlacementTarget="{Binding ElementName=EntryTypeToggle}"
+                                           Placement="Bottom"
+                                           VerticalOffset="4"
+                                           AllowsTransparency="True"
+                                           PopupAnimation="Fade">
+                                        <Border Background="{DynamicResource Brush.Surface}"
+                                                BorderBrush="{DynamicResource Brush.Border.Strong}"
+                                                BorderThickness="1"
+                                                CornerRadius="6"
+                                                Padding="4"
+                                                MinWidth="{Binding ActualWidth, ElementName=EntryTypeToggle}">
+                                            <ItemsControl ItemsSource="{Binding TypeSelections.Items}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox Content="{Binding Label}"
+                                                                  Margin="6,4"
+                                                                  IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </Border>
+                                    </Popup>
+                                </Grid>
                                 <CheckBox Grid.Column="1"
                                           Content="Archivé"
                                           Margin="12,0,0,0"

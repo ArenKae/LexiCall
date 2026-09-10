@@ -2,9 +2,10 @@
 // from EnrichmentReviewWindow (see docs: the category suggestion shares no
 // real shape with a field suggestion, forcing it into that window would mean
 // static factories and a mostly-null result field for no actual reuse).
-// Same paradigm as the other review window though: one card, accept/correct/
-// reject, an Enregistrer that only ever exposes a Result — never persists
-// anything itself.
+// Same paradigm as the other review window though: one card per suggestion,
+// accept/correct/reject each, an Enregistrer that only ever exposes a Result —
+// never persists anything itself.
+using System.Collections.ObjectModel;
 using LexiCall.Desktop.Commands;
 using LexiCall.Desktop.Models;
 using LexiCall.Desktop.Services;
@@ -25,11 +26,13 @@ public sealed record CategorySuggestionResult(
 public sealed class CategorizationReviewWindowViewModel
 {
     public CategorizationReviewWindowViewModel(
-        CategorizationSuggestion suggestion,
+        IReadOnlyList<CategorizationSuggestion> suggestions,
         IReadOnlyList<VocabularyCategory> allCategories,
         IReadOnlyList<string> currentCategoryNames)
     {
-        CategoryCard = new CategorySuggestionCardViewModel(suggestion, allCategories, currentCategoryNames);
+        CategoryCards = new ObservableCollection<CategorySuggestionCardViewModel>(
+            suggestions.Select(suggestion =>
+                new CategorySuggestionCardViewModel(suggestion, allCategories, currentCategoryNames)));
         SaveCommand = new RelayCommand(Save);
     }
 
@@ -37,16 +40,21 @@ public sealed class CategorizationReviewWindowViewModel
 
     public RelayCommand SaveCommand { get; }
 
-    // Never null: a categorization suggestion always resolves to a decision
-    // (existing or new), unlike the field-enrichment cards which may or may
-    // not exist depending on what the API judged worth suggesting.
-    public CategorySuggestionCardViewModel CategoryCard { get; }
+    // Usually one; several when the word carries distinct senses across
+    // different lexical fields ("ladre": leper / miser).
+    public ObservableCollection<CategorySuggestionCardViewModel> CategoryCards { get; }
 
-    public CategorySuggestionResult? Result { get; private set; }
+    // Only the cards the user actually accepted, in the order shown.
+    public List<CategorySuggestionResult> Results { get; private set; } = [];
 
     private void Save()
     {
-        Result = CategoryCard.BuildResult();
+        Results = CategoryCards
+            .Where(card => card.IsAccepted)
+            .Select(card => card.BuildResult())
+            .OfType<CategorySuggestionResult>()
+            .ToList();
+
         Saved?.Invoke(this, EventArgs.Empty);
     }
 }

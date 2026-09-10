@@ -70,8 +70,8 @@ recipe wraps it yet (unlike `migrate-api`, it takes no `--input`):
 
 ```bash
 cd api
-PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.split_images_in_place --dry-run
-PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.split_images_in_place
+PYTHONPATH=src .venv/bin/python -m migration.split_images_in_place --dry-run
+PYTHONPATH=src .venv/bin/python -m migration.split_images_in_place
 ```
 
 ## AI enrichment
@@ -150,7 +150,7 @@ whatever drifted (failed refreshes and membership changes alike) and drops embed
 category is gone, returning `{embedded, unchanged, orphans_removed}`. Costs nothing when the corpus
 is already current, so it doubles as routine hygiene rather than being purely an error-repair path.
 The same pass is available on the server as
-`PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.index_category_embeddings [--dry-run]`.
+`PYTHONPATH=src .venv/bin/python -m migration.index_category_embeddings [--dry-run]`.
 
 Two manual debug tools sit in `tests/` (not pytest tests — they drive the API's own modules
 directly and print every request, intermediate result and cost estimate). No `just` recipe wraps

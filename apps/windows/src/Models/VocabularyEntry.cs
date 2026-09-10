@@ -3,7 +3,7 @@
 // order here is also the JSON field order written to vocabulary.json
 // (System.Text.Json serializes in declaration order) — kept deliberately
 // aligned with the equivalent field order normalized into Mongo entries
-// documents by api/src/lexicall_api/migration/normalize_entry_fields.py.
+// documents by api/src/migration/normalize_entry_fields.py.
 namespace LexiCall.Desktop.Models;
 
 public sealed class VocabularyEntry
@@ -12,7 +12,9 @@ public sealed class VocabularyEntry
 
     public required string Word { get; set; }
 
-    public VocabularyEntryType Type { get; set; } = VocabularyEntryType.Undefined;
+    // One element per grammatical nature the word has ("rose": noun and
+    // adjective). [Undefined] alone is how an untyped entry is stored.
+    public List<VocabularyEntryType> Type { get; set; } = [VocabularyEntryType.Undefined];
 
     // One element per distinct sense of the word.
     public required List<string> Definition { get; set; }

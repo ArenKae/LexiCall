@@ -3,6 +3,7 @@
 // the window with DialogResult = true, and the caller reads Result.
 using System.Windows;
 using LexiCall.Desktop.Services;
+using LexiCall.Desktop.Utilities;
 using LexiCall.Desktop.ViewModels;
 
 namespace LexiCall.Desktop.Windows;
@@ -18,6 +19,7 @@ public partial class EnrichmentReviewWindow : Window
         InitializeComponent();
         DataContext = _viewModel;
         ThemeService.RegisterWindow(this);
+        ClickAwayPopup.Register(ReviewTypePopup);
 
         _viewModel.Saved += (_, _) =>
         {

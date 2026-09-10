@@ -36,7 +36,9 @@ from _debug_console import (
     step_done,
 )
 
-from lexicall_api import enrichment, llm_client, wiktionary_client
+import enrichment
+import llm_client
+import wiktionary_client
 
 _lock = threading.Lock()
 _llm_calls: list[dict] = []

@@ -34,6 +34,7 @@ public partial class EntryEditorWindow : Window
         InitializeComponent();
         DataContext = _viewModel;
         ThemeService.RegisterWindow(this);
+        ClickAwayPopup.Register(EntryTypePopup);
 
         // The ViewModel knows nothing about WPF: it raises a plain business
         // event that the window translates into a DialogResult.
@@ -76,7 +77,7 @@ public partial class EntryEditorWindow : Window
         var reviewViewModel = new EnrichmentReviewWindowViewModel(
             _viewModel.Word,
             _viewModel.DefinitionSenses.ToSenseList(),
-            _viewModel.Type,
+            _viewModel.TypeSelections.ToTypeList(),
             TextListParser.ParseCommaSeparatedText(_viewModel.SynonymsText),
             TextListParser.ParseLineSeparatedText(_viewModel.ExampleSentencesText),
             suggestions,
@@ -103,8 +104,23 @@ public partial class EntryEditorWindow : Window
             return;
         }
 
-        if (_viewModel.PendingCategorizationSuggestion is not { } suggestion)
+        if (_viewModel.PendingCategorizationSuggestions is not { } suggestions)
         {
+            return;
+        }
+
+        if (!suggestions.WordRecognized)
+        {
+            AlertDialog.Show(
+                this,
+                $"« {_viewModel.Word} » n'a pas été reconnu comme un mot ou une expression française existante — aucune catégorie n'a été proposée.",
+                "Catégorisation automatique");
+            return;
+        }
+
+        if (suggestions.Suggestions.Count == 0)
+        {
+            AlertDialog.Show(this, "Aucune suggestion de catégorie pour cette entrée.", "Catégorisation automatique");
             return;
         }
 
@@ -113,41 +129,44 @@ public partial class EntryEditorWindow : Window
             .Select(category => category.Name)
             .ToList();
 
-        var reviewViewModel = new CategorizationReviewWindowViewModel(suggestion, _viewModel.AvailableCategories, currentCategoryNames);
+        var reviewViewModel = new CategorizationReviewWindowViewModel(
+            suggestions.Suggestions, _viewModel.AvailableCategories, currentCategoryNames);
         var dialog = new CategorizationReviewWindow(reviewViewModel) { Owner = this };
 
-        if (dialog.ShowDialog() != true || reviewViewModel.Result is not { } result)
+        if (dialog.ShowDialog() != true)
         {
             return;
         }
 
-        VocabularyCategory? createdCategory = null;
-
-        if (result.NewCategoryName is { } newName)
+        foreach (var result in reviewViewModel.Results)
         {
-            var newCategory = new VocabularyCategory
-            {
-                Id = Guid.NewGuid(),
-                Name = newName,
-                ParentId = result.NewCategoryParentId,
-                Description = result.NewCategoryDescription ?? string.Empty,
-                IconGlyph = result.NewCategoryIconGlyph ?? string.Empty,
-                CreatedAt = DateTimeOffset.Now,
-                UpdatedAt = DateTimeOffset.Now
-            };
+            VocabularyCategory? createdCategory = null;
 
-            var error = _saveCategory?.Invoke(newCategory);
-            if (error is not null)
+            if (result.NewCategoryName is { } newName)
             {
-                AlertDialog.Show(this, error, "Création de catégorie impossible");
-            }
-            else
-            {
+                var newCategory = new VocabularyCategory
+                {
+                    Id = Guid.NewGuid(),
+                    Name = newName,
+                    ParentId = result.NewCategoryParentId,
+                    Description = result.NewCategoryDescription ?? string.Empty,
+                    IconGlyph = result.NewCategoryIconGlyph ?? string.Empty,
+                    CreatedAt = DateTimeOffset.Now,
+                    UpdatedAt = DateTimeOffset.Now
+                };
+
+                var error = _saveCategory?.Invoke(newCategory);
+                if (error is not null)
+                {
+                    AlertDialog.Show(this, error, "Création de catégorie impossible");
+                    continue;
+                }
+
                 createdCategory = newCategory;
             }
-        }
 
-        _viewModel.ApplyCategorization(result, createdCategory);
+            _viewModel.ApplyCategorization(result, createdCategory);
+        }
     }
 
     // Caps the window to 80% of the owner's size — Owner is only guaranteed
