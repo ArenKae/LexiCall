@@ -59,7 +59,7 @@ dev-run HOST="0.0.0.0" PORT="8000":
         kill $pids
         sleep 0.5
     fi
-    exec .venv/bin/uvicorn lexicall_api.main:app --reload --app-dir src --env-file .env --host {{HOST}} --port {{PORT}}
+    exec .venv/bin/uvicorn main:app --reload --app-dir src --env-file .env --host {{HOST}} --port {{PORT}}
 
 # Stop the dev stack.
 [group('dev')]
@@ -90,7 +90,7 @@ prod-backup:
 # One-off, idempotent vocabulary.json -> Mongo migration (see api/README.md).
 [group('production')]
 migrate *ARGS:
-    PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.migrate_from_json {{ARGS}}
+    PYTHONPATH=src .venv/bin/python -m migration.migrate_from_json {{ARGS}}
 
 # Interactive mongosh shell, authenticated as the scoped app user — no root
 # in this repo, MongoDB is shared infra owned outside it. A disposable

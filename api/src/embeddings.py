@@ -17,7 +17,7 @@
 import numpy as np
 from openai import OpenAI
 
-from lexicall_api.config import settings
+from config import settings
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 

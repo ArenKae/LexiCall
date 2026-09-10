@@ -4,14 +4,15 @@ from datetime import datetime
 import openai
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from lexicall_api import category_indexing, timestamps
-from lexicall_api.models.category import (
+import category_indexing
+import timestamps
+from models.category import (
     CategoryReindexResult,
     VocabularyCategory,
     VocabularyCategoryWrite,
 )
-from lexicall_api.repositories import categories_repo, category_embeddings_repo, entries_repo
-from lexicall_api.security import require_api_key
+from repositories import categories_repo, category_embeddings_repo, entries_repo
+from security import require_api_key
 
 router = APIRouter(prefix="/categories", tags=["categories"], dependencies=[Depends(require_api_key)])
 

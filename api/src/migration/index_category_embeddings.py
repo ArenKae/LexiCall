@@ -1,11 +1,11 @@
 # CLI wrapper around the category embedding reindex, for running the pass by
 # hand on a server. Run from api/ with:
-#   PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.index_category_embeddings [--dry-run]
+#   PYTHONPATH=src .venv/bin/python -m migration.index_category_embeddings [--dry-run]
 # The same pass is reachable through POST /categories/reindex-embeddings, so
 # the desktop client can repair drifted embeddings without shell access.
 import argparse
 
-from lexicall_api import category_indexing
+import category_indexing
 
 
 def main() -> None:

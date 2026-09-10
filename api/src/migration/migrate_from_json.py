@@ -9,7 +9,7 @@ import json
 import sys
 from dataclasses import dataclass
 
-from lexicall_api.repositories import categories_repo, entries_repo, entry_images_repo
+from repositories import categories_repo, entries_repo, entry_images_repo
 
 
 class ForceRequiredError(RuntimeError):

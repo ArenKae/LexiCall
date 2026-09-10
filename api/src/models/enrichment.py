@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from lexicall_api.models.entry import VocabularyEntryType
+from models.entry import VocabularyEntryType
 
 
 # Unlike VocabularyEntryWrite, Definition has no min_length — this is meant to

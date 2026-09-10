@@ -5,11 +5,11 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from lexicall_api import timestamps
-from lexicall_api.config import settings
-from lexicall_api.models.entry import VocabularyEntrySummary, VocabularyEntryWrite
-from lexicall_api.repositories import categories_repo, entries_repo, entry_images_repo
-from lexicall_api.security import require_api_key
+import timestamps
+from config import settings
+from models.entry import VocabularyEntrySummary, VocabularyEntryWrite
+from repositories import categories_repo, entries_repo, entry_images_repo
+from security import require_api_key
 
 router = APIRouter(prefix="/entries", tags=["entries"], dependencies=[Depends(require_api_key)])
 

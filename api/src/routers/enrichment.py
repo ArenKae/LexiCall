@@ -4,8 +4,8 @@ import httpx
 import openai
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from lexicall_api import enrichment
-from lexicall_api.models.enrichment import (
+import enrichment
+from models.enrichment import (
     CategorizationRequest,
     CategorizationSuggestions,
     CategoryCandidatesResult,
@@ -14,7 +14,7 @@ from lexicall_api.models.enrichment import (
     RephraseDefinitionRequest,
     RephraseDefinitionResult,
 )
-from lexicall_api.security import require_api_key
+from security import require_api_key
 
 router = APIRouter(prefix="/enrichment", tags=["enrichment"], dependencies=[Depends(require_api_key)])
 

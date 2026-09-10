@@ -5,9 +5,11 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Literal
 
-from lexicall_api import embeddings, llm_client, wiktionary_client
-from lexicall_api.models.entry import VocabularyEntryType
-from lexicall_api.repositories import categories_repo, category_embeddings_repo
+import embeddings
+import llm_client
+import wiktionary_client
+from models.entry import VocabularyEntryType
+from repositories import categories_repo, category_embeddings_repo
 
 ENRICHABLE_FIELDS = ("Definition", "Type", "Synonyms", "ExampleSentences")
 

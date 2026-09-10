@@ -1,6 +1,6 @@
 # Turns each entry's Definition from a single string into a list of senses.
 # Run from api/ with:
-#   PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.split_definitions [--dry-run]
+#   PYTHONPATH=src .venv/bin/python -m migration.split_definitions [--dry-run]
 # Only splits on newlines the user wrote themselves — never on punctuation,
 # which on this corpus separates a rephrasing far more often than a real
 # sense. Numbered prefixes ("1. ", "2. ") are dropped since the list index
@@ -11,7 +11,7 @@ import argparse
 import re
 from dataclasses import dataclass, field
 
-from lexicall_api.database import get_entries_collection, strip_mongo_id
+from database import get_entries_collection, strip_mongo_id
 
 _NUMBERED_PREFIX_RE = re.compile(r"^\d+\s*[.)]\s*")
 

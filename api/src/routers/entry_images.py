@@ -5,8 +5,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 
-from lexicall_api.repositories import entry_images_repo
-from lexicall_api.security import require_api_key
+from repositories import entry_images_repo
+from security import require_api_key
 
 router = APIRouter(prefix="/entries", tags=["entry-images"], dependencies=[Depends(require_api_key)])
 

@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
-from lexicall_api import timestamps
-from lexicall_api.database import get_categories_collection, strip_mongo_id
+import timestamps
+from database import get_categories_collection, strip_mongo_id
 
 
 def list_categories(updated_since: datetime | None = None) -> list[dict]:

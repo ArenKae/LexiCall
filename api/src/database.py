@@ -6,7 +6,7 @@ from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.errors import PyMongoError
 
-from lexicall_api.config import settings
+from config import settings
 
 logger = logging.getLogger(__name__)
 

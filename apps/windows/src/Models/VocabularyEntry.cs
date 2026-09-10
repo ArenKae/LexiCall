@@ -3,7 +3,7 @@
 // order here is also the JSON field order written to vocabulary.json
 // (System.Text.Json serializes in declaration order) — kept deliberately
 // aligned with the equivalent field order normalized into Mongo entries
-// documents by api/src/lexicall_api/migration/normalize_entry_fields.py.
+// documents by api/src/migration/normalize_entry_fields.py.
 namespace LexiCall.Desktop.Models;
 
 public sealed class VocabularyEntry

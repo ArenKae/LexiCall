@@ -6,7 +6,7 @@ from functools import lru_cache
 
 from openai import OpenAI
 
-from lexicall_api.config import settings
+from config import settings
 
 MODEL = "gpt-5.6-luna"
 

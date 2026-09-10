@@ -6,7 +6,7 @@ import argparse
 import base64
 from dataclasses import dataclass
 
-from lexicall_api.repositories import entries_repo, entry_images_repo
+from repositories import entries_repo, entry_images_repo
 
 
 @dataclass

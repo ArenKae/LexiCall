@@ -1,14 +1,14 @@
 # Turns each entry's Type from a single string into a list, so a word that
 # genuinely works as several parts of speech ("rose": noun and adjective) can
 # say so. Run from api/ with:
-#   PYTHONPATH=src .venv/bin/python -m lexicall_api.migration.wrap_entry_types [--dry-run]
+#   PYTHONPATH=src .venv/bin/python -m migration.wrap_entry_types [--dry-run]
 # Pure wrapping, no interpretation: a stored "Adjectif" becomes ["Adjectif"]
 # and nothing is inferred about a second type — the enrichment pass proposes
 # those later. Idempotent: a Type already stored as a list is left alone.
 import argparse
 from dataclasses import dataclass
 
-from lexicall_api.database import get_entries_collection, strip_mongo_id
+from database import get_entries_collection, strip_mongo_id
 
 
 @dataclass

@@ -5,7 +5,7 @@
 # is left untouched, so a crash mid-run can be safely rerun.
 import argparse
 
-from lexicall_api.database import get_entries_collection
+from database import get_entries_collection
 
 FIELD_ORDER = [
     "Id",

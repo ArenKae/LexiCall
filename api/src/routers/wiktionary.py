@@ -2,9 +2,9 @@
 # builds the definition-suggestion feature on top of fetch_definition_context.
 from fastapi import APIRouter, Depends
 
-from lexicall_api import wiktionary_client
-from lexicall_api.models.wiktionary import WiktionaryLookupResult
-from lexicall_api.security import require_api_key
+import wiktionary_client
+from models.wiktionary import WiktionaryLookupResult
+from security import require_api_key
 
 router = APIRouter(prefix="/wiktionary", tags=["wiktionary"], dependencies=[Depends(require_api_key)])
 

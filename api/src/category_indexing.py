@@ -7,8 +7,8 @@
 import logging
 from dataclasses import dataclass
 
-from lexicall_api import embeddings
-from lexicall_api.repositories import categories_repo, category_embeddings_repo, entries_repo
+import embeddings
+from repositories import categories_repo, category_embeddings_repo, entries_repo
 
 logger = logging.getLogger(__name__)
 

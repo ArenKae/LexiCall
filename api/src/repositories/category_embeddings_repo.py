@@ -3,7 +3,7 @@
 # cache. Keyed by the category's own Id. SourceText is the exact text that
 # produced the vector — comparing it is how callers skip re-embedding a
 # category whose name, path and description haven't changed.
-from lexicall_api.database import get_category_embeddings_collection, strip_mongo_id
+from database import get_category_embeddings_collection, strip_mongo_id
 
 
 def get_embedding(category_id: str) -> dict | None:

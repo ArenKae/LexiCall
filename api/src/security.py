@@ -4,7 +4,7 @@ import secrets
 
 from fastapi import Header, HTTPException
 
-from lexicall_api.config import settings
+from config import settings
 
 
 def require_api_key(x_api_key: str = Header(...)) -> None:

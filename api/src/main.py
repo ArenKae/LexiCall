@@ -6,9 +6,9 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.responses import Response
 
-from lexicall_api.database import ensure_indexes, ping
-from lexicall_api.routers import categories, enrichment, entries, entry_images, wiktionary
-from lexicall_api.security import require_api_key
+from database import ensure_indexes, ping
+from routers import categories, enrichment, entries, entry_images, wiktionary
+from security import require_api_key
 
 
 @asynccontextmanager
