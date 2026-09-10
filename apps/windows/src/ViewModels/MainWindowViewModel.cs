@@ -1455,6 +1455,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private static string NormalizeForSearch(string value)
     {
         // Strips accents before comparing ("ephemere" matches "Éphémère").
+        // Hyphens also collapse to spaces ("vide gousset" matches
+        // "Vide-gousset"), and both apostrophes in use are folded together —
+        // decomposition leaves those distinct, they aren't accent variants.
         var normalized = value.Normalize(NormalizationForm.FormD);
         var builder = new StringBuilder(normalized.Length);
 
@@ -1462,10 +1465,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var category = CharUnicodeInfo.GetUnicodeCategory(character);
 
-            if (category != UnicodeCategory.NonSpacingMark)
+            if (category == UnicodeCategory.NonSpacingMark)
             {
-                builder.Append(character);
+                continue;
             }
+
+            builder.Append(character switch
+            {
+                '-' or '‐' or '‑' or '–' or '—' => ' ',
+                '’' or 'ʼ' => '\'',
+                _ => character
+            });
         }
 
         return builder
