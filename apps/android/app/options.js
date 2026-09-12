@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTheme } from '../src/theme/useTheme';
 import { useVocabularyStore } from '../src/store/useVocabularyStore';
+import { needsPush } from '../src/store/syncCycle';
 
 const CONNECTION_LABELS = {
   Ok: 'Connexion réussie.',
@@ -18,6 +19,9 @@ export default function Options() {
   const [apiKey, setApiKey] = useState(store.apiKey);
   const [connectionMessage, setConnectionMessage] = useState('');
 
+  const pendingCount = store.pendingEntryDeletions.length + store.pendingCategoryDeletions.length;
+  const unsyncedCount = [...store.entries, ...store.categories].filter(needsPush).length;
+
   const inputStyle = [
     styles.input,
     { color: colors.textPrimary, borderColor: colors.borderStrong, backgroundColor: colors.surface },
@@ -33,7 +37,25 @@ export default function Options() {
   async function handleSync() {
     setConnectionMessage('');
     await store.saveApiConfig(baseUrl, apiKey);
-    await store.syncNow();
+    await store.resync();
+  }
+
+  function handleReset() {
+    Alert.alert(
+      'Effacer les données locales',
+      'Toutes les entrées et catégories stockées sur ce téléphone seront supprimées, puis rechargées depuis le serveur à la prochaine synchronisation. Les modifications non encore synchronisées seront perdues.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Effacer',
+          style: 'destructive',
+          onPress: async () => {
+            await store.resetLocalData();
+            await store.resync();
+          },
+        },
+      ]
+    );
   }
 
   return (
@@ -98,6 +120,20 @@ export default function Options() {
       <Text style={[styles.message, { color: colors.textMuted }]}>
         Dernier pull : {store.lastPulledAt ?? 'jamais'}
       </Text>
+      {pendingCount > 0 && (
+        <Text style={[styles.message, { color: colors.warning }]}>
+          {pendingCount} suppression(s) en attente de confirmation par le serveur.
+        </Text>
+      )}
+      {unsyncedCount > 0 && (
+        <Text style={[styles.message, { color: colors.warning }]}>
+          {unsyncedCount} modification(s) pas encore poussée(s).
+        </Text>
+      )}
+
+      <Pressable style={[styles.button, styles.reset, { borderColor: colors.danger }]} onPress={handleReset}>
+        <Text style={{ color: colors.danger }}>Effacer les données locales</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -115,5 +151,6 @@ const styles = StyleSheet.create({
   },
   buttons: { flexDirection: 'row', gap: 10, marginTop: 16, flexWrap: 'wrap' },
   button: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10 },
+  reset: { marginTop: 20, alignItems: 'center' },
   message: { fontSize: 13, lineHeight: 18 },
 });

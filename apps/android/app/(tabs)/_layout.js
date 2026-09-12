@@ -1,6 +1,7 @@
 import { Tabs, useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
+import { SyncStatusIndicator } from '../../src/components/SyncStatusIndicator';
 import { useTheme } from '../../src/theme/useTheme';
 
 // Bottom bar holding every top-level destination — the app has no floating
@@ -19,6 +20,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.textPrimary,
+        headerRight: () => <SyncStatusIndicator />,
         sceneStyle: { backgroundColor: colors.background },
         tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.borderSubtle },
         tabBarActiveTintColor: colors.accent,

@@ -5,6 +5,8 @@ const CONNECTION_TIMEOUT_MS = 2000;
 // Pulls are given far more room than the connectivity check: the very first one
 // carries the whole collection over a phone's network, not a two-byte reply.
 const PULL_TIMEOUT_MS = 20000;
+// An entry push can carry up to four base64 images in the same request.
+const PUSH_TIMEOUT_MS = 30000;
 
 async function fetchWithTimeout(url, options, timeoutMs) {
   const controller = new AbortController();
@@ -77,11 +79,59 @@ export function createApiClient(baseUrl, apiKey) {
     };
   }
 
+  // Writes resolve to a plain boolean instead of throwing like pull() does:
+  // a resync pushes record by record and must keep going past a single
+  // failure, marking only what actually landed.
+  async function upsert(path, record) {
+    if (!isConfigured()) {
+      return false;
+    }
+
+    try {
+      const response = await fetchWithTimeout(
+        `${root}${path}/${record.Id}`,
+        {
+          method: 'PUT',
+          headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
+          // Sent whole, extra sync-only fields included: the API's write
+          // models don't declare them, so they're dropped server-side.
+          body: JSON.stringify(record),
+        },
+        PUSH_TIMEOUT_MS
+      );
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async function remove(path, id, deletedAt) {
+    if (!isConfigured()) {
+      return false;
+    }
+
+    try {
+      const response = await fetchWithTimeout(
+        `${root}${path}/${id}?deleted_at=${encodeURIComponent(deletedAt)}`,
+        { method: 'DELETE', headers: { 'X-API-Key': apiKey } },
+        PUSH_TIMEOUT_MS
+      );
+      // 404 means it was never synced — nothing to delete, not a failure.
+      return response.ok || response.status === 404;
+    } catch {
+      return false;
+    }
+  }
+
   return {
     isConfigured,
     testConnection,
     imageRequest,
     pullEntries: (updatedSince) => pull('/entries', updatedSince),
     pullCategories: (updatedSince) => pull('/categories', updatedSince),
+    upsertEntry: (entry) => upsert('/entries', entry),
+    upsertCategory: (category) => upsert('/categories', category),
+    deleteEntry: (id, deletedAt) => remove('/entries', id, deletedAt),
+    deleteCategory: (id, deletedAt) => remove('/categories', id, deletedAt),
   };
 }

@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -68,6 +68,14 @@ export default function EntryEditor() {
   const categoryFilter = useVocabularyStore((state) => state.categoryFilter);
   const addEntry = useVocabularyStore((state) => state.addEntry);
   const updateEntry = useVocabularyStore((state) => state.updateEntry);
+  const setEditorOpen = useVocabularyStore((state) => state.setEditorOpen);
+
+  // Holds off the periodic resync: a pull landing mid-edit would swap the
+  // record out from under the form.
+  useEffect(() => {
+    setEditorOpen(true);
+    return () => setEditorOpen(false);
+  }, [setEditorOpen]);
 
   const isEditing = existingEntry !== undefined;
   const [fields, setFields] = useState(() =>

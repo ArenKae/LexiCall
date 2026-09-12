@@ -45,11 +45,31 @@ export async function loadDatabase() {
   return {
     Entries: Array.isArray(stored?.Entries) ? stored.Entries : [],
     Categories: Array.isArray(stored?.Categories) ? stored.Categories : [],
+    // Deletions attempted but not yet confirmed by the API. Persisted with
+    // the data itself: the record is already gone locally, so this queue is
+    // the only remaining trace that the server still has to be told.
+    PendingEntryDeletions: Array.isArray(stored?.PendingEntryDeletions)
+      ? stored.PendingEntryDeletions
+      : [],
+    PendingCategoryDeletions: Array.isArray(stored?.PendingCategoryDeletions)
+      ? stored.PendingCategoryDeletions
+      : [],
   };
 }
 
 export function saveDatabase(database) {
   writeJson(DATABASE_FILE, database);
+}
+
+// Wipes the vocabulary database and the pull checkpoint, keeping the API
+// credentials so the next sync can refill everything from the server.
+export async function resetLocalData() {
+  const database = fileFor(DATABASE_FILE);
+
+  if (database.exists) {
+    database.delete();
+  }
+  await saveSettings({ lastPulledAt: null });
 }
 
 export async function loadSettings() {
