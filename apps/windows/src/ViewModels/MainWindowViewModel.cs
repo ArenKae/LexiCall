@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using LexiCall.Desktop.Converters;
 using LexiCall.Desktop.Models;
 using LexiCall.Desktop.Services;
 using LexiCall.Desktop.Utilities;
@@ -54,6 +55,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         _repository = repository ?? new VocabularyRepository();
 
+        // Built before the initial selection below: that selection already
+        // triggers an image fetch for the entry it lands on.
+        var settings = SettingsStore.Load();
+        _apiBaseUrl = settings.ApiBaseUrl;
+        _apiKey = settings.ApiKey;
+        _apiClient = apiClient ?? new VocabularyApiClient(_apiBaseUrl, _apiKey);
+
         var database = _repository.DataFileExists
             ? _repository.LoadDatabase()
             : CreateSampleDatabase();
@@ -65,6 +73,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SyncHistory = new ObservableCollection<SyncHistoryEntry>(SyncHistoryStore.Load());
         FilteredEntries = [];
         CategoryTree = [];
+        SelectedEntryImages = [];
         RebuildCategoryTree();
         RefreshFilteredEntries();
         SelectedEntry = FilteredEntries.FirstOrDefault();
@@ -73,11 +82,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             SaveDatabase();
         }
-
-        var settings = SettingsStore.Load();
-        _apiBaseUrl = settings.ApiBaseUrl;
-        _apiKey = settings.ApiKey;
-        _apiClient = apiClient ?? new VocabularyApiClient(_apiBaseUrl, _apiKey);
 
         // Periodic sync while the app runs (not just at launch): a network
         // outage that resolves mid-session (VPN reconnects, dev VM restarts)
@@ -106,6 +110,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     // Sidebar tree: virtual nodes ("Toutes les entrées", "Sans catégorie")
     // followed by root categories with their subcategories.
     public ObservableCollection<CategoryNodeViewModel> CategoryTree { get; }
+
+    // Images of the selected entry, with their own load state: an entry
+    // created on another client arrives from a pull with metadata only, so
+    // its bytes are downloaded when the detail card shows it.
+    public ObservableCollection<EntryImageViewModel> SelectedEntryImages { get; }
 
     public string DataFilePath => _repository.FilePath;
 
@@ -181,7 +190,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return entry.SyncedAt switch
             {
                 null => "Jamais synchronisé",
-                { } syncedAt when syncedAt < entry.UpdatedAt => "Synchronisation en attente",
+                { } syncedAt when syncedAt < entry.ClientLastWrite => "Synchronisation en attente",
                 { } syncedAt => $"Synchronisé le {syncedAt.LocalDateTime:g}"
             };
         }
@@ -189,7 +198,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     // Drives the status dot's color in MainWindow.xaml.
     public bool SelectedEntrySyncIsSynced =>
-        SelectedEntry is { SyncedAt: { } syncedAt } entry && syncedAt >= entry.UpdatedAt;
+        SelectedEntry is { SyncedAt: { } syncedAt } entry && syncedAt >= entry.ClientLastWrite;
 
     // Global status shown next to the Options button — see GlobalSyncStatus
     // and ResyncWithApiAsync for where it's set.
@@ -248,6 +257,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _selectedEntry, value))
             {
+                RefreshSelectedEntryImages();
                 OnPropertyChanged(nameof(HasSelectedEntry));
                 OnPropertyChanged(nameof(SelectedEntryCategories));
                 OnPropertyChanged(nameof(SelectedEntrySenses));
@@ -463,7 +473,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         // isolates a permanent failure to one record instead of blocking the
         // whole batch, and naturally covers the very first sync (SyncedAt
         // == null for everyone).
-        var categoriesToPush = Categories.Where(c => c.SyncedAt is null || c.SyncedAt < c.UpdatedAt).ToList();
+        var categoriesToPush = Categories.Where(c => c.SyncedAt is null || c.SyncedAt < c.ClientLastWrite).ToList();
         var syncedCategories = new List<VocabularyCategory>();
         var categoryPushResults = new List<(VocabularyCategory Category, bool Success)>();
 
@@ -478,7 +488,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             }
         }
 
-        var entriesToPush = Entries.Where(e => e.SyncedAt is null || e.SyncedAt < e.UpdatedAt).ToList();
+        var entriesToPush = Entries.Where(e => e.SyncedAt is null || e.SyncedAt < e.ClientLastWrite).ToList();
         var syncedEntries = new List<VocabularyEntry>();
         var entryPushResults = new List<(VocabularyEntry Entry, bool Success)>();
 
@@ -526,12 +536,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             foreach (var category in syncedCategories)
             {
-                category.SyncedAt = category.UpdatedAt;
+                category.SyncedAt = category.ClientLastWrite;
             }
 
             foreach (var entry in syncedEntries)
             {
-                entry.SyncedAt = entry.UpdatedAt;
+                entry.SyncedAt = entry.ClientLastWrite;
             }
 
             foreach (var (pending, success) in entryDeletionResults)
@@ -552,18 +562,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name,
                     SyncHistoryOperation.Push, success ? SyncHistoryOutcome.Success : SyncHistoryOutcome.Failure,
-                    GetChangeKind(category.CreatedAt, category.UpdatedAt));
+                    GetChangeKind(category.CreatedAt, category.ClientLastWrite));
             }
 
             foreach (var (entry, success) in entryPushResults)
             {
                 RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word,
                     SyncHistoryOperation.Push, success ? SyncHistoryOutcome.Success : SyncHistoryOutcome.Failure,
-                    GetChangeKind(entry.CreatedAt, entry.UpdatedAt));
+                    GetChangeKind(entry.CreatedAt, entry.ClientLastWrite));
             }
 
-            MergePulled(Categories, categoriesPull.Items, FindCategoryIndex, c => c.Id, c => c.UpdatedAt, c => c.CreatedAt, c => c.IsDeleted, (c, t) => c.SyncedAt = t, SyncHistoryEntityType.Category, c => c.Name);
-            MergePulled(Entries, entriesPull.Items, FindEntryIndex, e => e.Id, e => e.UpdatedAt, e => e.CreatedAt, e => e.IsDeleted, (e, t) => e.SyncedAt = t, SyncHistoryEntityType.Entry, e => e.Word);
+            MergePulled(Categories, categoriesPull.Items, FindCategoryIndex, c => c.Id, c => c.ClientLastWrite, c => c.CreatedAt, c => c.IsDeleted, (c, t) => c.SyncedAt = t, SyncHistoryEntityType.Category, c => c.Name);
+            MergePulled(Entries, entriesPull.Items, FindEntryIndex, e => e.Id, e => e.ClientLastWrite, e => e.CreatedAt, e => e.IsDeleted, (e, t) => e.SyncedAt = t, SyncHistoryEntityType.Entry, e => e.Word);
             RebuildCategoryTree();
             RefreshFilteredEntries();
             SaveDatabase();
@@ -599,7 +609,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         IReadOnlyList<T> pulled,
         Func<Guid, int> findIndex,
         Func<T, Guid> getId,
-        Func<T, DateTimeOffset> getUpdatedAt,
+        Func<T, DateTimeOffset> getClientLastWrite,
         Func<T, DateTimeOffset> getCreatedAt,
         Func<T, bool> getIsDeleted,
         Action<T, DateTimeOffset> setSyncedAt,
@@ -631,17 +641,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             // entire first pull.
             if (index < 0)
             {
-                setSyncedAt(item, getUpdatedAt(item));
+                setSyncedAt(item, getClientLastWrite(item));
                 collection.Add(item);
                 RecordSyncHistory(entityType, getId(item), getLabel(item), SyncHistoryOperation.Pull, SyncHistoryOutcome.Success,
-                    GetChangeKind(getCreatedAt(item), getUpdatedAt(item)));
+                    GetChangeKind(getCreatedAt(item), getClientLastWrite(item)));
             }
-            else if (getUpdatedAt(item) > getUpdatedAt(collection[index]))
+            else if (getClientLastWrite(item) > getClientLastWrite(collection[index]))
             {
-                setSyncedAt(item, getUpdatedAt(item));
+                setSyncedAt(item, getClientLastWrite(item));
                 collection[index] = item;
                 RecordSyncHistory(entityType, getId(item), getLabel(item), SyncHistoryOperation.Pull, SyncHistoryOutcome.Success,
-                    GetChangeKind(getCreatedAt(item), getUpdatedAt(item)));
+                    GetChangeKind(getCreatedAt(item), getClientLastWrite(item)));
             }
         }
     }
@@ -672,11 +682,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     // Push/pull history rows show whether the underlying data was created or
     // edited — irrelevant for Delete, which already says so via Operation.
-    // CreatedAt == UpdatedAt exactly at creation time (both editors stamp them
+    // CreatedAt == ClientLastWrite exactly at creation time (both editors stamp them
     // from the same DateTimeOffset.Now call), so any difference means at
     // least one edit happened since.
-    private static SyncHistoryChangeKind GetChangeKind(DateTimeOffset createdAt, DateTimeOffset updatedAt) =>
-        createdAt == updatedAt ? SyncHistoryChangeKind.Created : SyncHistoryChangeKind.Updated;
+    private static SyncHistoryChangeKind GetChangeKind(DateTimeOffset createdAt, DateTimeOffset clientLastWrite) =>
+        createdAt == clientLastWrite ? SyncHistoryChangeKind.Created : SyncHistoryChangeKind.Updated;
 
     // Called from SyncHistoryWindow after user confirmation.
     public void ClearSyncHistory()
@@ -694,7 +704,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             Application.Current.Dispatcher.Invoke(() =>
                 RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word, SyncHistoryOperation.Push, SyncHistoryOutcome.Failure,
-                    GetChangeKind(entry.CreatedAt, entry.UpdatedAt)));
+                    GetChangeKind(entry.CreatedAt, entry.ClientLastWrite)));
             return;
         }
 
@@ -705,12 +715,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             // Only marks synced if the entry wasn't edited again in the
             // meantime (a new edit before the previous one's confirmation)
             // — otherwise a newer version would be wrongly marked as synced.
-            if (index >= 0 && Entries[index].UpdatedAt == entry.UpdatedAt)
+            if (index >= 0 && Entries[index].ClientLastWrite == entry.ClientLastWrite)
             {
-                Entries[index].SyncedAt = entry.UpdatedAt;
+                Entries[index].SyncedAt = entry.ClientLastWrite;
                 SaveDatabase();
                 RecordSyncHistory(SyncHistoryEntityType.Entry, entry.Id, entry.Word, SyncHistoryOperation.Push, SyncHistoryOutcome.Success,
-                    GetChangeKind(entry.CreatedAt, entry.UpdatedAt));
+                    GetChangeKind(entry.CreatedAt, entry.ClientLastWrite));
 
                 // In-place mutation: SelectedEntry isn't reassigned on this
                 // path (unlike MergePulled), so its setter doesn't notify on
@@ -731,7 +741,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             Application.Current.Dispatcher.Invoke(() =>
                 RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name, SyncHistoryOperation.Push, SyncHistoryOutcome.Failure,
-                    GetChangeKind(category.CreatedAt, category.UpdatedAt)));
+                    GetChangeKind(category.CreatedAt, category.ClientLastWrite)));
             return;
         }
 
@@ -739,12 +749,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var index = FindCategoryIndex(category.Id);
 
-            if (index >= 0 && Categories[index].UpdatedAt == category.UpdatedAt)
+            if (index >= 0 && Categories[index].ClientLastWrite == category.ClientLastWrite)
             {
-                Categories[index].SyncedAt = category.UpdatedAt;
+                Categories[index].SyncedAt = category.ClientLastWrite;
                 SaveDatabase();
                 RecordSyncHistory(SyncHistoryEntityType.Category, category.Id, category.Name, SyncHistoryOperation.Push, SyncHistoryOutcome.Success,
-                    GetChangeKind(category.CreatedAt, category.UpdatedAt));
+                    GetChangeKind(category.CreatedAt, category.ClientLastWrite));
             }
         });
     }
@@ -840,7 +850,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         entry.IsArchived = !entry.IsArchived;
-        entry.UpdatedAt = DateTimeOffset.Now;
+        entry.ClientLastWrite = DateTimeOffset.Now;
         // Archiving/unarchiving always flips the entry's visibility in
         // whatever view it was just selected from, so RefreshFilteredEntries
         // always ends up picking a new SelectedEntry — its own setter is
@@ -950,7 +960,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         category.Name = name;
-        category.UpdatedAt = DateTimeOffset.Now;
+        category.ClientLastWrite = DateTimeOffset.Now;
         OnCategoriesChanged();
         _ = PushCategoryUpsertAsync(category);
         return null;
@@ -1317,6 +1327,70 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(EmptyDetailMessage));
     }
 
+    // Rebuilt on every selection change: images are downloaded when an entry
+    // is actually looked at, never in bulk at pull time.
+    private void RefreshSelectedEntryImages()
+    {
+        SelectedEntryImages.Clear();
+
+        if (_selectedEntry is null)
+        {
+            return;
+        }
+
+        foreach (var image in _selectedEntry.Images)
+        {
+            var imageViewModel = new EntryImageViewModel(image.Id, image.Caption);
+            SelectedEntryImages.Add(imageViewModel);
+
+            // Bytes are inline only for images added on this machine; an
+            // entry that arrived through a pull has none, and goes to the
+            // cache-or-download path below.
+            if (Base64ImageConverter.ToBitmapImage(image.ImageBase64) is { } inline)
+            {
+                imageViewModel.MarkLoaded(inline);
+            }
+            else
+            {
+                LoadEntryImage(_selectedEntry.Id, imageViewModel);
+            }
+        }
+    }
+
+    // Manual retry when the user clicks a failed thumbnail — nothing negative
+    // is cached, so this just asks for the bytes again.
+    public void RetrySelectedEntryImage(EntryImageViewModel image)
+    {
+        if (_selectedEntry is not null)
+        {
+            LoadEntryImage(_selectedEntry.Id, image);
+        }
+    }
+
+    private void LoadEntryImage(Guid entryId, EntryImageViewModel image)
+    {
+        // Read synchronously first: an already-downloaded image must not
+        // flash a spinner every time its entry is selected.
+        if (EntryImageCache.TryReadCached(image.Id) is { } cached)
+        {
+            image.MarkLoaded(Base64ImageConverter.ToBitmapImage(cached));
+            return;
+        }
+
+        image.MarkLoading();
+
+        // Not awaited: a slow image must never hold up the selection. No
+        // ConfigureAwait either — started from the UI thread, and the
+        // continuation sets bound state, so it has to resume there.
+        _ = LoadEntryImageAsync(entryId, image);
+    }
+
+    private async Task LoadEntryImageAsync(Guid entryId, EntryImageViewModel image)
+    {
+        var bytes = await EntryImageCache.LoadAsync(_apiClient, entryId, image.Id);
+        image.MarkLoaded(bytes is null ? null : Base64ImageConverter.ToBitmapImage(bytes));
+    }
+
     private void RefreshFilteredEntries()
     {
         var selectedEntryId = SelectedEntry?.Id;
@@ -1325,6 +1399,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var matchingEntries = Entries
             .Where(entry => EntryMatchesCategory(entry) && EntryMatchesSearch(entry))
             .ToList();
+
+        if (!string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            var normalizedQuery = NormalizeForSearch(SearchQuery);
+
+            // Stable sort: entries whose Word contains the pattern float to
+            // the top, ties keep their original relative order.
+            matchingEntries = matchingEntries
+                .OrderByDescending(entry => SearchFieldMatches(entry.Word, normalizedQuery))
+                .ToList();
+        }
 
         FilteredEntries.Clear();
 
@@ -1455,6 +1540,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private static string NormalizeForSearch(string value)
     {
         // Strips accents before comparing ("ephemere" matches "Éphémère").
+        // Hyphens also collapse to spaces ("vide gousset" matches
+        // "Vide-gousset"), and both apostrophes in use are folded together —
+        // decomposition leaves those distinct, they aren't accent variants.
         var normalized = value.Normalize(NormalizationForm.FormD);
         var builder = new StringBuilder(normalized.Length);
 
@@ -1462,10 +1550,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var category = CharUnicodeInfo.GetUnicodeCategory(character);
 
-            if (category != UnicodeCategory.NonSpacingMark)
+            if (category == UnicodeCategory.NonSpacingMark)
             {
-                builder.Append(character);
+                continue;
             }
+
+            builder.Append(character switch
+            {
+                '-' or '‐' or '‑' or '–' or '—' => ' ',
+                '’' or 'ʼ' => '\'',
+                _ => character
+            });
         }
 
         return builder

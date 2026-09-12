@@ -1,18 +1,19 @@
 // Enlarged preview modal for an entry's image(s) — see ImagePreviewWindow.xaml.
 using System.Windows;
 using System.Windows.Input;
-using LexiCall.Desktop.Converters;
-using LexiCall.Desktop.Models;
 using LexiCall.Desktop.Services;
+using LexiCall.Desktop.ViewModels;
 
 namespace LexiCall.Desktop.Windows;
 
 public partial class ImagePreviewWindow : Window
 {
-    private readonly IReadOnlyList<EntryImage> _images;
+    private readonly IReadOnlyList<EntryImageViewModel> _images;
     private int _currentIndex;
 
-    public ImagePreviewWindow(Window owner, IReadOnlyList<EntryImage> images, int startIndex)
+    // Opened only with images whose bytes are already decoded, so navigating
+    // between them never shows an empty frame.
+    public ImagePreviewWindow(Window owner, IReadOnlyList<EntryImageViewModel> images, int startIndex)
     {
         InitializeComponent();
         Owner = owner;
@@ -31,7 +32,7 @@ public partial class ImagePreviewWindow : Window
     private void RefreshCurrentImage()
     {
         var current = _images[_currentIndex];
-        PreviewImage.Source = Base64ImageConverter.ToBitmapImage(current.ImageBase64);
+        PreviewImage.Source = current.Image;
         CaptionText.Text = current.Caption;
         CaptionText.Visibility = string.IsNullOrWhiteSpace(current.Caption) ? Visibility.Collapsed : Visibility.Visible;
 

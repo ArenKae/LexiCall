@@ -1,11 +1,13 @@
 # LexiCall — Android
 
-React Native + Expo mobile client (Phase 3). Scaffold only for now — no vocabulary
-screens yet, see `../../todo.md`.
+React Native + Expo mobile client (Phase 3), built session by session — see
+`docs/Plan-App-Android.md`. Currently: local JSON persistence, API configuration and
+delta pulls. No browsing screens yet, and no push (the app never writes to the API).
 
 Stack: JavaScript (no TypeScript), Expo Router (file-based routing, `app/`), Zustand
-(`src/store/`) for state, `fetch`-based API client (`src/services/apiClient.js`)
-mirroring `apps/windows`' `VocabularyApiClient.cs`.
+(`src/store/`) for state, `fetch`-based API client (`src/services/apiClient.js`), local
+database and settings as JSON files under the app's document directory
+(`src/services/storage.js`).
 
 ```bash
 npm install

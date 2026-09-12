@@ -2,6 +2,7 @@
 // method is best-effort — it never throws, only returns a success flag. The
 // local JSON (VocabularyRepository) stays the source of truth; this client
 // only pushes a best-effort background sync.
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -129,11 +130,16 @@ public sealed class VocabularyApiClient
     // those take 2-6s (up to ~6s with the web_search fallback), well past the
     // 2s timeout tuned for silent background sync below.
     private readonly HttpClient? _enrichmentHttpClient;
+    // Entry images are 60-150 KB each, which a slow link can push past the 2s
+    // sync budget; but a thumbnail the user is waiting on must not keep
+    // spinning for the enrichment client's 20s either.
+    private readonly HttpClient? _imageHttpClient;
 
     public VocabularyApiClient(string? baseUrl, string? apiKey)
     {
         _httpClient = CreateHttpClient(baseUrl, apiKey, TimeSpan.FromSeconds(2));
         _enrichmentHttpClient = CreateHttpClient(baseUrl, apiKey, TimeSpan.FromSeconds(20));
+        _imageHttpClient = CreateHttpClient(baseUrl, apiKey, TimeSpan.FromSeconds(10));
     }
 
     private static HttpClient? CreateHttpClient(string? baseUrl, string? apiKey, TimeSpan timeout)
@@ -210,7 +216,7 @@ public sealed class VocabularyApiClient
         TryUpsertAsync(entry.Id, "/entries", entry);
 
     // deletedAt is the real local deletion time (not the sync time, which can
-    // happen much later if offline) — same principle as UpdatedAt being
+    // happen much later if offline) — same principle as ClientLastWrite being
     // stamped at edit time, needed so the API's tombstone carries the correct
     // LWW timestamp.
     public Task<bool> TryDeleteEntryAsync(Guid id, DateTimeOffset deletedAt) =>
@@ -227,6 +233,38 @@ public sealed class VocabularyApiClient
 
     public Task<SyncPullResult<VocabularyEntry>?> TryPullEntriesAsync(string? updatedSince) =>
         TryPullAsync<VocabularyEntry>("/entries", updatedSince);
+
+    // A pull carries image metadata only, so this fetches one image's bytes
+    // on demand. entryId only shapes the URL — entry_images is keyed by the
+    // image's own Id. Best-effort: any failure returns null, and the cause
+    // goes to the debug output only, never the UI.
+    public async Task<byte[]?> TryGetEntryImageAsync(Guid entryId, Guid imageId)
+    {
+        if (_imageHttpClient is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var response = await _imageHttpClient
+                .GetAsync($"/entries/{entryId}/images/{imageId}")
+                .ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Debug.WriteLine($"[image {imageId}] HTTP {(int)response.StatusCode}");
+                return null;
+            }
+
+            return await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Debug.WriteLine($"[image {imageId}] {ex.Message}");
+            return null;
+        }
+    }
 
     private async Task<SyncPullResult<T>?> TryPullAsync<T>(string resourcePath, string? updatedSince)
     {

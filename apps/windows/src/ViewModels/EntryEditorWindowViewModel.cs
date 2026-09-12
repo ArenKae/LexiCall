@@ -73,6 +73,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             Notes = existingEntry.Notes;
             Source = existingEntry.Source;
             _isArchived = existingEntry.IsArchived;
+            LoadMissingImageBytes(existingEntry.Id);
         }
     }
 
@@ -333,6 +334,35 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
         Images.Remove(image);
     }
 
+    // A pulled entry's images carry no bytes; loaded here for display only,
+    // never written back onto the saved entry.
+    private void LoadMissingImageBytes(Guid entryId)
+    {
+        foreach (var image in Images.Where(image => image.Status != EntryImageStatus.Ready))
+        {
+            if (EntryImageCache.TryReadCached(image.Id) is { } cached)
+            {
+                image.MarkLoaded(cached);
+            }
+            else if (_apiClient is null)
+            {
+                image.MarkLoaded(null);
+            }
+            else
+            {
+                _ = LoadImageAsync(_apiClient, entryId, image);
+            }
+        }
+    }
+
+    private static async Task LoadImageAsync(
+        VocabularyApiClient apiClient,
+        Guid entryId,
+        EntryImageEditorViewModel image)
+    {
+        image.MarkLoaded(await EntryImageCache.LoadAsync(apiClient, entryId, image.Id));
+    }
+
     // Plain frontend autocorrect, unrelated to the LLM call itself — just a
     // courtesy fix-up triggered alongside a successful enrichment response.
     private void CapitalizeWordFirstLetter()
@@ -537,7 +567,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
                 .Select(image => new EntryImage { Id = image.Id, Caption = image.Caption.Trim(), ImageBase64 = image.ImageBase64 })
                 .ToList(),
             CreatedAt = _existingEntry?.CreatedAt ?? now,
-            UpdatedAt = now
+            ClientLastWrite = now
         };
 
         EntrySaved?.Invoke(this, EventArgs.Empty);

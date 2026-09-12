@@ -1138,7 +1138,19 @@
                                                       Margin="0,20,0,0">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Grid Margin="0,0,0,4">
+                                                    <Grid>
+                                                        <!-- Senses only need pulling apart once
+                                                             there are several of them. -->
+                                                        <Grid.Style>
+                                                            <Style TargetType="Grid">
+                                                                <Setter Property="Margin" Value="0,0,0,4" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding ShowNumber}" Value="True">
+                                                                        <Setter Property="Margin" Value="0,0,0,10" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Grid.Style>
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="Auto" />
                                                             <ColumnDefinition Width="*" />
@@ -1147,6 +1159,7 @@
                                                                    Text="{Binding NumberDisplay}"
                                                                    FontFamily="{StaticResource Font.Serif}"
                                                                    FontSize="16"
+                                                                   FontWeight="Bold"
                                                                    Margin="0,0,8,0"
                                                                    Foreground="{DynamicResource Brush.Text.Secondary}">
                                                             <TextBlock.Style>
@@ -1403,7 +1416,10 @@
                                                 </Grid>
                                                 <Separator Margin="0,10,0,14" />
 
-                                                <ItemsControl ItemsSource="{Binding Images}"
+                                                <!-- Bound to the ViewModel's own list, not the entry's:
+                                                     each thumbnail carries a load state, since the bytes
+                                                     of a pulled image are downloaded on display. -->
+                                                <ItemsControl ItemsSource="{Binding DataContext.SelectedEntryImages, RelativeSource={RelativeSource AncestorType=Window}}"
                                                               MaxWidth="270"
                                                               HorizontalAlignment="Left"
                                                               Margin="24,0,0,0">
@@ -1433,8 +1449,73 @@
                                                                     </RectangleGeometry>
                                                                 </Border.Clip>
 
-                                                                <Image Source="{Binding ImageBase64, Converter={StaticResource Base64ImageConverter}}"
-                                                                       Stretch="Uniform" />
+                                                                <Grid>
+                                                                    <Image Source="{Binding Image}" Stretch="Uniform" />
+
+                                                                    <Path Width="18" Height="18" Stretch="Uniform"
+                                                                          Data="{StaticResource Icon.Phosphor.circle-half-tilt}"
+                                                                          HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"
+                                                                          RenderTransformOrigin="0.5,0.5">
+                                                                        <Path.RenderTransform>
+                                                                            <RotateTransform Angle="0" />
+                                                                        </Path.RenderTransform>
+                                                                        <Path.Style>
+                                                                            <Style TargetType="Path">
+                                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                                <Setter Property="Fill" Value="{DynamicResource Brush.Text.Muted}" />
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding Status}" Value="Loading">
+                                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Path.Style>
+                                                                        <Path.Triggers>
+                                                                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                                                                <BeginStoryboard>
+                                                                                    <Storyboard>
+                                                                                        <DoubleAnimation
+                                                                                            Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                                            From="0" To="360" Duration="0:0:0.8"
+                                                                                            RepeatBehavior="Forever" />
+                                                                                    </Storyboard>
+                                                                                </BeginStoryboard>
+                                                                            </EventTrigger>
+                                                                        </Path.Triggers>
+                                                                    </Path>
+
+                                                                    <!-- Failure never shows the technical cause (HTTP status,
+                                                                         timeout): that goes to the debug output only. -->
+                                                                    <StackPanel VerticalAlignment="Center" Margin="8,0">
+                                                                        <StackPanel.Style>
+                                                                            <Style TargetType="StackPanel">
+                                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding Status}" Value="Failed">
+                                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </StackPanel.Style>
+                                                                        <Path Data="{StaticResource Icon.Phosphor.image}"
+                                                                              Width="20" Height="20" Stretch="Uniform"
+                                                                              Fill="{DynamicResource Brush.Text.Muted}"
+                                                                              HorizontalAlignment="Center" />
+                                                                        <TextBlock Text="Image indisponible"
+                                                                                   FontSize="11"
+                                                                                   TextAlignment="Center"
+                                                                                   TextWrapping="Wrap"
+                                                                                   Margin="0,6,0,0"
+                                                                                   Foreground="{DynamicResource Brush.Text.Muted}" />
+                                                                        <TextBlock Text="Réessayer"
+                                                                                   FontSize="12"
+                                                                                   FontWeight="SemiBold"
+                                                                                   TextAlignment="Center"
+                                                                                   Margin="0,3,0,0"
+                                                                                   Foreground="{DynamicResource Brush.Accent}" />
+                                                                    </StackPanel>
+                                                                </Grid>
                                                             </Border>
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>

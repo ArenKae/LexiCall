@@ -18,6 +18,9 @@ export const lightColors = {
   warning: '#B2650B',
   selectionBackground: '#DCE7F8',
   selectionForeground: '#16213D',
+  chipBackground: '#EDE6D6',
+  chipForeground: '#5C5546',
+  chipSynonymBackground: '#EFEEE8',
   iconNeutral: '#7A7A7A',
 };
 
@@ -39,5 +42,8 @@ export const darkColors = {
   warning: '#E0952F',
   selectionBackground: '#3F3A32',
   selectionForeground: '#F2EFE9',
+  chipBackground: '#4A443B',
+  chipForeground: '#BDB6AC',
+  chipSynonymBackground: '#322F2B',
   iconNeutral: '#A4A4A4',
 };

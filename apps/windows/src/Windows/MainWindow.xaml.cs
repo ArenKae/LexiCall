@@ -297,7 +297,7 @@ public partial class MainWindow : Window
                     LockedFields = entry.LockedFields,
                     Images = entry.Images,
                     CreatedAt = entry.CreatedAt,
-                    UpdatedAt = DateTimeOffset.Now
+                    ClientLastWrite = DateTimeOffset.Now
                 };
                 ViewModel.UpdateEntry(updatedEntry);
             }
@@ -398,7 +398,7 @@ public partial class MainWindow : Window
                         Description = result.NewCategoryDescription ?? string.Empty,
                         IconGlyph = result.NewCategoryIconGlyph ?? string.Empty,
                         CreatedAt = DateTimeOffset.Now,
-                        UpdatedAt = DateTimeOffset.Now
+                        ClientLastWrite = DateTimeOffset.Now
                     };
 
                     var error = ViewModel.SaveCategory(newCategory);
@@ -437,7 +437,7 @@ public partial class MainWindow : Window
                 LockedFields = entry.LockedFields,
                 Images = entry.Images,
                 CreatedAt = entry.CreatedAt,
-                UpdatedAt = DateTimeOffset.Now
+                ClientLastWrite = DateTimeOffset.Now
             };
             ViewModel.UpdateEntry(updatedEntry);
         }
@@ -491,35 +491,33 @@ public partial class MainWindow : Window
         }
     }
 
-    // The thumbnail's DataContext is the clicked EntryImage (from the
-    // ItemsControl bound to Images), not the whole entry — SelectedEntry is
-    // read directly off the ViewModel to locate it in the full list and open
-    // the preview at the right index. Re-decodes the base64 rather than
-    // trusting the Image's own Source, so this doesn't depend on binding/
-    // event ordering; also doubles as the "image not fetched after a pull
-    // yet" guard (ImageBase64 empty), a silent no-op rather than a broken
-    // preview.
+    // The thumbnail's DataContext is the clicked EntryImageViewModel (from the
+    // ItemsControl bound to SelectedEntryImages). A thumbnail whose download
+    // failed retries on click instead of opening an empty preview; one still
+    // loading is a silent no-op. Only images whose bytes are in hand reach the
+    // preview, so its ‹/› navigation can never land on a blank frame.
     private void DetailImageThumbnail_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: Models.EntryImage image } ||
-            ViewModel.SelectedEntry is not { } entry)
+        if (sender is not FrameworkElement { DataContext: EntryImageViewModel image })
         {
             return;
         }
 
-        if (Converters.Base64ImageConverter.ToBitmapImage(image.ImageBase64) is null)
+        if (image.Status == EntryImageStatus.Failed)
         {
+            ViewModel.RetrySelectedEntryImage(image);
             return;
         }
 
-        var index = entry.Images.IndexOf(image);
+        var readyImages = ViewModel.SelectedEntryImages
+            .Where(entryImage => entryImage.Status == EntryImageStatus.Ready)
+            .ToList();
+        var index = readyImages.IndexOf(image);
 
-        if (index < 0)
+        if (index >= 0)
         {
-            return;
+            new ImagePreviewWindow(this, readyImages, index).ShowDialog();
         }
-
-        new ImagePreviewWindow(this, entry.Images, index).ShowDialog();
     }
 
     private void ArchiveEntryButton_Click(object sender, RoutedEventArgs e)
