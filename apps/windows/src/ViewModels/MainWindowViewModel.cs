@@ -1400,6 +1400,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             .Where(entry => EntryMatchesCategory(entry) && EntryMatchesSearch(entry))
             .ToList();
 
+        if (!string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            var normalizedQuery = NormalizeForSearch(SearchQuery);
+
+            // Stable sort: entries whose Word contains the pattern float to
+            // the top, ties keep their original relative order.
+            matchingEntries = matchingEntries
+                .OrderByDescending(entry => SearchFieldMatches(entry.Word, normalizedQuery))
+                .ToList();
+        }
+
         FilteredEntries.Clear();
 
         foreach (var entry in matchingEntries)
