@@ -69,9 +69,18 @@ export function createApiClient(baseUrl, apiKey) {
     };
   }
 
+  // Raw bytes, not JSON: the caller streams this straight to a file.
+  function imageRequest(entryId, imageId) {
+    return {
+      url: `${root}/entries/${entryId}/images/${imageId}`,
+      headers: { 'X-API-Key': apiKey },
+    };
+  }
+
   return {
     isConfigured,
     testConnection,
+    imageRequest,
     pullEntries: (updatedSince) => pull('/entries', updatedSince),
     pullCategories: (updatedSince) => pull('/categories', updatedSince),
   };

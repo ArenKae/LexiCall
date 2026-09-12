@@ -1,7 +1,9 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
+import { EntryImageGallery } from '../../src/components/EntryImageGallery';
 import { useCategoryIndex } from '../../src/hooks/useCategoryIndex';
+import { useEntryImages } from '../../src/hooks/useEntryImages';
 import { useTheme } from '../../src/theme/useTheme';
 import { useVocabularyStore } from '../../src/store/useVocabularyStore';
 
@@ -19,8 +21,7 @@ function Section({ title, iconKey, color, children }) {
   );
 }
 
-// Full read-only view of one entry. Images are metadata-only until the fetch
-// route is wired up, so nothing is drawn for them yet.
+// Full read-only view of one entry.
 export default function EntryDetail() {
   const { id } = useLocalSearchParams();
   const colors = useTheme();
@@ -28,6 +29,8 @@ export default function EntryDetail() {
   const categoryIndex = useCategoryIndex();
   const entry = useVocabularyStore((state) => state.entries.find((item) => item.Id === id));
   const setCategoryFilter = useVocabularyStore((state) => state.setCategoryFilter);
+  // Called before the missing-entry branch below: hooks can't sit after a return.
+  const { states: imageStates, retry: retryImage } = useEntryImages(entry);
 
   if (!entry) {
     return (
@@ -140,9 +143,9 @@ export default function EntryDetail() {
       )}
 
       {entry.Images.length > 0 && (
-        <Text style={[styles.imageNote, { color: colors.textMuted }]}>
-          {entry.Images.length} image(s) attachée(s) — affichage à venir.
-        </Text>
+        <Section title="Images" iconKey="Phosphor.image" color={colors.textSecondary}>
+          <EntryImageGallery images={entry.Images} states={imageStates} onRetry={retryImage} />
+        </Section>
       )}
     </ScrollView>
   );
@@ -175,5 +178,4 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   sectionTitle: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   body: { fontSize: 14, lineHeight: 20, marginBottom: 6 },
-  imageNote: { fontSize: 12, marginTop: 24, fontStyle: 'italic' },
 });
