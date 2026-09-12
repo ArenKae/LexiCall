@@ -33,9 +33,11 @@ export function normalizeEntry(raw) {
     })),
     // Timestamps are stored exactly as received: re-serializing them through a
     // JS Date would truncate microseconds to milliseconds and make the record
-    // look older than the copy the server holds.
+    // look older than the copy the server holds. ClientLastWrite is this
+    // device's own edit time, used for Last-Write-Wins — never the server's
+    // arrival time, which the API never sends to any client.
     CreatedAt: raw.CreatedAt,
-    UpdatedAt: raw.UpdatedAt,
+    ClientLastWrite: raw.ClientLastWrite,
     IsArchived: raw.IsArchived === true,
     LockedFields: asArray(raw.LockedFields),
     IsDeleted: raw.IsDeleted === true,
@@ -53,7 +55,7 @@ export function normalizeCategory(raw) {
     // Stored exactly as received, for the same reason as on an entry: a JS
     // Date round-trip would drop precision the server still compares against.
     CreatedAt: raw.CreatedAt,
-    UpdatedAt: raw.UpdatedAt,
+    ClientLastWrite: raw.ClientLastWrite,
     IsDeleted: raw.IsDeleted === true,
     SyncedAt: raw.SyncedAt ?? null,
   };

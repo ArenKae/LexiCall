@@ -34,7 +34,7 @@ public sealed class VocabularyEntry
 
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.Now;
 
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
+    public DateTimeOffset ClientLastWrite { get; set; } = DateTimeOffset.Now;
 
     public bool IsArchived { get; set; }
 
@@ -46,7 +46,7 @@ public sealed class VocabularyEntry
     // Never stays true locally outside the merge, which removes the entry instead.
     public bool IsDeleted { get; init; }
 
-    // UpdatedAt as of the last confirmed push for this entry (see
+    // ClientLastWrite as of the last confirmed push for this entry (see
     // MainWindowViewModel.ResyncWithApiAsync). Null until ever synced.
     public DateTimeOffset? SyncedAt { get; set; }
 }

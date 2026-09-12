@@ -18,7 +18,7 @@ public sealed class VocabularyCategory
 
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.Now;
 
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
+    public DateTimeOffset ClientLastWrite { get; set; } = DateTimeOffset.Now;
 
     // See VocabularyEntry.IsDeleted / SyncedAt — same role, for categories.
     public bool IsDeleted { get; init; }

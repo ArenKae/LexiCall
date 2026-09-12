@@ -152,7 +152,7 @@ public partial class EntryEditorWindow : Window
                     Description = result.NewCategoryDescription ?? string.Empty,
                     IconGlyph = result.NewCategoryIconGlyph ?? string.Empty,
                     CreatedAt = DateTimeOffset.Now,
-                    UpdatedAt = DateTimeOffset.Now
+                    ClientLastWrite = DateTimeOffset.Now
                 };
 
                 var error = _saveCategory?.Invoke(newCategory);

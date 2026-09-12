@@ -18,10 +18,10 @@ import { runSyncCycle } from './syncCycle';
 // In-memory vocabulary state, hydrated from the local JSON files, pushed to the
 // API on every mutation and refreshed by delta pulls.
 
-// CreatedAt and UpdatedAt are stamped from the same instant at creation, so any
-// difference means at least one edit happened since.
+// CreatedAt and ClientLastWrite are stamped from the same instant at
+// creation, so any difference means at least one edit happened since.
 function changeKind(record) {
-  return record.CreatedAt === record.UpdatedAt ? 'Created' : 'Updated';
+  return record.CreatedAt === record.ClientLastWrite ? 'Created' : 'Updated';
 }
 
 export const useVocabularyStore = create((set, get) => {
@@ -59,8 +59,8 @@ export const useVocabularyStore = create((set, get) => {
   // started — otherwise the newer version would be wrongly considered sent.
   function markSynced(collectionKey, record) {
     const collection = get()[collectionKey].map((item) =>
-      item.Id === record.Id && item.UpdatedAt === record.UpdatedAt
-        ? { ...item, SyncedAt: record.UpdatedAt }
+      item.Id === record.Id && item.ClientLastWrite === record.ClientLastWrite
+        ? { ...item, SyncedAt: record.ClientLastWrite }
         : item
     );
     persist({ [collectionKey]: collection });
@@ -238,13 +238,13 @@ export const useVocabularyStore = create((set, get) => {
           result.deletions.filter((row) => row.success).map((row) => row.pending.Id)
         );
         const confirmedPushes = new Map(
-          result.pushes.filter((row) => row.success).map((row) => [row.record.Id, row.record.UpdatedAt])
+          result.pushes.filter((row) => row.success).map((row) => [row.record.Id, row.record.ClientLastWrite])
         );
 
         const applySynced = (collection) =>
           collection.map((item) =>
-            confirmedPushes.get(item.Id) === item.UpdatedAt
-              ? { ...item, SyncedAt: item.UpdatedAt }
+            confirmedPushes.get(item.Id) === item.ClientLastWrite
+              ? { ...item, SyncedAt: item.ClientLastWrite }
               : item
           );
 
@@ -326,7 +326,7 @@ export const useVocabularyStore = create((set, get) => {
         ...draft,
         Id: randomUUID(),
         CreatedAt: now,
-        UpdatedAt: now,
+        ClientLastWrite: now,
         IsDeleted: false,
         SyncedAt: null,
       };
@@ -348,7 +348,7 @@ export const useVocabularyStore = create((set, get) => {
         ...draft,
         Id: existing.Id,
         CreatedAt: existing.CreatedAt,
-        UpdatedAt: new Date().toISOString(),
+        ClientLastWrite: new Date().toISOString(),
         SyncedAt: null,
       };
 
@@ -382,7 +382,7 @@ export const useVocabularyStore = create((set, get) => {
           ? {
               ...entry,
               IsArchived: !entry.IsArchived,
-              UpdatedAt: new Date().toISOString(),
+              ClientLastWrite: new Date().toISOString(),
               SyncedAt: null,
             }
           : entry

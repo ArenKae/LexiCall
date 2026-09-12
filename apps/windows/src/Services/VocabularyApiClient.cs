@@ -216,7 +216,7 @@ public sealed class VocabularyApiClient
         TryUpsertAsync(entry.Id, "/entries", entry);
 
     // deletedAt is the real local deletion time (not the sync time, which can
-    // happen much later if offline) — same principle as UpdatedAt being
+    // happen much later if offline) — same principle as ClientLastWrite being
     // stamped at edit time, needed so the API's tombstone carries the correct
     // LWW timestamp.
     public Task<bool> TryDeleteEntryAsync(Guid id, DateTimeOffset deletedAt) =>

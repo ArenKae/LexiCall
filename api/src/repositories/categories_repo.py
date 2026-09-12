@@ -12,7 +12,9 @@ from database import get_categories_collection, strip_mongo_id
 def list_categories(updated_since: datetime | None = None) -> list[dict]:
     # No updated_since: live view, tombstones excluded. With it: delta pull
     # that includes tombstones too, since that's how a deletion reaches
-    # another client.
+    # another client. The delta reads UpdatedAt (server arrival time), never
+    # ClientLastWrite (edit time): a write that lands late would otherwise
+    # stay invisible to any client whose checkpoint moved in between.
     query = (
         {"UpdatedAt": {"$gt": timestamps.to_iso_utc(updated_since)}}
         if updated_since is not None
@@ -74,21 +76,23 @@ def has_children(category_id: str) -> bool:
 
 def put_category(category_id: str, data: dict) -> dict:
     """True upsert: creates the category if unknown, otherwise updates it
-    only if the incoming UpdatedAt is newer (Last-Write-Wins). A losing
-    write still attempts an insert, which collides with the unique index on
-    Id and raises DuplicateKeyError — the signal that this was a stale push
-    against an existing category, not a genuine creation.
+    only if the incoming ClientLastWrite is newer (Last-Write-Wins). A
+    losing write still attempts an insert, which collides with the unique
+    index on Id and raises DuplicateKeyError — the signal that this was a
+    stale push against an existing category, not a genuine creation.
 
     Unlike entries, this returns just the document: there's no image to
-    gate on whether the push actually won."""
-    incoming = timestamps.to_iso_utc(data.get("UpdatedAt")) or timestamps.now_iso()
+    gate on whether the push actually won. UpdatedAt is stamped here, not
+    taken from the client: delta pulls filter on it, so it must follow the
+    order writes land in rather than the order they were made in."""
+    incoming = timestamps.to_iso_utc(data.get("ClientLastWrite")) or timestamps.now_iso()
     # Routed through $setOnInsert below so an edit can never overwrite it.
     created_at = timestamps.to_iso_utc(data.pop("CreatedAt", None)) or incoming
     try:
         result = get_categories_collection().find_one_and_update(
-            {"Id": category_id, "UpdatedAt": {"$lt": incoming}},
+            {"Id": category_id, "ClientLastWrite": {"$lt": incoming}},
             {
-                "$set": {**data, "UpdatedAt": incoming},
+                "$set": {**data, "ClientLastWrite": incoming, "UpdatedAt": timestamps.now_iso()},
                 "$setOnInsert": {"Id": category_id, "CreatedAt": created_at, "IsDeleted": False},
             },
             upsert=True,
@@ -105,8 +109,18 @@ def delete_category(category_id: str, deleted_at: datetime | None = None) -> dic
     Date so MongoDB's TTL index can auto-expire old tombstones."""
     incoming = timestamps.to_iso_utc(deleted_at) or timestamps.now_iso()
     result = get_categories_collection().find_one_and_update(
-        {"Id": category_id, "UpdatedAt": {"$lt": incoming}},
-        {"$set": {"IsDeleted": True, "UpdatedAt": incoming, "TombstonedAt": datetime.now(timezone.utc)}},
+        {"Id": category_id, "ClientLastWrite": {"$lt": incoming}},
+        {
+            "$set": {
+                "IsDeleted": True,
+                "ClientLastWrite": incoming,
+                # Stamped on arrival, unlike ClientLastWrite: a deletion
+                # queued during an outage keeps its original time for the
+                # race above, but must still reach clients that pulled since.
+                "UpdatedAt": timestamps.now_iso(),
+                "TombstonedAt": datetime.now(timezone.utc),
+            }
+        },
         return_document=ReturnDocument.AFTER,
     )
     return strip_mongo_id(result) if result is not None else _get_category_raw(category_id)
@@ -114,10 +128,16 @@ def delete_category(category_id: str, deleted_at: datetime | None = None) -> dic
 
 def upsert_category(doc: dict) -> str:
     """Idempotent upsert by Id for the one-shot JSON migration: keeps the
-    document's original CreatedAt/UpdatedAt as-is and matches on Id
+    document's original CreatedAt/ClientLastWrite as-is and matches on Id
     regardless of IsDeleted, so a tombstone gets updated in place instead of
-    colliding with the unique index."""
-    result = get_categories_collection().update_one({"Id": doc["Id"]}, {"$set": doc}, upsert=True)
+    colliding with the unique index. UpdatedAt is stamped now, not read off
+    the file: an imported document has just landed, whatever date it
+    carries."""
+    result = get_categories_collection().update_one(
+        {"Id": doc["Id"]},
+        {"$set": {**doc, "UpdatedAt": timestamps.now_iso()}},
+        upsert=True,
+    )
     if result.upserted_id is not None:
         return "inserted"
     return "updated" if result.modified_count > 0 else "unchanged"

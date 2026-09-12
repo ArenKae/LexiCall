@@ -12,7 +12,9 @@ from database import get_entries_collection, strip_mongo_id
 def list_entries(updated_since: datetime | None = None) -> list[dict]:
     # No updated_since: live view, tombstones excluded. With it: delta pull
     # that includes tombstones too, since that's how a deletion reaches
-    # another client.
+    # another client. The delta reads UpdatedAt (server arrival time), never
+    # ClientLastWrite (edit time): a write that lands late would otherwise
+    # stay invisible to any client whose checkpoint moved in between.
     query = (
         {"UpdatedAt": {"$gt": timestamps.to_iso_utc(updated_since)}}
         if updated_since is not None
@@ -47,23 +49,25 @@ def _get_entry_raw(entry_id: str) -> dict | None:
 
 def put_entry(entry_id: str, data: dict) -> tuple[dict, bool]:
     """True upsert: creates the entry if entry_id is unknown, otherwise
-    updates it only if the incoming UpdatedAt is newer (Last-Write-Wins).
-    Returns (document, applied); applied is False when the stored UpdatedAt
-    was already newer, in which case the current document is returned
-    unchanged.
+    updates it only if the incoming ClientLastWrite is newer
+    (Last-Write-Wins). Returns (document, applied); applied is False when
+    the stored ClientLastWrite was already newer, in which case the current
+    document is returned unchanged.
 
     A losing write still attempts an insert, since the filter above matched
     nothing — that collides with the unique index on Id and raises
     DuplicateKeyError, which is how a stale push is told apart from a
-    genuine creation."""
-    incoming = timestamps.to_iso_utc(data.get("UpdatedAt")) or timestamps.now_iso()
+    genuine creation. UpdatedAt is stamped here, not taken from the client:
+    delta pulls filter on it, so it must follow the order writes land in
+    rather than the order they were made in."""
+    incoming = timestamps.to_iso_utc(data.get("ClientLastWrite")) or timestamps.now_iso()
     # Routed through $setOnInsert below so an edit can never overwrite it.
     created_at = timestamps.to_iso_utc(data.pop("CreatedAt", None)) or incoming
     try:
         result = get_entries_collection().find_one_and_update(
-            {"Id": entry_id, "UpdatedAt": {"$lt": incoming}},
+            {"Id": entry_id, "ClientLastWrite": {"$lt": incoming}},
             {
-                "$set": {**data, "UpdatedAt": incoming},
+                "$set": {**data, "ClientLastWrite": incoming, "UpdatedAt": timestamps.now_iso()},
                 "$setOnInsert": {"Id": entry_id, "CreatedAt": created_at, "IsDeleted": False},
             },
             upsert=True,
@@ -82,12 +86,22 @@ def delete_entry(entry_id: str, deleted_at: datetime | None = None) -> tuple[dic
     applied is False if the entry was edited more recently elsewhere and the
     deletion lost that race.
 
-    TombstonedAt is a real BSON Date (unlike the ISO-string UpdatedAt/
+    TombstonedAt is a real BSON Date (unlike the ISO-string ClientLastWrite/
     CreatedAt) so MongoDB's TTL index can auto-expire old tombstones."""
     incoming = timestamps.to_iso_utc(deleted_at) or timestamps.now_iso()
     result = get_entries_collection().find_one_and_update(
-        {"Id": entry_id, "UpdatedAt": {"$lt": incoming}},
-        {"$set": {"IsDeleted": True, "UpdatedAt": incoming, "TombstonedAt": datetime.now(timezone.utc)}},
+        {"Id": entry_id, "ClientLastWrite": {"$lt": incoming}},
+        {
+            "$set": {
+                "IsDeleted": True,
+                "ClientLastWrite": incoming,
+                # Stamped on arrival, unlike ClientLastWrite: a deletion
+                # queued during an outage keeps its original time for the
+                # race above, but must still reach clients that pulled since.
+                "UpdatedAt": timestamps.now_iso(),
+                "TombstonedAt": datetime.now(timezone.utc),
+            }
+        },
         return_document=ReturnDocument.AFTER,
     )
     if result is not None:
@@ -143,11 +157,15 @@ def clear_inline_image(entry_id: str) -> None:
 
 def upsert_entry(doc: dict) -> str:
     """Idempotent upsert by Id for the one-shot JSON migration: keeps the
-    document's original CreatedAt/UpdatedAt as-is, matches on Id regardless
-    of IsDeleted so a tombstone gets updated in place instead of colliding
-    with the unique index, and clears any legacy inline ImageBase64 field."""
+    document's original CreatedAt/ClientLastWrite as-is, matches on Id
+    regardless of IsDeleted so a tombstone gets updated in place instead of
+    colliding with the unique index, and clears any legacy inline
+    ImageBase64 field. UpdatedAt is stamped now, not read off the file: an
+    imported document has just landed, whatever date it carries."""
     result = get_entries_collection().update_one(
-        {"Id": doc["Id"]}, {"$set": doc, "$unset": {"ImageBase64": ""}}, upsert=True
+        {"Id": doc["Id"]},
+        {"$set": {**doc, "UpdatedAt": timestamps.now_iso()}, "$unset": {"ImageBase64": ""}},
+        upsert=True,
     )
     if result.upserted_id is not None:
         return "inserted"

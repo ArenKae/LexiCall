@@ -297,7 +297,7 @@ public partial class MainWindow : Window
                     LockedFields = entry.LockedFields,
                     Images = entry.Images,
                     CreatedAt = entry.CreatedAt,
-                    UpdatedAt = DateTimeOffset.Now
+                    ClientLastWrite = DateTimeOffset.Now
                 };
                 ViewModel.UpdateEntry(updatedEntry);
             }
@@ -398,7 +398,7 @@ public partial class MainWindow : Window
                         Description = result.NewCategoryDescription ?? string.Empty,
                         IconGlyph = result.NewCategoryIconGlyph ?? string.Empty,
                         CreatedAt = DateTimeOffset.Now,
-                        UpdatedAt = DateTimeOffset.Now
+                        ClientLastWrite = DateTimeOffset.Now
                     };
 
                     var error = ViewModel.SaveCategory(newCategory);
@@ -437,7 +437,7 @@ public partial class MainWindow : Window
                 LockedFields = entry.LockedFields,
                 Images = entry.Images,
                 CreatedAt = entry.CreatedAt,
-                UpdatedAt = DateTimeOffset.Now
+                ClientLastWrite = DateTimeOffset.Now
             };
             ViewModel.UpdateEntry(updatedEntry);
         }

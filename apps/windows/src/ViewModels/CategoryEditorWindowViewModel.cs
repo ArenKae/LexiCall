@@ -246,10 +246,10 @@ public sealed class CategoryEditorWindowViewModel : INotifyPropertyChanged
             ParentId = parentId,
             Description = Description.Trim(),
             IconGlyph = IconGlyph,
-            // Same instant on creation (CreatedAt == UpdatedAt) — a signal
+            // Same instant on creation (CreatedAt == ClientLastWrite) — a signal
             // relied on for sync-history's push/pull data-kind display.
             CreatedAt = _existingCategory?.CreatedAt ?? now,
-            UpdatedAt = now
+            ClientLastWrite = now
         };
         SavedColorHex = ColorHex;
 

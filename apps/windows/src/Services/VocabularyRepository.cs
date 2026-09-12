@@ -2,6 +2,7 @@
 // %LOCALAPPDATA%\LexiCall\vocabulary.json.
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using LexiCall.Desktop.Models;
 
 namespace LexiCall.Desktop.Services;
@@ -39,15 +40,40 @@ public sealed class VocabularyRepository
             return new VocabularyDatabase();
         }
 
-        using var document = JsonDocument.Parse(json);
-
-        if (document.RootElement.ValueKind != JsonValueKind.Object)
+        if (JsonNode.Parse(json) is not JsonObject root)
         {
             return new VocabularyDatabase();
         }
 
+        MigrateLegacyClientLastWrite(root);
+
         return SanitizeDatabase(
-            JsonSerializer.Deserialize<VocabularyDatabase>(json, JsonOptions) ?? new VocabularyDatabase());
+            JsonSerializer.Deserialize<VocabularyDatabase>(root.ToJsonString(), JsonOptions) ?? new VocabularyDatabase());
+    }
+
+    // A file saved before the ClientLastWrite/UpdatedAt split still has every
+    // record's edit time under the old key "UpdatedAt". Copied across before
+    // deserializing so a pre-existing entry doesn't silently fall back to
+    // ClientLastWrite's property default (the moment this load runs) and look
+    // freshly edited — which would then win every future Last-Write-Wins
+    // comparison purely by having the newest possible timestamp.
+    private static void MigrateLegacyClientLastWrite(JsonObject root)
+    {
+        foreach (var collectionKey in new[] { "Entries", "Categories" })
+        {
+            if (root[collectionKey] is not JsonArray records)
+            {
+                continue;
+            }
+
+            foreach (var record in records.OfType<JsonObject>())
+            {
+                if (!record.ContainsKey("ClientLastWrite") && record["UpdatedAt"] is { } legacy)
+                {
+                    record["ClientLastWrite"] = legacy.DeepClone();
+                }
+            }
+        }
     }
 
     public void SaveDatabase(VocabularyDatabase database)

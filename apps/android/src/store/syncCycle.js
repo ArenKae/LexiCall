@@ -4,7 +4,7 @@ import { isNewer } from '../utils/timestamps';
 // mutating anything, so the caller decides what to keep.
 
 export function needsPush(record) {
-  return record.SyncedAt === null || isNewer(record.UpdatedAt, record.SyncedAt);
+  return record.SyncedAt === null || isNewer(record.ClientLastWrite, record.SyncedAt);
 }
 
 export async function runSyncCycle({

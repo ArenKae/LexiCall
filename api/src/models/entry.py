@@ -57,8 +57,10 @@ class VocabularyEntryWrite(BaseModel):
     # Field names excluded from AI enrichment requests (see enrichment.py) —
     # an unrecognized name is simply ignored, not validated here.
     locked_fields: list[str] = Field(default_factory=list, alias="LockedFields")
-    # Client-stamped edit time, used for Last-Write-Wins comparisons.
-    updated_at: datetime | None = Field(default=None, alias="UpdatedAt")
+    # Client-stamped edit time, used for Last-Write-Wins comparisons. Never
+    # called UpdatedAt on the wire: that name is reserved for the server's
+    # own arrival-time bookkeeping, which no client model ever declares.
+    updated_at: datetime | None = Field(default=None, alias="ClientLastWrite")
     # Trusted from the client so an offline-created entry keeps its real
     # creation date; only actually applied on first insert (see put_entry).
     created_at: datetime | None = Field(default=None, alias="CreatedAt")
@@ -110,7 +112,9 @@ class VocabularyEntrySummary(BaseModel):
     images: list[VocabularyEntryImage] = Field(default_factory=list, alias="Images")
     locked_fields: list[str] = Field(default_factory=list, alias="LockedFields")
     created_at: datetime = Field(alias="CreatedAt")
-    updated_at: datetime = Field(alias="UpdatedAt")
+    # The client's own edit time, for its local Last-Write-Wins merge — not
+    # this document's server arrival time, which no client model declares.
+    updated_at: datetime = Field(alias="ClientLastWrite")
     # True once soft-deleted; only ever seen through a delta pull.
     is_deleted: bool = Field(default=False, alias="IsDeleted")
 

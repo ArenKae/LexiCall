@@ -567,7 +567,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
                 .Select(image => new EntryImage { Id = image.Id, Caption = image.Caption.Trim(), ImageBase64 = image.ImageBase64 })
                 .ToList(),
             CreatedAt = _existingEntry?.CreatedAt ?? now,
-            UpdatedAt = now
+            ClientLastWrite = now
         };
 
         EntrySaved?.Invoke(this, EventArgs.Empty);

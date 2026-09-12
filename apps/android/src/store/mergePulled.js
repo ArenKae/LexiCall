@@ -15,8 +15,8 @@ export function mergePulled(local, pulled) {
 
     const existing = byId.get(record.Id);
 
-    if (!existing || isNewer(record.UpdatedAt, existing.UpdatedAt)) {
-      byId.set(record.Id, { ...record, SyncedAt: record.UpdatedAt });
+    if (!existing || isNewer(record.ClientLastWrite, existing.ClientLastWrite)) {
+      byId.set(record.Id, { ...record, SyncedAt: record.ClientLastWrite });
     }
   }
 

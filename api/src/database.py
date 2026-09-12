@@ -79,7 +79,9 @@ def _create_indexes() -> None:
     # filtered or sorted.
     get_category_embeddings_collection().create_index("Id", unique=True)
 
-    # Speeds up the updated_since delta query used for sync pulls.
+    # Speeds up the updated_since delta query used for sync pulls, which
+    # filters and sorts on UpdatedAt — the server-stamped arrival time, not
+    # the client-stamped ClientLastWrite used for Last-Write-Wins.
     get_entries_collection().create_index("UpdatedAt")
     get_categories_collection().create_index("UpdatedAt")
 
