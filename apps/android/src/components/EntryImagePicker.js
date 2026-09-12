@@ -1,19 +1,17 @@
+import { randomUUID } from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CategoryIcon } from './CategoryIcon';
 import { useTheme } from '../theme/useTheme';
+import { inlineImageUri } from '../services/imageCache';
 import { processImage } from '../utils/imageProcessor';
 
 export const MAX_IMAGES = 4;
 
-function dataUri(base64) {
-  return `data:image/jpeg;base64,${base64}`;
-}
-
 // Picker + caption editor for an entry's images, up to MAX_IMAGES. A newly
-// added image always gets a fresh Id (crypto.randomUUID, from the caller) —
-// there is no "replace in place": editing means remove, then add again.
+// added image always gets a fresh Id — there is no "replace in place":
+// editing means remove, then add again.
 export function EntryImagePicker({ images, onChange }) {
   const colors = useTheme();
   const [error, setError] = useState('');
@@ -45,8 +43,9 @@ export function EntryImagePicker({ images, onChange }) {
     for (const asset of picked) {
       try {
         const base64 = await processImage(asset.uri, asset.width, asset.height);
-        processed.push({ Id: crypto.randomUUID(), Caption: '', ImageBase64: base64 });
-      } catch {
+        processed.push({ Id: randomUUID(), Caption: '', ImageBase64: base64 });
+      } catch (imageError) {
+        console.warn(`[image processing] ${String(imageError?.message ?? imageError)}`);
         setError('Impossible de traiter une des images sélectionnées.');
       }
     }
@@ -67,7 +66,7 @@ export function EntryImagePicker({ images, onChange }) {
       <View style={styles.row}>
         {images.map((image) => (
           <View key={image.Id} style={styles.tile}>
-            <Image source={{ uri: dataUri(image.ImageBase64) }} style={styles.thumbnail} />
+            <Image source={{ uri: inlineImageUri(image.ImageBase64) }} style={styles.thumbnail} />
             <Pressable
               onPress={() => removeImage(image.Id)}
               style={[styles.removeBadge, { backgroundColor: colors.danger }]}

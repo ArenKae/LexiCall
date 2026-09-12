@@ -24,6 +24,11 @@ export function cachedImageUri(imageId) {
   return file.exists ? file.uri : null;
 }
 
+// A data URI from bytes already held in memory — no disk cache, no network.
+export function inlineImageUri(base64) {
+  return `data:image/jpeg;base64,${base64}`;
+}
+
 export async function loadImage(client, entryId, imageId) {
   const cached = cachedImageUri(imageId);
 

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createApiClient } from '../services/apiClient';
-import { cachedImageUri, loadImage } from '../services/imageCache';
+import { cachedImageUri, inlineImageUri, loadImage } from '../services/imageCache';
 import { useVocabularyStore } from '../store/useVocabularyStore';
 
 // Per-image load state for an entry, keyed by image Id: { status, uri }.
-// A pull carries no image bytes, so anything not already cached is fetched here.
+// ImageBase64 is non-empty only for an image added on this device and never
+// yet synced — that case is used directly, never fetched. A pull carries no
+// bytes at all, so anything else not already cached is fetched here.
 export function useEntryImages(entry) {
   const apiBaseUrl = useVocabularyStore((state) => state.apiBaseUrl);
   const apiKey = useVocabularyStore((state) => state.apiKey);
@@ -37,7 +39,9 @@ export function useEntryImages(entry) {
     for (const image of entry.Images) {
       const cached = cachedImageUri(image.Id);
 
-      if (cached) {
+      if (image.ImageBase64.length > 0) {
+        initial[image.Id] = { status: 'ready', uri: inlineImageUri(image.ImageBase64) };
+      } else if (cached) {
         initial[image.Id] = { status: 'ready', uri: cached };
       } else {
         initial[image.Id] = { status: 'loading' };
