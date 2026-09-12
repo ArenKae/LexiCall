@@ -15,9 +15,8 @@ import { useTheme } from '../theme/useTheme';
 const THUMBNAIL_SIZE = 120;
 const PREVIEW_RATIO = 0.8;
 
-// An entry's images: thumbnails that open a full-screen viewer, mirroring the
-// desktop client's gallery. A thumbnail that failed to download says so and
-// offers a retry, since unlike on desktop the bytes always come over the network.
+// An entry's images: thumbnails that open a full-screen viewer. A thumbnail
+// that failed to download says so and offers a retry.
 export function EntryImageGallery({ images, states, onRetry }) {
   const colors = useTheme();
   const [openedIndex, setOpenedIndex] = useState(null);

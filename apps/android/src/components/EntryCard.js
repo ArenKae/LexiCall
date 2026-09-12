@@ -1,8 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CategoryIcon } from './CategoryIcon';
 import { useTheme } from '../theme/useTheme';
-
-const UNDEFINED_TYPE = 'Undefined';
+import { UNDEFINED_TYPE } from '../utils/vocabularyEntryTypes';
 
 function typeLabel(types) {
   const real = types.filter((type) => type !== UNDEFINED_TYPE);

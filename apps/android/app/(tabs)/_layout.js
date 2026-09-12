@@ -1,11 +1,13 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
 import { useTheme } from '../../src/theme/useTheme';
 
 // Bottom bar holding every top-level destination — the app has no floating
-// action button, so any global action belongs here.
+// action button, so any global action belongs here, including "create".
 export default function TabsLayout() {
   const colors = useTheme();
+  const router = useRouter();
 
   const icon = (iconKey) =>
     function TabIcon({ color, size }) {
@@ -32,6 +34,24 @@ export default function TabsLayout() {
         options={{ title: 'Catégories', tabBarIcon: icon('Phosphor.stack') }}
       />
       <Tabs.Screen
+        name="create"
+        options={{
+          title: '',
+          tabBarLabel: () => null,
+          tabBarIcon: ({ color }) => (
+            <View style={[styles.createBadge, { backgroundColor: colors.accent }]}>
+              <CategoryIcon iconKey="Phosphor.plus" color={colors.textOnAccent} size={22} />
+            </View>
+          ),
+        }}
+        listeners={{
+          tabPress: (event) => {
+            event.preventDefault();
+            router.push('/entry/edit');
+          },
+        }}
+      />
+      <Tabs.Screen
         name="search"
         options={{ title: 'Recherche', tabBarIcon: icon('Phosphor.magnifying-glass') }}
       />
@@ -42,3 +62,14 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  createBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+});

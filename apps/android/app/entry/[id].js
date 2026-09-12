@@ -1,13 +1,14 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
+import { EntryActionSheet } from '../../src/components/EntryActionSheet';
 import { EntryImageGallery } from '../../src/components/EntryImageGallery';
 import { useCategoryIndex } from '../../src/hooks/useCategoryIndex';
 import { useEntryImages } from '../../src/hooks/useEntryImages';
 import { useTheme } from '../../src/theme/useTheme';
 import { useVocabularyStore } from '../../src/store/useVocabularyStore';
-
-const UNDEFINED_TYPE = 'Undefined';
+import { UNDEFINED_TYPE } from '../../src/utils/vocabularyEntryTypes';
 
 function Section({ title, iconKey, color, children }) {
   return (
@@ -29,8 +30,11 @@ export default function EntryDetail() {
   const categoryIndex = useCategoryIndex();
   const entry = useVocabularyStore((state) => state.entries.find((item) => item.Id === id));
   const setCategoryFilter = useVocabularyStore((state) => state.setCategoryFilter);
+  const toggleArchive = useVocabularyStore((state) => state.toggleArchive);
+  const deleteEntry = useVocabularyStore((state) => state.deleteEntry);
   // Called before the missing-entry branch below: hooks can't sit after a return.
   const { states: imageStates, retry: retryImage } = useEntryImages(entry);
+  const [actionsVisible, setActionsVisible] = useState(false);
 
   if (!entry) {
     return (
@@ -47,6 +51,34 @@ export default function EntryDetail() {
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Pressable onPress={() => setActionsVisible(true)} hitSlop={10} style={styles.menuButton}>
+              <CategoryIcon iconKey="Phosphor.dots-three-circle-vertical" color={colors.textPrimary} size={22} />
+            </Pressable>
+          ),
+        }}
+      />
+
+      <EntryActionSheet
+        visible={actionsVisible}
+        entry={entry}
+        onClose={() => setActionsVisible(false)}
+        onEdit={() => {
+          setActionsVisible(false);
+          router.push(`/entry/edit?id=${entry.Id}`);
+        }}
+        onToggleArchive={() => {
+          setActionsVisible(false);
+          toggleArchive(entry.Id);
+        }}
+        onDelete={() => {
+          deleteEntry(entry.Id);
+          router.back();
+        }}
+      />
+
       <Text selectable style={[styles.word, { color: colors.textPrimary }]}>
         {entry.Word}
       </Text>
@@ -154,7 +186,7 @@ export default function EntryDetail() {
 const styles = StyleSheet.create({
   content: { padding: 18, paddingBottom: 40 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  // Serif for the word and its senses, as on the desktop client.
+  // Serif for the word and its senses.
   word: { fontFamily: 'serif', fontSize: 30 },
   type: { fontSize: 14, fontStyle: 'italic', marginTop: 2 },
   banner: { borderRadius: 10, padding: 10, marginTop: 12, gap: 4 },
@@ -174,6 +206,7 @@ const styles = StyleSheet.create({
   sense: { flexDirection: 'row', gap: 8, marginTop: 14 },
   senseNumber: { fontFamily: 'serif', fontSize: 16 },
   senseText: { flex: 1, fontFamily: 'serif', fontSize: 16, lineHeight: 24 },
+  menuButton: { paddingHorizontal: 4 },
   section: { marginTop: 22 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   sectionTitle: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },

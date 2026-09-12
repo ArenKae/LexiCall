@@ -6,7 +6,7 @@ import { useCategoryIndex } from '../../src/hooks/useCategoryIndex';
 import { useTheme } from '../../src/theme/useTheme';
 import { useVocabularyStore } from '../../src/store/useVocabularyStore';
 import { compareText } from '../../src/utils/collation';
-import { entryMatchesSearch, normalizeForSearch } from '../../src/utils/search';
+import { entryMatchesSearch, entryWordMatchesSearch, normalizeForSearch } from '../../src/utils/search';
 
 const SEGMENTS = [
   { key: 'all', label: 'Tous' },
@@ -36,9 +36,16 @@ export default function Search() {
     const categoryNamesById = new Map(categories.map((category) => [category.Id, category.Name]));
 
     return {
+      // A word matched directly ranks above one matched only through its
+      // definition/synonyms/etc.
       words: entries
         .filter((entry) => entryMatchesSearch(entry, normalized, categoryNamesById))
-        .sort((a, b) => compareText(a.Word, b.Word)),
+        .sort((a, b) => {
+          const rankDelta =
+            Number(entryWordMatchesSearch(b, normalized)) -
+            Number(entryWordMatchesSearch(a, normalized));
+          return rankDelta !== 0 ? rankDelta : compareText(a.Word, b.Word);
+        }),
       matchedCategories: categories
         .filter((category) => normalizeForSearch(category.Name).includes(normalized))
         .sort((a, b) => compareText(a.Name, b.Name)),

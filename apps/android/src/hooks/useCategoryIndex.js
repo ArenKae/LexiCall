@@ -3,7 +3,7 @@ import { useVocabularyStore } from '../store/useVocabularyStore';
 import { computeColorIndexes } from '../utils/categoryHierarchy';
 import { colorFromIndex } from '../utils/categoryColor';
 
-// A category with no icon of its own still gets one, as on the desktop client.
+// A category with no icon of its own still gets one.
 const DEFAULT_ICON = 'Solar.tag';
 
 // Categories by Id, each carrying its resolved color and icon, for the chips and

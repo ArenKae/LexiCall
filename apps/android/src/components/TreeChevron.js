@@ -1,7 +1,7 @@
 import Svg, { G, Path } from 'react-native-svg';
 
-// Expander arrow for the category tree: the desktop client's stroked chevron,
-// rotated a quarter turn once the node is open.
+// Expander arrow for the category tree: a stroked chevron, rotated a quarter
+// turn once the node is open.
 export function TreeChevron({ expanded, color, size = 16 }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 16 16">

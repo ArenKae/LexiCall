@@ -1,7 +1,6 @@
 // Shapes records received from the API into the local database shape, filling
 // the defaults the rest of the app relies on.
-
-const UNDEFINED_TYPE = 'Undefined';
+import { UNDEFINED_TYPE } from '../utils/vocabularyEntryTypes';
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];

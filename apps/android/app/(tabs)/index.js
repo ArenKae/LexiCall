@@ -1,8 +1,10 @@
-import { useMemo } from 'react';
+import Feather from '@expo/vector-icons/Feather';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
 import { EntryCard } from '../../src/components/EntryCard';
+import { FilterSheet } from '../../src/components/FilterSheet';
 import { useCategoryIndex } from '../../src/hooks/useCategoryIndex';
 import { useTheme } from '../../src/theme/useTheme';
 import { useVocabularyStore } from '../../src/store/useVocabularyStore';
@@ -23,13 +25,16 @@ export default function Home() {
   const categories = useVocabularyStore((state) => state.categories);
   const filter = useVocabularyStore((state) => state.categoryFilter);
   const query = useVocabularyStore((state) => state.searchQuery);
+  const sortMode = useVocabularyStore((state) => state.sortMode);
   const setSearchQuery = useVocabularyStore((state) => state.setSearchQuery);
   const setCategoryFilter = useVocabularyStore((state) => state.setCategoryFilter);
+  const setSortMode = useVocabularyStore((state) => state.setSortMode);
   const isHydrated = useVocabularyStore((state) => state.isHydrated);
+  const [filterSheetVisible, setFilterSheetVisible] = useState(false);
 
   const visible = useMemo(
-    () => selectEntries({ entries, categories, filter, query }),
-    [entries, categories, filter, query]
+    () => selectEntries({ entries, categories, filter, query, sortMode }),
+    [entries, categories, filter, query, sortMode]
   );
 
   const activeCategory = filter.categoryId ? categoryIndex.get(filter.categoryId) : null;
@@ -62,25 +67,27 @@ export default function Home() {
               <CategoryIcon iconKey="Phosphor.x" color={colors.textMuted} size={15} />
             </Pressable>
           )}
+          <View style={[styles.separator, { backgroundColor: colors.borderSubtle }]} />
+          <Pressable onPress={() => setFilterSheetVisible(true)} hitSlop={8}>
+            <Feather name="sliders" size={18} color={colors.textMuted} />
+          </Pressable>
         </View>
 
-        <View style={styles.filterRow}>
-          <Pressable
-            style={[styles.filterChip, { backgroundColor: colors.chipBackground }]}
-            onPress={() => setCategoryFilter({ kind: ALL_ENTRIES, categoryId: null })}
-            disabled={filter.kind === ALL_ENTRIES}
-          >
-            {activeCategory && (
-              <View style={[styles.dot, { backgroundColor: activeCategory.color }]} />
-            )}
-            <Text style={[styles.filterText, { color: colors.chipForeground }]}>{filterLabel}</Text>
-            {filter.kind !== ALL_ENTRIES && (
-              <CategoryIcon iconKey="Phosphor.x" color={colors.chipForeground} size={12} />
-            )}
-          </Pressable>
-          <Text style={[styles.status, { color: colors.textMuted }]}>{status}</Text>
-        </View>
+        <Text style={[styles.status, { color: colors.textMuted }]}>
+          {filterLabel} · {status}
+        </Text>
       </View>
+
+      <FilterSheet
+        visible={filterSheetVisible}
+        onClose={() => setFilterSheetVisible(false)}
+        sortMode={sortMode}
+        onSortModeChange={setSortMode}
+        filter={filter}
+        filterLabel={filterLabel}
+        activeCategory={activeCategory}
+        onResetFilter={() => setCategoryFilter({ kind: ALL_ENTRIES, categoryId: null })}
+      />
 
       <FlatList
         data={visible}
@@ -118,18 +125,8 @@ const styles = StyleSheet.create({
     height: 42,
   },
   searchInput: { flex: 1, fontSize: 15, paddingVertical: 0 },
-  filterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-  },
-  filterText: { fontSize: 12, fontWeight: '600' },
-  dot: { width: 8, height: 8, borderRadius: 999 },
-  status: { fontSize: 12 },
+  separator: { width: 1, height: 20, marginHorizontal: 2 },
+  status: { fontSize: 12, paddingHorizontal: 2 },
   list: { paddingTop: 6, paddingBottom: 16 },
   empty: { padding: 28, textAlign: 'center' },
 });

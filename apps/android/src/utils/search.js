@@ -23,6 +23,12 @@ function anyFieldMatches(values, normalizedQuery) {
   return values.some((value) => fieldMatches(value, normalizedQuery));
 }
 
+// Whether the pattern shows up in the word itself, as opposed to only in some
+// other field — used to rank a direct match above an incidental one.
+export function entryWordMatchesSearch(entry, normalizedQuery) {
+  return fieldMatches(entry.Word, normalizedQuery);
+}
+
 export function entryMatchesSearch(entry, normalizedQuery, categoryNamesById) {
   // A blank query filters nothing — typing a single space must not empty the
   // list.
