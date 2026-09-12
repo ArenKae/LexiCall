@@ -73,6 +73,7 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
             Notes = existingEntry.Notes;
             Source = existingEntry.Source;
             _isArchived = existingEntry.IsArchived;
+            LoadMissingImageBytes(existingEntry.Id);
         }
     }
 
@@ -331,6 +332,35 @@ public sealed class EntryEditorWindowViewModel : INotifyPropertyChanged
     private void RemoveImage(EntryImageEditorViewModel image)
     {
         Images.Remove(image);
+    }
+
+    // A pulled entry's images carry no bytes; loaded here for display only,
+    // never written back onto the saved entry.
+    private void LoadMissingImageBytes(Guid entryId)
+    {
+        foreach (var image in Images.Where(image => image.Status != EntryImageStatus.Ready))
+        {
+            if (EntryImageCache.TryReadCached(image.Id) is { } cached)
+            {
+                image.MarkLoaded(cached);
+            }
+            else if (_apiClient is null)
+            {
+                image.MarkLoaded(null);
+            }
+            else
+            {
+                _ = LoadImageAsync(_apiClient, entryId, image);
+            }
+        }
+    }
+
+    private static async Task LoadImageAsync(
+        VocabularyApiClient apiClient,
+        Guid entryId,
+        EntryImageEditorViewModel image)
+    {
+        image.MarkLoaded(await EntryImageCache.LoadAsync(apiClient, entryId, image.Id));
     }
 
     // Plain frontend autocorrect, unrelated to the LLM call itself — just a

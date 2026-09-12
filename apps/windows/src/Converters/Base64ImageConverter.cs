@@ -1,5 +1,6 @@
-// Converts an entry's stored base64 string into a displayable BitmapImage.
-// An empty or invalid string yields null (also used to drive visibility).
+// Converts an entry's stored base64 string — or raw bytes downloaded from the
+// API — into a displayable BitmapImage. Empty or invalid input yields null
+// (also used to drive visibility).
 using System.Globalization;
 using System.IO;
 using System.Windows.Data;
@@ -15,7 +16,7 @@ public sealed class Base64ImageConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 
-    // Exposed as static so it can be reused outside a binding (e.g. ImagePreviewWindow).
+    // Exposed as static so it can be reused outside a binding (e.g. MainWindowViewModel).
     public static BitmapImage? ToBitmapImage(string base64)
     {
         if (string.IsNullOrWhiteSpace(base64))
@@ -25,7 +26,20 @@ public sealed class Base64ImageConverter : IValueConverter
 
         try
         {
-            var bytes = System.Convert.FromBase64String(base64);
+            return ToBitmapImage(System.Convert.FromBase64String(base64));
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    // Same decode for image bytes downloaded from the API, which never went
+    // through base64 at all.
+    public static BitmapImage? ToBitmapImage(byte[] bytes)
+    {
+        try
+        {
             using var stream = new MemoryStream(bytes);
 
             var image = new BitmapImage();
@@ -33,11 +47,13 @@ public sealed class Base64ImageConverter : IValueConverter
             image.CacheOption = BitmapCacheOption.OnLoad;
             image.StreamSource = stream;
             image.EndInit();
+            // Frozen so it can be handed to the UI thread from whatever
+            // thread the download resumed on.
             image.Freeze();
 
             return image;
         }
-        catch (Exception ex) when (ex is FormatException or NotSupportedException)
+        catch (NotSupportedException)
         {
             return null;
         }

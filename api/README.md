@@ -29,15 +29,24 @@ All routes except `/health` require an `X-API-Key` header matching the
 ## Entry images
 
 Images are not stored inline on an entry: they live in a separate `entry_images` collection,
-one document per entry `Id`, accessed through dedicated binary endpoints (raw bytes, not
-JSON) — `GET`/`PUT`/`DELETE /entries/{id}/image`, `Content-Type` round-tripped from the `PUT`
-request to the `GET` response. This is deliberate: a Mongo projection that excludes a field
-only saves bandwidth to the client, not server-side cache pressure — WiredTiger still reads
-the whole document (image bytes included) off disk/cache for any scan, so keeping images
-inline made browsing the `entries` collection (e.g. in Compass) slower as it grew, regardless
-of projections on `list_entries()`. `PUT` is capped at `max_image_bytes` (2 MB by default,
-configurable via the `MAX_IMAGE_BYTES` env var); deleting an entry cascades to deleting its
-image, if any.
+one document per image `Id` (up to `MAX_IMAGES_PER_ENTRY`, 4, per entry). This is deliberate:
+a Mongo projection that excludes a field only saves bandwidth to the client, not server-side
+cache pressure — WiredTiger still reads the whole document (image bytes included) off
+disk/cache for any scan, so keeping images inline made browsing the `entries` collection
+(e.g. in Compass) slower as it grew, regardless of projections on `list_entries()`.
+
+Writing goes through `PUT /entries/{id}`, which carries the bytes alongside the entry's own
+fields: each is decoded and size-checked (`max_image_bytes`, 2 MB by default, configurable
+via the `MAX_IMAGE_BYTES` env var) before anything is written, and the per-image
+upsert/delete is skipped entirely when the entry's metadata write loses its Last-Write-Wins
+race. There is no standalone image write route, so two requests can never race to set the
+same image; deleting an entry cascades to deleting its images.
+
+Reading is `GET /entries/{entry_id}/images/{image_id}`, raw bytes with
+`Content-Type: image/jpeg` (`entry_id` only shapes the path — `entry_images` is keyed by the
+image's own `Id`). A `GET /entries` response carries image metadata alone, so both clients
+fetch the bytes through this route, one image at a time, when an entry is actually displayed,
+and cache them locally under the image `Id`.
 
 ## Migrating existing data
 

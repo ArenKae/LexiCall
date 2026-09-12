@@ -29,7 +29,7 @@ public sealed class VocabularyEntry
 
     public string Source { get; set; } = string.Empty;
 
-    // Up to 3 images, enforced at the picker level (EntryEditorWindowViewModel).
+    // Up to 4 images, enforced at the picker level (EntryEditorWindowViewModel).
     public List<EntryImage> Images { get; init; } = [];
 
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.Now;

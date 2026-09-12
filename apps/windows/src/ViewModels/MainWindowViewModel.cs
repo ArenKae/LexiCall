@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using LexiCall.Desktop.Converters;
 using LexiCall.Desktop.Models;
 using LexiCall.Desktop.Services;
 using LexiCall.Desktop.Utilities;
@@ -54,6 +55,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         _repository = repository ?? new VocabularyRepository();
 
+        // Built before the initial selection below: that selection already
+        // triggers an image fetch for the entry it lands on.
+        var settings = SettingsStore.Load();
+        _apiBaseUrl = settings.ApiBaseUrl;
+        _apiKey = settings.ApiKey;
+        _apiClient = apiClient ?? new VocabularyApiClient(_apiBaseUrl, _apiKey);
+
         var database = _repository.DataFileExists
             ? _repository.LoadDatabase()
             : CreateSampleDatabase();
@@ -65,6 +73,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SyncHistory = new ObservableCollection<SyncHistoryEntry>(SyncHistoryStore.Load());
         FilteredEntries = [];
         CategoryTree = [];
+        SelectedEntryImages = [];
         RebuildCategoryTree();
         RefreshFilteredEntries();
         SelectedEntry = FilteredEntries.FirstOrDefault();
@@ -73,11 +82,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             SaveDatabase();
         }
-
-        var settings = SettingsStore.Load();
-        _apiBaseUrl = settings.ApiBaseUrl;
-        _apiKey = settings.ApiKey;
-        _apiClient = apiClient ?? new VocabularyApiClient(_apiBaseUrl, _apiKey);
 
         // Periodic sync while the app runs (not just at launch): a network
         // outage that resolves mid-session (VPN reconnects, dev VM restarts)
@@ -106,6 +110,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     // Sidebar tree: virtual nodes ("Toutes les entrées", "Sans catégorie")
     // followed by root categories with their subcategories.
     public ObservableCollection<CategoryNodeViewModel> CategoryTree { get; }
+
+    // Images of the selected entry, with their own load state: an entry
+    // created on another client arrives from a pull with metadata only, so
+    // its bytes are downloaded when the detail card shows it.
+    public ObservableCollection<EntryImageViewModel> SelectedEntryImages { get; }
 
     public string DataFilePath => _repository.FilePath;
 
@@ -248,6 +257,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _selectedEntry, value))
             {
+                RefreshSelectedEntryImages();
                 OnPropertyChanged(nameof(HasSelectedEntry));
                 OnPropertyChanged(nameof(SelectedEntryCategories));
                 OnPropertyChanged(nameof(SelectedEntrySenses));
@@ -1315,6 +1325,70 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HasEntries));
         OnPropertyChanged(nameof(EmptyListMessage));
         OnPropertyChanged(nameof(EmptyDetailMessage));
+    }
+
+    // Rebuilt on every selection change: images are downloaded when an entry
+    // is actually looked at, never in bulk at pull time.
+    private void RefreshSelectedEntryImages()
+    {
+        SelectedEntryImages.Clear();
+
+        if (_selectedEntry is null)
+        {
+            return;
+        }
+
+        foreach (var image in _selectedEntry.Images)
+        {
+            var imageViewModel = new EntryImageViewModel(image.Id, image.Caption);
+            SelectedEntryImages.Add(imageViewModel);
+
+            // Bytes are inline only for images added on this machine; an
+            // entry that arrived through a pull has none, and goes to the
+            // cache-or-download path below.
+            if (Base64ImageConverter.ToBitmapImage(image.ImageBase64) is { } inline)
+            {
+                imageViewModel.MarkLoaded(inline);
+            }
+            else
+            {
+                LoadEntryImage(_selectedEntry.Id, imageViewModel);
+            }
+        }
+    }
+
+    // Manual retry when the user clicks a failed thumbnail — nothing negative
+    // is cached, so this just asks for the bytes again.
+    public void RetrySelectedEntryImage(EntryImageViewModel image)
+    {
+        if (_selectedEntry is not null)
+        {
+            LoadEntryImage(_selectedEntry.Id, image);
+        }
+    }
+
+    private void LoadEntryImage(Guid entryId, EntryImageViewModel image)
+    {
+        // Read synchronously first: an already-downloaded image must not
+        // flash a spinner every time its entry is selected.
+        if (EntryImageCache.TryReadCached(image.Id) is { } cached)
+        {
+            image.MarkLoaded(Base64ImageConverter.ToBitmapImage(cached));
+            return;
+        }
+
+        image.MarkLoading();
+
+        // Not awaited: a slow image must never hold up the selection. No
+        // ConfigureAwait either — started from the UI thread, and the
+        // continuation sets bound state, so it has to resume there.
+        _ = LoadEntryImageAsync(entryId, image);
+    }
+
+    private async Task LoadEntryImageAsync(Guid entryId, EntryImageViewModel image)
+    {
+        var bytes = await EntryImageCache.LoadAsync(_apiClient, entryId, image.Id);
+        image.MarkLoaded(bytes is null ? null : Base64ImageConverter.ToBitmapImage(bytes));
     }
 
     private void RefreshFilteredEntries()
