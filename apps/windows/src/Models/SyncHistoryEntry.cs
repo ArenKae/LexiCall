@@ -1,5 +1,6 @@
-// A logged sync operation (push/pull/delete) for one entry or category —
-// see Services/SyncHistoryStore.cs and MainWindowViewModel.RecordSyncHistory.
+// A logged sync operation for one entry or category, plus the single summary
+// row a full resync writes instead of its hundreds of per-record rows — see
+// Services/SyncHistoryStore.cs and MainWindowViewModel.RecordSyncHistory.
 namespace LexiCall.Desktop.Models;
 
 public enum SyncHistoryEntityType
@@ -12,7 +13,8 @@ public enum SyncHistoryOperation
 {
     Push,
     Pull,
-    Delete
+    Delete,
+    FullResync
 }
 
 public enum SyncHistoryOutcome
@@ -48,4 +50,8 @@ public sealed class SyncHistoryEntry
     public required SyncHistoryOutcome Outcome { get; init; }
 
     public SyncHistoryChangeKind? ChangeKind { get; init; }
+
+    // Counts carried by a FullResync summary row; null on every other row,
+    // which describes a single entity instead.
+    public string? Details { get; init; }
 }

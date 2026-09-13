@@ -89,6 +89,38 @@ public sealed class VocabularyRepository
         File.WriteAllText(_filePath, json);
     }
 
+    public void ExportTo(string destinationPath)
+    {
+        File.Copy(_filePath, destinationPath, overwrite: true);
+    }
+
+    // Copies the file in as-is rather than re-serializing the parsed object:
+    // LoadDatabase already handles legacy shapes and sanitization on reload.
+    public void ImportFrom(string sourcePath)
+    {
+        var json = File.ReadAllText(sourcePath);
+
+        if (JsonSerializer.Deserialize<VocabularyDatabase>(json, JsonOptions) is null)
+        {
+            throw new JsonException("Le fichier ne contient pas une base LexiCall valide.");
+        }
+
+        var directory = Path.GetDirectoryName(_filePath);
+
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        if (File.Exists(_filePath))
+        {
+            var backupName = $"vocabulary.backup-{DateTimeOffset.Now:yyyyMMdd-HHmmss}.json";
+            File.Copy(_filePath, Path.Combine(directory ?? string.Empty, backupName), overwrite: true);
+        }
+
+        File.Copy(sourcePath, _filePath, overwrite: true);
+    }
+
     private static VocabularyDatabase SanitizeDatabase(VocabularyDatabase database)
     {
         // Strip CategoryIds referencing a category that no longer exists

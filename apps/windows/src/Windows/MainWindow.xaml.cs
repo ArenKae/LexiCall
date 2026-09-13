@@ -1,6 +1,8 @@
-// Code-behind for the main window: opens modal windows, relays category-tree
+﻿// Code-behind for the main window: opens modal windows, relays category-tree
 // interactions to MainWindowViewModel, and shows confirmations/errors via
 // themed dialogs (ConfirmationDialog, AlertDialog).
+using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -128,6 +130,79 @@ public partial class MainWindow : Window
     private void SyncStatusRow_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         new SyncHistoryWindow(ViewModel) { Owner = this }.ShowDialog();
+    }
+
+    // The file picker is a WPF detail: the ViewModel only receives the chosen
+    // path and knows nothing about OpenFileDialog.
+    private void ImportDatabaseButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "Base LexiCall (*.json)|*.json",
+            CheckFileExists = true
+        };
+
+        // Scoped to the dialogs only: the import itself must be able to fire
+        // its resync, which this flag would otherwise suppress (see
+        // MainWindowViewModel.TryResyncAsync).
+        ViewModel.IsEditorDialogOpen = true;
+        try
+        {
+            if (dialog.ShowDialog(this) != true)
+            {
+                return;
+            }
+
+            var confirmed = ConfirmationDialog.Show(
+                this,
+                "Cette action remplace la base de vocabulaire locale par le fichier choisi. Une copie de sauvegarde de la base actuelle sera conservée à côté.",
+                "Importer une base",
+                confirmText: "Importer");
+
+            if (!confirmed)
+            {
+                return;
+            }
+        }
+        finally
+        {
+            ViewModel.IsEditorDialogOpen = false;
+        }
+
+        try
+        {
+            ViewModel.ImportDatabase(dialog.FileName);
+        }
+        catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
+        {
+            AlertDialog.Show(this, $"Import impossible : {exception.Message}", "Importer une base");
+        }
+    }
+
+    private void ExportDatabaseButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = "Base LexiCall (*.json)|*.json",
+            FileName = "vocabulary.json"
+        };
+
+        ViewModel.IsEditorDialogOpen = true;
+        try
+        {
+            if (dialog.ShowDialog(this) == true)
+            {
+                ViewModel.ExportDatabase(dialog.FileName);
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            AlertDialog.Show(this, $"Export impossible : {exception.Message}", "Exporter la base");
+        }
+        finally
+        {
+            ViewModel.IsEditorDialogOpen = false;
+        }
     }
 
     private void ClearSearchButton_Click(object sender, RoutedEventArgs e)
