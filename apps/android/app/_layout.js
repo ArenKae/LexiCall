@@ -31,7 +31,7 @@ export default function RootLayout() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="entry/[id]" options={{ title: '' }} />
-        <Stack.Screen name="options" options={{ title: 'Options' }} />
+        <Stack.Screen name="options" options={{ title: 'Paramètres' }} />
         <Stack.Screen name="sync-history" options={{ title: 'Historique de synchronisation' }} />
       </Stack>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />

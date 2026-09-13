@@ -5,13 +5,7 @@ import { CategoryIcon } from '../../src/components/CategoryIcon';
 import { createApiClient } from '../../src/services/apiClient';
 import { useTheme } from '../../src/theme/useTheme';
 import { useVocabularyStore } from '../../src/store/useVocabularyStore';
-
-const STATUS_LABELS = {
-  Ok: 'Connecté',
-  Syncing: 'Synchronisation…',
-  Problem: 'Erreur de synchronisation',
-  NotConfigured: 'API non configurée',
-};
+import { SYNC_STATUS_LABELS } from '../../src/utils/syncStatusLabels';
 
 function formatLastSynced(iso) {
   const date = iso ? new Date(iso) : null;
@@ -69,52 +63,55 @@ export default function More() {
 
   return (
     <View style={styles.container}>
-      <Pressable style={rowStyle} onPress={() => router.push('/sync-history')}>
-        <View style={[styles.dot, { backgroundColor: statusColor }]} />
-        <View style={styles.rowText}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>
-            {STATUS_LABELS[status] ?? status}
-          </Text>
-          <Text style={[styles.info, { color: colors.textMuted }]}>
-            {formatLastSynced(lastSyncedAt)}
-          </Text>
-        </View>
-      </Pressable>
+      <View style={styles.rows}>
+        <Pressable style={rowStyle} onPress={() => router.push('/sync-history')}>
+          <View style={[styles.dot, { backgroundColor: statusColor }]} />
+          <View style={styles.rowText}>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {SYNC_STATUS_LABELS[status] ?? status}
+            </Text>
+            <Text style={[styles.info, { color: colors.textMuted }]}>
+              {formatLastSynced(lastSyncedAt)}
+            </Text>
+          </View>
+        </Pressable>
 
-      <Pressable style={rowStyle} onPress={() => router.push('/options')}>
-        <CategoryIcon iconKey="Phosphor.gear" color={colors.textSecondary} size={20} />
-        <Text style={[styles.label, { color: colors.textPrimary }]}>Options</Text>
-      </Pressable>
+        <Pressable style={rowStyle} onPress={handleReindexCategories} disabled={isReindexing}>
+          {isReindexing ? (
+            <ActivityIndicator size="small" color={colors.textSecondary} />
+          ) : (
+            <CategoryIcon
+              iconKey="Phosphor.arrows-counter-clockwise"
+              color={colors.textSecondary}
+              size={20}
+            />
+          )}
+          <View style={styles.rowText}>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {isReindexing ? 'Actualisation…' : 'Actualiser la catégorisation'}
+            </Text>
+            <Text style={[styles.info, { color: colors.textMuted }]}>
+              Recalcule les vecteurs des catégories dont le contenu a changé
+            </Text>
+          </View>
+        </Pressable>
 
-      <Pressable style={rowStyle} onPress={handleReindexCategories} disabled={isReindexing}>
-        {isReindexing ? (
-          <ActivityIndicator size="small" color={colors.textSecondary} />
-        ) : (
-          <CategoryIcon
-            iconKey="Phosphor.arrows-counter-clockwise"
-            color={colors.textSecondary}
-            size={20}
-          />
-        )}
-        <View style={styles.rowText}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>
-            {isReindexing ? 'Actualisation…' : 'Actualiser la catégorisation'}
-          </Text>
-          <Text style={[styles.info, { color: colors.textMuted }]}>
-            Recalcule les vecteurs des catégories dont le contenu a changé
-          </Text>
-        </View>
-      </Pressable>
+        <Pressable style={rowStyle} onPress={() => router.push('/options')}>
+          <CategoryIcon iconKey="Phosphor.gear" color={colors.textSecondary} size={20} />
+          <Text style={[styles.label, { color: colors.textPrimary }]}>Paramètres</Text>
+        </Pressable>
 
-      <Text style={[styles.info, { color: colors.textMuted, paddingHorizontal: 4 }]}>
-        {entries.length} entrée(s) · {categories.length} catégorie(s)
-      </Text>
+        <Text style={[styles.info, { color: colors.textMuted, paddingHorizontal: 4 }]}>
+          {entries.length} entrée(s) · {categories.length} catégorie(s)
+        </Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 14, gap: 8 },
+  container: { flex: 1, justifyContent: 'flex-end', padding: 14, paddingBottom: 24 },
+  rows: { gap: 8 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

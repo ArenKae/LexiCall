@@ -1,10 +1,12 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/useTheme';
 import { useVocabularyStore } from '../store/useVocabularyStore';
+import { SYNC_STATUS_LABELS } from '../utils/syncStatusLabels';
 
-// Header dot: colour encodes the sync state, tapping opens the history. Hidden
-// entirely while no API is configured, since there is nothing to report then.
+// Header label + dot: colour and text encode the sync state, tapping opens the
+// history. Hidden entirely while no API is configured, since there is nothing
+// to report then.
 export function SyncStatusIndicator() {
   const colors = useTheme();
   const router = useRouter();
@@ -19,12 +21,22 @@ export function SyncStatusIndicator() {
 
   return (
     <Pressable style={styles.hit} hitSlop={8} onPress={() => router.push('/sync-history')}>
+      <Text style={[styles.label, { color: colors.textSecondary }]}>
+        {SYNC_STATUS_LABELS[status] ?? status}
+      </Text>
       <View style={[styles.dot, { backgroundColor: fill }]} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  hit: { paddingHorizontal: 14, paddingVertical: 8 },
+  hit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  label: { fontSize: 13 },
   dot: { width: 11, height: 11, borderRadius: 999 },
 });
