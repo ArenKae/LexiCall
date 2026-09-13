@@ -9,6 +9,7 @@ const OPERATION_ICONS = {
   Push: 'Phosphor.caret-circle-up',
   Pull: 'Phosphor.caret-circle-down',
   Delete: 'Phosphor.trash',
+  FullResync: 'Phosphor.arrows-counter-clockwise',
 };
 
 const OPERATION_LABELS = { Push: 'Envoyé', Pull: 'Reçu', Delete: 'Supprimé' };
@@ -51,12 +52,16 @@ export default function SyncHistory() {
         }
         renderItem={({ item }) => {
           const failed = item.Outcome === 'Failure';
-          const details = [
-            OPERATION_LABELS[item.Operation] ?? item.Operation,
-            item.ChangeKind ? CHANGE_LABELS[item.ChangeKind] : null,
-            item.EntityType === 'Category' ? 'catégorie' : null,
-            formatTimestamp(item.Timestamp),
-          ].filter(Boolean);
+          // A full-resync row carries its own counts instead of describing one
+          // record, so its own summary replaces the per-record breakdown.
+          const details = item.Details
+            ? [item.Details, formatTimestamp(item.Timestamp)]
+            : [
+                OPERATION_LABELS[item.Operation] ?? item.Operation,
+                item.ChangeKind ? CHANGE_LABELS[item.ChangeKind] : null,
+                item.EntityType === 'Category' ? 'catégorie' : null,
+                formatTimestamp(item.Timestamp),
+              ].filter(Boolean);
 
           return (
             <View style={[styles.row, { borderBottomColor: colors.borderSubtle }]}>
