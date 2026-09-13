@@ -302,8 +302,6 @@ export default function EntryEditor() {
               set('Word')(text);
               setErrorMessage('');
             }}
-            placeholder="Le mot ou l’expression"
-            placeholderTextColor={colors.textMuted}
             autoFocus={!isEditing}
           />
 
@@ -490,7 +488,7 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
   multiline: { minHeight: 80, textAlignVertical: 'top' },
   typeRow: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
-  typeColumn: { flex: 1 },
+  typeColumn: { flex: 1, gap: 6 },
   archivedToggle: { alignItems: 'center', marginTop: 16 },
   categorySection: { marginTop: 16 },
   aiRow: { flexDirection: 'row', marginTop: 10 },

@@ -30,8 +30,6 @@ export function SenseListEditor({ senses, onChange }) {
             ]}
             value={sense}
             onChangeText={(text) => update(index, text)}
-            placeholder="Sens du mot…"
-            placeholderTextColor={colors.textMuted}
             multiline
           />
           {senses.length > 1 && (
