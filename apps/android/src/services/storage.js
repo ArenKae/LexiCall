@@ -13,6 +13,12 @@ const DEFAULT_SETTINGS = {
   // against. Both are meaningless against a different server, so a resync
   // finding a mismatch here wipes them and starts over.
   syncedAgainstBaseUrl: null,
+  // Manually assigned category colors/sibling order — a local presentation
+  // preference for this install, like theme. Never written to vocabulary.json
+  // or pushed to the API: two devices can legitimately show a category
+  // differently. { [categoryId]: "#RRGGBB" } and { [categoryId]: rank }.
+  categoryColors: {},
+  categoryOrder: {},
 };
 
 function fileFor(name) {

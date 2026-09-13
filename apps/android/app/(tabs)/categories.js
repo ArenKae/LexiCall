@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { CategoryActionSheet } from '../../src/components/CategoryActionSheet';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
 import { TreeChevron } from '../../src/components/TreeChevron';
+import { useCategoryIndex } from '../../src/hooks/useCategoryIndex';
 import { useTheme } from '../../src/theme/useTheme';
 import { useVocabularyStore } from '../../src/store/useVocabularyStore';
-import { colorFromIndex } from '../../src/utils/categoryColor';
-import { computeColorIndexes, flattenCategories } from '../../src/utils/categoryHierarchy';
+import { flattenCategories, getSiblingsInOrder } from '../../src/utils/categoryHierarchy';
 import { ALL_ENTRIES, ARCHIVES, UNCATEGORIZED } from '../../src/utils/filterEntries';
 
 const INDENT = 20;
@@ -40,12 +41,17 @@ export default function Categories() {
   const router = useRouter();
   const entries = useVocabularyStore((state) => state.entries);
   const categories = useVocabularyStore((state) => state.categories);
+  const categoryOrder = useVocabularyStore((state) => state.categoryOrder);
   const setCategoryFilter = useVocabularyStore((state) => state.setCategoryFilter);
+  const deleteCategory = useVocabularyStore((state) => state.deleteCategory);
+  const moveCategoryUp = useVocabularyStore((state) => state.moveCategoryUp);
+  const moveCategoryDown = useVocabularyStore((state) => state.moveCategoryDown);
+  const categoryIndex = useCategoryIndex();
   const [expandedIds, setExpandedIds] = useState(() => new Set());
+  const [actionsFor, setActionsFor] = useState(null);
 
   const rows = useMemo(() => {
-    const colorIndexes = computeColorIndexes(categories);
-    const flat = flattenCategories(categories);
+    const flat = flattenCategories(categories, categoryOrder);
 
     const uncategorizedCount = entries.filter(
       (entry) => entry.CategoryIds.length === 0 && !entry.IsArchived
@@ -88,16 +94,34 @@ export default function Categories() {
 
     const categoryRows = flat.map(({ category, depth }, index) => ({
       key: category.Id,
+      category,
       label: category.Name,
       iconKey: category.IconGlyph || DEFAULT_CATEGORY_ICON,
       depth,
       hasChildren: index + 1 < flat.length && flat[index + 1].depth > depth,
-      color: colorFromIndex(colorIndexes.get(category.Id) ?? 0),
+      color: categoryIndex.get(category.Id)?.color ?? colors.iconNeutral,
       filter: { kind: 'category', categoryId: category.Id },
     }));
 
     return [...virtualRows, ...categoryRows];
-  }, [categories, entries, colors.iconNeutral]);
+  }, [categories, categoryOrder, entries, categoryIndex, colors.iconNeutral]);
+
+  const actionSheetCategory = actionsFor
+    ? categories.find((category) => category.Id === actionsFor)
+    : null;
+  const siblings = actionSheetCategory
+    ? getSiblingsInOrder(categories, actionSheetCategory, categoryOrder)
+    : [];
+  const siblingIndex = siblings.findIndex((sibling) => sibling.Id === actionsFor);
+
+  function handleDelete() {
+    const error = deleteCategory(actionsFor);
+    setActionsFor(null);
+
+    if (error) {
+      Alert.alert('Suppression impossible', error);
+    }
+  }
 
   const shown = useMemo(() => visibleRows(rows, expandedIds), [rows, expandedIds]);
 
@@ -111,11 +135,26 @@ export default function Categories() {
     });
 
   return (
-    <FlatList
-      data={shown}
-      keyExtractor={(row) => row.key}
-      contentContainerStyle={styles.list}
-      renderItem={({ item }) => (
+    <>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Pressable
+              onPress={() => router.push('/category/edit')}
+              hitSlop={10}
+              style={styles.addButton}
+            >
+              <CategoryIcon iconKey="Phosphor.plus" color={colors.textPrimary} size={20} />
+            </Pressable>
+          ),
+        }}
+      />
+
+      <FlatList
+        data={shown}
+        keyExtractor={(row) => row.key}
+        contentContainerStyle={styles.list}
+        renderItem={({ item }) => (
         <View style={[styles.row, { marginLeft: 14 + item.depth * INDENT }]}>
           <Pressable
             onPress={() => toggle(item.key)}
@@ -137,6 +176,7 @@ export default function Categories() {
               setCategoryFilter(item.filter);
               router.push('/');
             }}
+            onLongPress={() => item.category && setActionsFor(item.category.Id)}
           >
             <CategoryIcon iconKey={item.iconKey} color={item.color} size={20} />
             <Text style={[styles.label, { color: colors.textPrimary }]} numberOfLines={2}>
@@ -151,12 +191,41 @@ export default function Categories() {
             )}
           </Pressable>
         </View>
+        )}
+      />
+
+      {actionSheetCategory && (
+        <CategoryActionSheet
+          visible
+          category={actionSheetCategory}
+          canMoveUp={siblingIndex > 0}
+          canMoveDown={siblingIndex >= 0 && siblingIndex < siblings.length - 1}
+          onClose={() => setActionsFor(null)}
+          onAddSubcategory={() => {
+            setActionsFor(null);
+            router.push(`/category/edit?parentId=${actionSheetCategory.Id}`);
+          }}
+          onMoveUp={() => {
+            moveCategoryUp(actionSheetCategory.Id);
+            setActionsFor(null);
+          }}
+          onMoveDown={() => {
+            moveCategoryDown(actionSheetCategory.Id);
+            setActionsFor(null);
+          }}
+          onEdit={() => {
+            setActionsFor(null);
+            router.push(`/category/edit?id=${actionSheetCategory.Id}`);
+          }}
+          onDelete={handleDelete}
+        />
       )}
-    />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  addButton: { paddingHorizontal: 14, paddingVertical: 8 },
   list: { paddingVertical: 10, paddingRight: 14 },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   chevron: { width: 22, alignItems: 'center', justifyContent: 'center' },

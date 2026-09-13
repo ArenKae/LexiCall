@@ -12,8 +12,9 @@ const INDENT = 16;
 export function CategoryChecklist({ selectedIds, onChange }) {
   const colors = useTheme();
   const categories = useVocabularyStore((state) => state.categories);
+  const categoryOrder = useVocabularyStore((state) => state.categoryOrder);
   const categoryIndex = useCategoryIndex();
-  const rows = flattenCategories(categories);
+  const rows = flattenCategories(categories, categoryOrder);
 
   const toggle = (id) => {
     onChange(

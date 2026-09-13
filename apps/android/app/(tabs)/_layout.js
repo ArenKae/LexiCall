@@ -17,6 +17,11 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      // Default is "firstRoute": back always jumps to Accueil regardless of
+      // which tab was active before, so once you're already there it has
+      // nowhere left to go and falls through to closing the app. "history"
+      // makes back return to whichever tab was actually visited last.
+      backBehavior="history"
       screenOptions={{
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.textPrimary,

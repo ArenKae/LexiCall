@@ -12,6 +12,7 @@ import {
   stageDatabaseExport,
 } from '../services/storage';
 import { loadSyncHistory, saveSyncHistory, MAX_HISTORY_ENTRIES } from '../services/syncHistoryStore';
+import { getDescendantIds, getSiblingsInOrder } from '../utils/categoryHierarchy';
 import { ALL_ENTRIES, SORT_RECENT } from '../utils/filterEntries';
 import { UNDEFINED_TYPE } from '../utils/vocabularyEntryTypes';
 import { mergePulled } from './mergePulled';
@@ -85,6 +86,59 @@ export const useVocabularyStore = create((set, get) => {
     });
     set({ lastPulledAt: FULL_PULL_CHECKPOINT, syncedAgainstBaseUrl });
     await saveSettings({ lastPulledAt: FULL_PULL_CHECKPOINT, syncedAgainstBaseUrl });
+  }
+
+  // A parent that would create a cycle, or a name already used by a sibling —
+  // checked against live state (not a snapshot the form opened with), since
+  // that's what a save actually lands against. categoryId is null for a
+  // not-yet-created category: it can't be its own ancestor either way, so the
+  // cycle check is naturally a no-op there.
+  function validateCategory(categoryId, name, parentId) {
+    const categories = get().categories;
+
+    if (parentId) {
+      const descendantIds = categoryId ? getDescendantIds(categories, categoryId) : new Set();
+      if (parentId === categoryId || descendantIds.has(parentId)) {
+        return 'Le parent choisi créerait un cycle dans la hiérarchie.';
+      }
+    }
+
+    const duplicateExists = categories.some(
+      (category) =>
+        category.Id !== categoryId &&
+        category.ParentId === parentId &&
+        category.Name.toLowerCase() === name.toLowerCase()
+    );
+
+    return duplicateExists ? 'Une catégorie porte déjà ce nom au même niveau.' : null;
+  }
+
+  // Reorders one sibling group and persists the resulting rank for the whole
+  // group — a local device preference (categoryOrder), never synced.
+  function moveCategory(categoryId, offset) {
+    const category = get().categories.find((item) => item.Id === categoryId);
+
+    if (!category) {
+      return;
+    }
+
+    const siblings = getSiblingsInOrder(get().categories, category, get().categoryOrder);
+    const index = siblings.findIndex((sibling) => sibling.Id === categoryId);
+    const targetIndex = index + offset;
+
+    if (targetIndex < 0 || targetIndex >= siblings.length) {
+      return;
+    }
+
+    [siblings[index], siblings[targetIndex]] = [siblings[targetIndex], siblings[index]];
+
+    const categoryOrder = { ...get().categoryOrder };
+    siblings.forEach((sibling, rank) => {
+      categoryOrder[sibling.Id] = rank;
+    });
+
+    set({ categoryOrder });
+    saveSettings({ categoryOrder });
   }
 
   // Marks a record synced only if it hasn't been edited again since the push
@@ -180,6 +234,10 @@ export const useVocabularyStore = create((set, get) => {
     searchQuery: '',
     // In-memory only, like the two above — never written to settings.json.
     sortMode: SORT_RECENT,
+    // Manual category color/order overrides — local to this device, never
+    // synced (see saveApiConfig-adjacent settings.json fields).
+    categoryColors: {},
+    categoryOrder: {},
 
     setCategoryFilter: (categoryFilter) => set({ categoryFilter }),
     setSearchQuery: (searchQuery) => set({ searchQuery }),
@@ -203,6 +261,8 @@ export const useVocabularyStore = create((set, get) => {
         apiKey: settings.apiKey,
         lastPulledAt: settings.lastPulledAt,
         syncedAgainstBaseUrl: settings.syncedAgainstBaseUrl,
+        categoryColors: settings.categoryColors,
+        categoryOrder: settings.categoryOrder,
         isHydrated: true,
         // A resync fires as soon as hydration completes, so a configured client
         // is already syncing by the time this status is read.
@@ -567,6 +627,114 @@ export const useVocabularyStore = create((set, get) => {
         pushUpsert('Entry', entry);
       }
     },
+
+    // Returns an error message, or null on success — the screen shows it and
+    // never navigates away, matching a failed entry save.
+    addCategory: (draft) => {
+      const id = randomUUID();
+      const error = validateCategory(id, draft.Name, draft.ParentId);
+
+      if (error) {
+        return error;
+      }
+
+      const now = new Date().toISOString();
+      const category = {
+        ...draft,
+        Id: id,
+        CreatedAt: now,
+        ClientLastWrite: now,
+        IsDeleted: false,
+        SyncedAt: null,
+      };
+
+      persist({ categories: [...get().categories, category] });
+      pushUpsert('Category', category);
+      return null;
+    },
+
+    updateCategory: (id, draft) => {
+      const existing = get().categories.find((category) => category.Id === id);
+
+      if (!existing) {
+        return null;
+      }
+
+      const error = validateCategory(id, draft.Name, draft.ParentId);
+
+      if (error) {
+        return error;
+      }
+
+      const updated = {
+        ...existing,
+        ...draft,
+        Id: existing.Id,
+        CreatedAt: existing.CreatedAt,
+        ClientLastWrite: new Date().toISOString(),
+        SyncedAt: null,
+      };
+
+      persist({
+        categories: get().categories.map((category) => (category.Id === id ? updated : category)),
+      });
+      pushUpsert('Category', updated);
+      return null;
+    },
+
+    // Same guardrails as the API's own delete route (subcategories, entries
+    // still filed under it) — checked here first so the common case never
+    // round-trips to find out.
+    deleteCategory: (id) => {
+      const categories = get().categories;
+      const category = categories.find((item) => item.Id === id);
+
+      if (!category) {
+        return null;
+      }
+
+      if (categories.some((item) => item.ParentId === id)) {
+        return 'Impossible de supprimer une catégorie qui contient des sous-catégories.';
+      }
+
+      const usageCount = get().entries.filter((entry) => entry.CategoryIds.includes(id)).length;
+
+      if (usageCount > 0) {
+        return `Impossible de supprimer : cette catégorie est utilisée par ${usageCount} mot(s).`;
+      }
+
+      const pending = { Id: id, DeletedAt: new Date().toISOString(), Label: category.Name };
+      const categoryColors = { ...get().categoryColors };
+      const categoryOrder = { ...get().categoryOrder };
+      delete categoryColors[id];
+      delete categoryOrder[id];
+
+      persist({
+        categories: categories.filter((item) => item.Id !== id),
+        pendingCategoryDeletions: [...get().pendingCategoryDeletions, pending],
+      });
+      set({ categoryColors, categoryOrder });
+      saveSettings({ categoryColors, categoryOrder });
+      pushDeletion('Category', pending);
+      return null;
+    },
+
+    moveCategoryUp: (id) => moveCategory(id, -1),
+    moveCategoryDown: (id) => moveCategory(id, 1),
+
+    // Null clears the override and reverts to the automatic golden-angle hue.
+    setCategoryColor: (categoryId, hexColor) => {
+      const categoryColors = { ...get().categoryColors };
+
+      if (hexColor) {
+        categoryColors[categoryId] = hexColor;
+      } else {
+        delete categoryColors[categoryId];
+      }
+
+      set({ categoryColors });
+      saveSettings({ categoryColors });
+    },
   };
 });
 
@@ -584,5 +752,17 @@ export function createEntryDraft(initialCategoryId) {
     Images: [],
     IsArchived: false,
     LockedFields: [],
+  };
+}
+
+// A blank category draft, ready for the editor to fill in and pass to
+// addCategory. initialParentId pre-selects a parent when creating a
+// subcategory from an existing node.
+export function createCategoryDraft(initialParentId) {
+  return {
+    Name: '',
+    ParentId: initialParentId ?? null,
+    Description: '',
+    IconGlyph: '',
   };
 }
