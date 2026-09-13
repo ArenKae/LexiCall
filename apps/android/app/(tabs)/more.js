@@ -1,6 +1,8 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
+import { createApiClient } from '../../src/services/apiClient';
 import { useTheme } from '../../src/theme/useTheme';
 import { useVocabularyStore } from '../../src/store/useVocabularyStore';
 
@@ -27,6 +29,29 @@ export default function More() {
   const categories = useVocabularyStore((state) => state.categories);
   const status = useVocabularyStore((state) => state.globalSyncStatus);
   const lastSyncedAt = useVocabularyStore((state) => state.lastSyncedAt);
+  const apiBaseUrl = useVocabularyStore((state) => state.apiBaseUrl);
+  const apiKey = useVocabularyStore((state) => state.apiKey);
+  const [isReindexing, setIsReindexing] = useState(false);
+
+  async function handleReindexCategories() {
+    setIsReindexing(true);
+    const { status: reindexStatus, result, errorDetail } = await createApiClient(
+      apiBaseUrl,
+      apiKey
+    ).reindexCategoryEmbeddings();
+    setIsReindexing(false);
+
+    const message =
+      reindexStatus === 'Ok'
+        ? `${result.embedded} recalculée(s), ${result.unchanged} déjà à jour, ${result.orphans_removed} orpheline(s) supprimée(s).`
+        : reindexStatus === 'NotConfigured'
+          ? 'Cette action nécessite une synchronisation API configurée (voir Options).'
+          : errorDetail
+            ? `Impossible de mettre à jour la catégorisation automatique : ${errorDetail}`
+            : 'Impossible de mettre à jour la catégorisation automatique pour le moment. Réessaie plus tard.';
+
+    Alert.alert('Mise à jour de la catégorisation automatique', message);
+  }
 
   const statusColor =
     status === 'Ok'
@@ -59,6 +84,26 @@ export default function More() {
       <Pressable style={rowStyle} onPress={() => router.push('/options')}>
         <CategoryIcon iconKey="Phosphor.gear" color={colors.textSecondary} size={20} />
         <Text style={[styles.label, { color: colors.textPrimary }]}>Options</Text>
+      </Pressable>
+
+      <Pressable style={rowStyle} onPress={handleReindexCategories} disabled={isReindexing}>
+        {isReindexing ? (
+          <ActivityIndicator size="small" color={colors.textSecondary} />
+        ) : (
+          <CategoryIcon
+            iconKey="Phosphor.arrows-counter-clockwise"
+            color={colors.textSecondary}
+            size={20}
+          />
+        )}
+        <View style={styles.rowText}>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>
+            {isReindexing ? 'Actualisation…' : 'Actualiser la catégorisation'}
+          </Text>
+          <Text style={[styles.info, { color: colors.textMuted }]}>
+            Recalcule les vecteurs des catégories dont le contenu a changé
+          </Text>
+        </View>
       </Pressable>
 
       <Text style={[styles.info, { color: colors.textMuted, paddingHorizontal: 4 }]}>

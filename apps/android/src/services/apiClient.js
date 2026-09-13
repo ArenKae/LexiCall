@@ -197,5 +197,9 @@ export function createApiClient(baseUrl, apiKey) {
       postEnrichment('/enrichment/rephrase-definition', { Word: word, Definition: definition }),
     categorize: (word, definition) =>
       postEnrichment('/enrichment/categorize', { Word: word, Definition: definition }),
+    // Full repair pass over the category embeddings, recomputing whatever the
+    // best-effort refresh following a category write missed. Nothing to send:
+    // the server works out on its own what drifted.
+    reindexCategoryEmbeddings: () => postEnrichment('/categories/reindex-embeddings', {}),
   };
 }
