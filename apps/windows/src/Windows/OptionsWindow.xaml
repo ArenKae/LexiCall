@@ -101,7 +101,7 @@
                     </Grid.ColumnDefinitions>
 
                     <TextBlock Grid.Column="0"
-                               Text="Renvoie tous les modifications locales et retélécharge les données divergentes depuis le serveur."
+                               Text="Renvoie toutes les modifications locales et retélécharge les données divergentes depuis le serveur."
                                VerticalAlignment="Center"
                                TextWrapping="Wrap"
                                FontSize="12"
