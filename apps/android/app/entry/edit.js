@@ -115,6 +115,9 @@ export default function EntryEditor() {
     }));
 
   const canRunAi = fields.Word.trim().length > 0 && apiClient.isConfigured();
+  // Disabled swaps the color instead of lowering opacity: a translucent accent
+  // composites against the background into a visibly different blue.
+  const aiColor = canRunAi ? colors.accent : colors.textMuted;
 
   async function handleEnrich() {
     if (!canRunAi) {
@@ -309,17 +312,17 @@ export default function EntryEditor() {
               <Pressable
                 style={[
                   styles.aiButton,
-                  { borderColor: colors.borderStrong, backgroundColor: colors.surface, opacity: canRunAi ? 1 : 0.5 },
+                  { borderColor: aiColor, backgroundColor: colors.surface },
                 ]}
                 onPress={handleEnrich}
                 disabled={!canRunAi || isEnriching}
               >
                 {isEnriching ? (
-                  <ActivityIndicator size="small" color={colors.textSecondary} />
+                  <ActivityIndicator size="small" color={aiColor} />
                 ) : (
-                  <CategoryIcon iconKey="Phosphor.sparkle" color={colors.textSecondary} size={14} />
+                  <CategoryIcon iconKey="Phosphor.sparkle" color={aiColor} size={14} />
                 )}
-                <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>Enrichir</Text>
+                <Text style={{ color: aiColor, fontSize: 13, fontWeight: '600' }}>Enrichir</Text>
               </Pressable>
             </View>
           )}
@@ -361,17 +364,17 @@ export default function EntryEditor() {
               <Pressable
                 style={[
                   styles.aiButton,
-                  { borderColor: colors.borderStrong, backgroundColor: colors.surface, opacity: canRunAi ? 1 : 0.5 },
+                  { borderColor: aiColor, backgroundColor: colors.surface },
                 ]}
                 onPress={handleCategorize}
                 disabled={!canRunAi || isCategorizing}
               >
                 {isCategorizing ? (
-                  <ActivityIndicator size="small" color={colors.textSecondary} />
+                  <ActivityIndicator size="small" color={aiColor} />
                 ) : (
-                  <CategoryIcon iconKey="Phosphor.sparkle" color={colors.textSecondary} size={14} />
+                  <CategoryIcon iconKey="Phosphor.sparkle" color={aiColor} size={14} />
                 )}
-                <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>Catégoriser</Text>
+                <Text style={{ color: aiColor, fontSize: 13, fontWeight: '600' }}>Catégoriser</Text>
               </Pressable>
             </View>
           )}
@@ -491,16 +494,14 @@ const styles = StyleSheet.create({
   archivedToggle: { alignItems: 'center', marginTop: 16 },
   categorySection: { marginTop: 16 },
   aiRow: { flexDirection: 'row', marginTop: 10 },
-  // A filled, squared-off button rather than a thin outline pill — reads as
-  // a real action, not a secondary hint.
   aiButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderRadius: 8,
+    gap: 7,
+    borderWidth: 1.5,
+    borderRadius: 6,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 4,
   },
   error: { fontSize: 13, marginTop: 12 },
   footer: { borderTopWidth: 1, padding: 14 },
