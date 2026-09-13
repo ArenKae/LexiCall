@@ -14,8 +14,7 @@
       "package": "fr.arenkae.lexicall",
       "adaptiveIcon": {
         "backgroundColor": "#FAF2E6",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/android-icon-foreground.png"
       }
     },
     "web": {
