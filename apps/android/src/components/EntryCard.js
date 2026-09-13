@@ -1,5 +1,4 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { CategoryIcon } from './CategoryIcon';
 import { useTheme } from '../theme/useTheme';
 import { UNDEFINED_TYPE } from '../utils/vocabularyEntryTypes';
 
@@ -13,7 +12,6 @@ function typeLabel(types) {
 export function EntryCard({ entry, categoryIndex, onPress }) {
   const colors = useTheme();
   const categories = entry.CategoryIds.map((id) => categoryIndex.get(id)).filter(Boolean);
-  const leadCategory = categories[0];
   const type = typeLabel(entry.Type);
 
   return (
@@ -22,9 +20,6 @@ export function EntryCard({ entry, categoryIndex, onPress }) {
       style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
     >
       <View style={styles.headline}>
-        {leadCategory && (
-          <CategoryIcon iconKey={leadCategory.icon} color={leadCategory.color} size={22} />
-        )}
         <View style={styles.headlineText}>
           <Text style={[styles.word, { color: colors.textPrimary }]}>{entry.Word}</Text>
           {type.length > 0 && (
