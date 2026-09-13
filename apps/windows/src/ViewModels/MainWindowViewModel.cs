@@ -51,9 +51,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     // lingering records deleted on the server would never be cleaned up.
     private const string FullPullCheckpoint = "1970-01-01T00:00:00Z";
 
+    // Explicit, so ordering and date/time formatting stay French whatever the
+    // machine's own locale is.
+    private static readonly CultureInfo FrenchCulture = CultureInfo.GetCultureInfo("fr-FR");
+
     // Accent- and case-insensitive French ordering, so "Éphémère" files under E.
     private static readonly StringComparer WordComparer = StringComparer.Create(
-        CultureInfo.GetCultureInfo("fr-FR"),
+        FrenchCulture,
         CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace);
 
     private readonly VocabularyRepository _repository;
@@ -255,7 +259,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 null => "Jamais synchronisé",
                 { } syncedAt when syncedAt < entry.ClientLastWrite => "Synchronisation en attente",
-                { } syncedAt => $"Synchronisé le {syncedAt.LocalDateTime:g}"
+                { } syncedAt => $"Synchronisé le {syncedAt.LocalDateTime.ToString("dd/MM/yy à HH:mm", FrenchCulture)}"
             };
         }
     }
