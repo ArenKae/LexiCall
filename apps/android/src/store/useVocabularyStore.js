@@ -628,14 +628,16 @@ export const useVocabularyStore = create((set, get) => {
       }
     },
 
-    // Returns an error message, or null on success — the screen shows it and
-    // never navigates away, matching a failed entry save.
+    // Returns { error, category }: error is a message on failure (the screen
+    // shows it and never navigates away, matching a failed entry save) or
+    // null on success, with the created record — a categorization suggestion
+    // accepted as "new category" needs the id it was just given.
     addCategory: (draft) => {
       const id = randomUUID();
       const error = validateCategory(id, draft.Name, draft.ParentId);
 
       if (error) {
-        return error;
+        return { error, category: null };
       }
 
       const now = new Date().toISOString();
@@ -650,7 +652,7 @@ export const useVocabularyStore = create((set, get) => {
 
       persist({ categories: [...get().categories, category] });
       pushUpsert('Category', category);
-      return null;
+      return { error: null, category };
     },
 
     updateCategory: (id, draft) => {

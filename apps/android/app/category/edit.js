@@ -68,20 +68,26 @@ export default function CategoryEditor() {
       IconGlyph: fields.IconGlyph,
     };
 
-    const error = isEditing
-      ? updateCategory(existingCategory.Id, payload)
-      : addCategory(payload);
-
-    if (error) {
-      setErrorMessage(error);
-      return;
-    }
-
     if (isEditing) {
+      const error = updateCategory(existingCategory.Id, payload);
+
+      if (error) {
+        setErrorMessage(error);
+        return;
+      }
+
       setCategoryColor(existingCategory.Id, colorHex);
+    } else {
+      const { error, category } = addCategory(payload);
+
+      if (error) {
+        setErrorMessage(error);
+        return;
+      }
+
+      setCategoryColor(category.Id, colorHex);
     }
-    // A newly created category only exists locally once addCategory returns
-    // — there was nothing to color until now.
+
     router.back();
   }
 
