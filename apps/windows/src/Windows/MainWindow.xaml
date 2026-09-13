@@ -844,14 +844,14 @@
                              ToolTip="Recherche dans les mots, définitions, notes, exemples et catégories.">
                         <TextBox.Style>
                             <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                                <Setter Property="Padding" Value="9,6,40,6" />
+                                <Setter Property="Padding" Value="9,6,66,6" />
                                 <Style.Triggers>
                                     <MultiDataTrigger>
                                         <MultiDataTrigger.Conditions>
                                             <Condition Binding="{Binding SearchQuery}" Value="" />
                                             <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsKeyboardFocusWithin}" Value="False" />
                                         </MultiDataTrigger.Conditions>
-                                        <Setter Property="Padding" Value="36,6,40,6" />
+                                        <Setter Property="Padding" Value="36,6,66,6" />
                                     </MultiDataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -913,11 +913,70 @@
                         </TextBlock.Style>
                     </TextBlock>
 
+                    <!-- Sort mode -->
+                    <Grid HorizontalAlignment="Right"
+                          VerticalAlignment="Center"
+                          Margin="0,0,13,0">
+                        <ToggleButton x:Name="SortModeToggle"
+                                      Style="{StaticResource IconDropdownToggleStyle}"
+                                      IsChecked="{Binding IsOpen, ElementName=SortModePopup, Mode=TwoWay}"
+                                      ToolTip="{Binding SortModeToolTip}">
+                            <Canvas Width="14" Height="14">
+                                <Line X1="0.5" Y1="2" X2="13.5" Y2="2"
+                                      Stroke="{DynamicResource Brush.Text.Secondary}"
+                                      StrokeThickness="1.4"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" />
+                                <Line X1="0.5" Y1="7" X2="9" Y2="7"
+                                      Stroke="{DynamicResource Brush.Text.Secondary}"
+                                      StrokeThickness="1.4"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" />
+                                <Line X1="0.5" Y1="12" X2="5" Y2="12"
+                                      Stroke="{DynamicResource Brush.Text.Secondary}"
+                                      StrokeThickness="1.4"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" />
+                            </Canvas>
+                        </ToggleButton>
+
+                        <Popup x:Name="SortModePopup"
+                               PlacementTarget="{Binding ElementName=SortModeToggle}"
+                               Placement="Bottom"
+                               HorizontalOffset="-120"
+                               VerticalOffset="4"
+                               AllowsTransparency="True"
+                               PopupAnimation="Fade">
+                            <Border Background="{DynamicResource Brush.Surface}"
+                                    BorderBrush="{DynamicResource Brush.Border.Strong}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="4"
+                                    MinWidth="150">
+                                <ListBox ItemsSource="{Binding SortOptions}"
+                                         SelectedItem="{Binding SelectedSortOption, Mode=TwoWay}"
+                                         SelectionChanged="SortOptionList_SelectionChanged">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                                            <Setter Property="Padding" Value="8,5" />
+                                            <Setter Property="Margin" Value="0" />
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Label}" />
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Border>
+                        </Popup>
+                    </Grid>
+
                     <!-- Clear cross -->
                     <Button HorizontalAlignment="Right"
                             VerticalAlignment="Center"
                             Width="18" Height="18"
-                            Margin="0,0,15,0"
+                            Margin="0,0,41,0"
                             Padding="0"
                             Focusable="False"
                             Click="ClearSearchButton_Click"

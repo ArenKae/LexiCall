@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using LexiCall.Desktop.Services;
+using LexiCall.Desktop.Utilities;
 using LexiCall.Desktop.ViewModels;
 
 namespace LexiCall.Desktop.Windows;
@@ -39,6 +40,7 @@ public partial class MainWindow : Window
         }
 
         Closing += MainWindow_Closing;
+        ClickAwayPopup.Register(SortModePopup);
 
         // Attached to the TreeView (not the DataTemplate) so the clickable
         // area matches the TreeViewItem's selection highlight.
@@ -209,6 +211,11 @@ public partial class MainWindow : Window
     {
         ViewModel.SearchQuery = string.Empty;
         SearchTextBox.Focus();
+    }
+
+    private void SortOptionList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        SortModePopup.IsOpen = false;
     }
 
     // ─── Entries ───

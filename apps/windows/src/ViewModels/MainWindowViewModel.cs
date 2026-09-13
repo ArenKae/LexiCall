@@ -30,6 +30,17 @@ public enum GlobalSyncStatus
     Problem
 }
 
+// Order the entry list is shown in. In-memory only, never persisted to
+// settings.json — it resets to Recent on every launch.
+public enum EntrySortMode
+{
+    Recent,
+    Alphabetical
+}
+
+// One line of the entry list's sort dropdown (MainWindow.xaml).
+public sealed record EntrySortOption(EntrySortMode Mode, string Label);
+
 // One sense of the selected entry's definition, as the detail card renders it.
 public sealed record EntrySenseDisplay(string NumberDisplay, string Text, bool ShowNumber);
 
@@ -40,12 +51,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     // lingering records deleted on the server would never be cleaned up.
     private const string FullPullCheckpoint = "1970-01-01T00:00:00Z";
 
+    // Accent- and case-insensitive French ordering, so "Éphémère" files under E.
+    private static readonly StringComparer WordComparer = StringComparer.Create(
+        CultureInfo.GetCultureInfo("fr-FR"),
+        CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace);
+
     private readonly VocabularyRepository _repository;
     private VocabularyApiClient _apiClient;
     private string? _apiBaseUrl;
     private string? _apiKey;
     private string _searchQuery = string.Empty;
     private string _searchStatusText = string.Empty;
+    private EntrySortMode _sortMode = EntrySortMode.Recent;
     private VocabularyEntry? _selectedEntry;
     private CategoryNodeViewModel? _selectedCategoryNode;
     private HashSet<Guid>? _activeCategoryFilterIds;
@@ -152,6 +169,40 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         get => _searchStatusText;
         private set => SetProperty(ref _searchStatusText, value);
     }
+
+    public IReadOnlyList<EntrySortOption> SortOptions { get; } =
+    [
+        new(EntrySortMode.Recent, "Plus récent"),
+        new(EntrySortMode.Alphabetical, "Alphabétique")
+    ];
+
+    public EntrySortMode SortMode
+    {
+        get => _sortMode;
+        set
+        {
+            if (SetProperty(ref _sortMode, value))
+            {
+                OnPropertyChanged(nameof(SelectedSortOption));
+                OnPropertyChanged(nameof(SortModeToolTip));
+                RefreshFilteredEntries();
+            }
+        }
+    }
+
+    public EntrySortOption SelectedSortOption
+    {
+        get => SortOptions.First(option => option.Mode == SortMode);
+        set
+        {
+            if (value is not null)
+            {
+                SortMode = value.Mode;
+            }
+        }
+    }
+
+    public string SortModeToolTip => $"Trier les entrées ({SelectedSortOption.Label})";
 
     public bool HasEntries => Entries.Count > 0;
 
@@ -1619,16 +1670,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             .Where(entry => EntryMatchesCategory(entry) && EntryMatchesSearch(entry))
             .ToList();
 
-        if (!string.IsNullOrWhiteSpace(SearchQuery))
-        {
-            var normalizedQuery = NormalizeForSearch(SearchQuery);
+        var normalizedQuery = string.IsNullOrWhiteSpace(SearchQuery)
+            ? null
+            : NormalizeForSearch(SearchQuery);
 
-            // Stable sort: entries whose Word contains the pattern float to
-            // the top, ties keep their original relative order.
-            matchingEntries = matchingEntries
-                .OrderByDescending(entry => SearchFieldMatches(entry.Word, normalizedQuery))
-                .ToList();
-        }
+        // An entry matched only on its definition/notes/etc. is a weaker hit
+        // than one matched on the word itself, so word matches float to the
+        // top; SortMode orders everything below that (and breaks its ties).
+        var ranked = matchingEntries
+            .OrderByDescending(entry => normalizedQuery is not null && SearchFieldMatches(entry.Word, normalizedQuery));
+
+        matchingEntries = (SortMode == EntrySortMode.Alphabetical
+                ? ranked.ThenBy(entry => entry.Word, WordComparer)
+                : ranked.ThenByDescending(entry => entry.CreatedAt).ThenBy(entry => entry.Word, WordComparer))
+            .ToList();
 
         FilteredEntries.Clear();
 
