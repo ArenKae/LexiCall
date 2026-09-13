@@ -73,9 +73,24 @@ export default function Home() {
           </Pressable>
         </View>
 
-        <Text style={[styles.status, { color: colors.textMuted }]}>
-          {filterLabel} · {status}
-        </Text>
+        {filter.kind !== ALL_ENTRIES ? (
+          // A bordered, accent-colored control, not a dismissible chip: sized
+          // and colored to read as a real navigation action (go back up a
+          // level) rather than a muted info label or a removable filter tag.
+          <Pressable
+            style={[styles.backControl, { backgroundColor: colors.surface, borderColor: colors.accent }]}
+            onPress={() => setCategoryFilter({ kind: ALL_ENTRIES, categoryId: null })}
+          >
+            <CategoryIcon iconKey="Phosphor.caret-left" color={colors.accent} size={17} />
+            <Text style={[styles.backControlText, { color: colors.accent }]} numberOfLines={1}>
+              {filterLabel} · {status}
+            </Text>
+          </Pressable>
+        ) : (
+          <Text style={[styles.status, { color: colors.textMuted }]}>
+            {filterLabel} · {status}
+          </Text>
+        )}
       </View>
 
       <FilterSheet
@@ -127,6 +142,17 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 15, paddingVertical: 0 },
   separator: { width: 1, height: 20, marginHorizontal: 2 },
   status: { fontSize: 12, paddingHorizontal: 2 },
+  backControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    borderWidth: 1.5,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  backControlText: { fontSize: 14, fontWeight: '700' },
   list: { paddingTop: 6, paddingBottom: 16 },
   empty: { padding: 28, textAlign: 'center' },
 });
