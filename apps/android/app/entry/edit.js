@@ -13,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategorizationReviewModal } from '../../src/components/CategorizationReviewModal';
 import { CategoryChecklist } from '../../src/components/CategoryChecklist';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
@@ -72,6 +73,7 @@ function blankFields(initialCategoryId) {
 export default function EntryEditor() {
   const { id } = useLocalSearchParams();
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const existingEntry = useVocabularyStore((state) => state.entries.find((entry) => entry.Id === id));
   const categoryIndex = useCategoryIndex();
@@ -434,7 +436,16 @@ export default function EntryEditor() {
           )}
         </ScrollView>
 
-        <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.borderSubtle }]}>
+        <View
+          style={[
+            styles.footer,
+            {
+              backgroundColor: colors.surface,
+              borderTopColor: colors.borderSubtle,
+              paddingBottom: 14 + insets.bottom,
+            },
+          ]}
+        >
           <Pressable
             style={[styles.saveButton, { backgroundColor: colors.accent }]}
             onPress={handleSave}

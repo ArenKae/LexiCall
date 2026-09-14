@@ -1,4 +1,5 @@
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from '../src/components/CategoryIcon';
 import { useTheme } from '../src/theme/useTheme';
 import { useVocabularyStore } from '../src/store/useVocabularyStore';
@@ -29,6 +30,7 @@ function formatTimestamp(iso) {
 
 export default function SyncHistory() {
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
   const syncHistory = useVocabularyStore((state) => state.syncHistory);
   const clearSyncHistory = useVocabularyStore((state) => state.clearSyncHistory);
 
@@ -85,7 +87,12 @@ export default function SyncHistory() {
       />
 
       {syncHistory.length > 0 && (
-        <View style={[styles.footer, { borderTopColor: colors.borderSubtle }]}>
+        <View
+          style={[
+            styles.footer,
+            { borderTopColor: colors.borderSubtle, paddingBottom: 14 + insets.bottom },
+          ]}
+        >
           <Pressable style={[styles.clear, { borderColor: colors.danger }]} onPress={confirmClear}>
             <Text style={{ color: colors.danger, fontWeight: '600' }}>Vider l’historique</Text>
           </Pressable>

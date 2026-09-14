@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
 import { CategoryParentPicker } from '../../src/components/CategoryParentPicker';
 import { ColorPicker } from '../../src/components/ColorPicker';
@@ -23,6 +24,7 @@ function fieldsFromCategory(category) {
 export default function CategoryEditor() {
   const { id, parentId } = useLocalSearchParams();
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const existingCategory = useVocabularyStore((state) =>
     state.categories.find((category) => category.Id === id)
@@ -169,7 +171,16 @@ export default function CategoryEditor() {
         )}
       </ScrollView>
 
-      <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.borderSubtle }]}>
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: colors.surface,
+            borderTopColor: colors.borderSubtle,
+            paddingBottom: 14 + insets.bottom,
+          },
+        ]}
+      >
         <Pressable style={[styles.saveButton, { backgroundColor: colors.accent }]} onPress={handleSave}>
           <CategoryIcon iconKey="Phosphor.check" color={colors.textOnAccent} size={16} />
           <Text style={[styles.saveText, { color: colors.textOnAccent }]}>

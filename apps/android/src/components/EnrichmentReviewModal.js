@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from './CategoryIcon';
 import { DefinitionReviewCard } from './DefinitionReviewCard';
 import { TextFieldReviewCard } from './TextFieldReviewCard';
@@ -36,6 +37,7 @@ export function EnrichmentReviewModal({
   onSave,
 }) {
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
 
   const [definitionAccepted, setDefinitionAccepted] = useState(true);
   const [senses, setSenses] = useState(() => sensesFromValues(suggestions.definition?.value));
@@ -143,7 +145,16 @@ export function EnrichmentReviewModal({
           )}
         </ScrollView>
 
-        <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.borderSubtle }]}>
+        <View
+          style={[
+            styles.footer,
+            {
+              backgroundColor: colors.surface,
+              borderTopColor: colors.borderSubtle,
+              paddingBottom: 14 + insets.bottom,
+            },
+          ]}
+        >
           <Pressable style={[styles.saveButton, { backgroundColor: colors.accent }]} onPress={handleSave}>
             <CategoryIcon iconKey="Phosphor.check" color={colors.textOnAccent} size={16} />
             <Text style={[styles.saveText, { color: colors.textOnAccent }]}>Enregistrer</Text>

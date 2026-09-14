@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from './CategoryIcon';
 import { CategorySuggestionCard } from './CategorySuggestionCard';
 import { useTheme } from '../theme/useTheme';
@@ -53,6 +54,7 @@ function buildResult(card) {
 // results.
 export function CategorizationReviewModal({ visible, suggestions, currentCategoryNames, onClose, onSave }) {
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
   const [cards, setCards] = useState(() => suggestions.map(cardFromSuggestion));
 
   const updateCard = (index, patch) =>
@@ -90,7 +92,16 @@ export function CategorizationReviewModal({ visible, suggestions, currentCategor
           ))}
         </ScrollView>
 
-        <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.borderSubtle }]}>
+        <View
+          style={[
+            styles.footer,
+            {
+              backgroundColor: colors.surface,
+              borderTopColor: colors.borderSubtle,
+              paddingBottom: 14 + insets.bottom,
+            },
+          ]}
+        >
           <Pressable style={[styles.saveButton, { backgroundColor: colors.accent }]} onPress={handleSave}>
             <CategoryIcon iconKey="Phosphor.check" color={colors.textOnAccent} size={16} />
             <Text style={[styles.saveText, { color: colors.textOnAccent }]}>Enregistrer</Text>
