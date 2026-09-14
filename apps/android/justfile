@@ -9,8 +9,11 @@ install:
     npm install
 
 # Start the Metro dev server (Expo Go / dev client on a connected device).
+# Uses its own script name, not "android" -- `expo prebuild` overwrites that
+# one to `expo run:android` on every run, so `start` would silently regress
+# to the slow native build otherwise.
 start:
-    npm run android
+    npm run dev:android
 
 # Local native build (expo run:android): builds and installs on a connected device.
 build:
