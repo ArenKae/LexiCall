@@ -5,7 +5,7 @@
     "scheme": "lexicall",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/android-icon-foreground.png",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
@@ -13,7 +13,7 @@
     "android": {
       "package": "fr.arenkae.lexicall",
       "adaptiveIcon": {
-        "backgroundColor": "#FAF2E6",
+        "backgroundColor": "#FEF4E7",
         "foregroundImage": "./assets/android-icon-foreground.png"
       }
     },
@@ -29,7 +29,10 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 220,
           "resizeMode": "contain",
-          "backgroundColor": "#FAF2E6"
+          "backgroundColor": "#FEF4E7",
+          "dark": {
+            "backgroundColor": "#201E1B"
+          }
         }
       ]
     ]
