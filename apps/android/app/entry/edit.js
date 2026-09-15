@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -75,6 +75,9 @@ export default function EntryEditor() {
   const colors = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const scrollRef = useRef(null);
+  const scrollInnerRef = useRef(null);
+  const scrollHeightRef = useRef(0);
   const existingEntry = useVocabularyStore((state) => state.entries.find((entry) => entry.Id === id));
   const categoryIndex = useCategoryIndex();
   const categoryFilter = useVocabularyStore((state) => state.categoryFilter);
@@ -115,6 +118,27 @@ export default function EntryEditor() {
         ? [...current.LockedFields, field]
         : current.LockedFields.filter((item) => item !== field),
     }));
+
+  // Opening the category list scrolls the entry's own category into the middle
+  // of the form, which is otherwise buried under the whole tree.
+  const centerOnRow = useCallback((rowRef) => {
+    const inner = scrollInnerRef.current;
+
+    if (!rowRef.current || !inner) {
+      return;
+    }
+
+    rowRef.current.measureLayout(
+      inner,
+      (_x, y, _width, height) => {
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, y - scrollHeightRef.current / 2 + height / 2),
+          animated: true,
+        });
+      },
+      () => {}
+    );
+  }, []);
 
   const canRunAi = fields.Word.trim().length > 0 && apiClient.isConfigured();
   // Disabled swaps the color instead of lowering opacity: a translucent accent
@@ -295,7 +319,14 @@ export default function EntryEditor() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          ref={scrollRef}
+          innerViewRef={scrollInnerRef}
+          onLayout={(event) => {
+            scrollHeightRef.current = event.nativeEvent.layout.height;
+          }}
+          contentContainerStyle={styles.content}
+        >
           <Text style={[styles.label, { color: colors.textSecondary }]}>Mot *</Text>
           <TextInput
             style={inputStyle}
@@ -355,7 +386,11 @@ export default function EntryEditor() {
 
           <View style={styles.categorySection}>
             <CollapsibleSection title="Catégories">
-              <CategoryChecklist selectedIds={fields.CategoryIds} onChange={set('CategoryIds')} />
+              <CategoryChecklist
+                selectedIds={fields.CategoryIds}
+                onChange={set('CategoryIds')}
+                onCenterSelected={centerOnRow}
+              />
             </CollapsibleSection>
           </View>
 

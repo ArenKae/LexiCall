@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CategoryIcon } from './CategoryIcon';
 import { useCategoryIndex } from '../hooks/useCategoryIndex';
@@ -9,12 +10,25 @@ const INDENT = 16;
 
 // Flat, indented checklist of every category. Categories are optional: an
 // empty selection is valid.
-export function CategoryChecklist({ selectedIds, onChange }) {
+export function CategoryChecklist({ selectedIds, onChange, onCenterSelected }) {
   const colors = useTheme();
   const categories = useVocabularyStore((state) => state.categories);
   const categoryOrder = useVocabularyStore((state) => state.categoryOrder);
   const categoryIndex = useCategoryIndex();
   const rows = flattenCategories(categories, categoryOrder);
+
+  const selectedRowRef = useRef(null);
+  const centeredRef = useRef(false);
+  // First ticked category in display order; the list is mounted only while the
+  // section is open, so its layout pass is also the moment it was opened.
+  const anchorId = rows.find(({ category }) => selectedIds.includes(category.Id))?.category.Id;
+
+  const centerOnce = () => {
+    if (!centeredRef.current) {
+      centeredRef.current = true;
+      onCenterSelected?.(selectedRowRef);
+    }
+  };
 
   const toggle = (id) => {
     onChange(
@@ -34,9 +48,13 @@ export function CategoryChecklist({ selectedIds, onChange }) {
         const isSelected = selectedIds.includes(category.Id);
         const resolved = categoryIndex.get(category.Id);
 
+        const isAnchor = category.Id === anchorId;
+
         return (
           <Pressable
             key={category.Id}
+            ref={isAnchor ? selectedRowRef : null}
+            onLayout={isAnchor ? centerOnce : undefined}
             onPress={() => toggle(category.Id)}
             style={[styles.row, { marginLeft: depth * INDENT }]}
           >
