@@ -51,7 +51,7 @@ install-android:
 start-android:
     just --justfile apps/android/justfile --working-directory apps/android start
 
-# Local native build (expo run:android): builds and installs on a connected device.
+# Production release APK (prebuild + gradlew assembleRelease).
 [group('app : android')]
 build-android:
     just --justfile apps/android/justfile --working-directory apps/android build
