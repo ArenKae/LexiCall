@@ -12,7 +12,7 @@ import {
   stageDatabaseExport,
 } from '../services/storage';
 import { loadSyncHistory, saveSyncHistory, MAX_HISTORY_ENTRIES } from '../services/syncHistoryStore';
-import { getDescendantIds, getSiblingsInOrder } from '../utils/categoryHierarchy';
+import { getDescendantIds } from '../utils/categoryHierarchy';
 import { ALL_ENTRIES, SORT_RECENT } from '../utils/filterEntries';
 import { UNDEFINED_TYPE } from '../utils/vocabularyEntryTypes';
 import { mergePulled } from './mergePulled';
@@ -111,34 +111,6 @@ export const useVocabularyStore = create((set, get) => {
     );
 
     return duplicateExists ? 'Une catégorie porte déjà ce nom au même niveau.' : null;
-  }
-
-  // Reorders one sibling group and persists the resulting rank for the whole
-  // group — a local device preference (categoryOrder), never synced.
-  function moveCategory(categoryId, offset) {
-    const category = get().categories.find((item) => item.Id === categoryId);
-
-    if (!category) {
-      return;
-    }
-
-    const siblings = getSiblingsInOrder(get().categories, category, get().categoryOrder);
-    const index = siblings.findIndex((sibling) => sibling.Id === categoryId);
-    const targetIndex = index + offset;
-
-    if (targetIndex < 0 || targetIndex >= siblings.length) {
-      return;
-    }
-
-    [siblings[index], siblings[targetIndex]] = [siblings[targetIndex], siblings[index]];
-
-    const categoryOrder = { ...get().categoryOrder };
-    siblings.forEach((sibling, rank) => {
-      categoryOrder[sibling.Id] = rank;
-    });
-
-    set({ categoryOrder });
-    saveSettings({ categoryOrder });
   }
 
   // Marks a record synced only if it hasn't been edited again since the push
@@ -721,8 +693,12 @@ export const useVocabularyStore = create((set, get) => {
       return null;
     },
 
-    moveCategoryUp: (id) => moveCategory(id, -1),
-    moveCategoryDown: (id) => moveCategory(id, 1),
+    // Commits a whole reordering pass at once (the drag-and-drop mode builds
+    // its own draft ranks and only writes them when the user validates).
+    setCategoryOrder: (categoryOrder) => {
+      set({ categoryOrder });
+      saveSettings({ categoryOrder });
+    },
 
     // Null clears the override and reverts to the automatic golden-angle hue.
     setCategoryColor: (categoryId, hexColor) => {

@@ -20,12 +20,9 @@ function Row({ iconKey, label, color, disabled, onPress }) {
 export function CategoryActionSheet({
   visible,
   category,
-  canMoveUp,
-  canMoveDown,
   onClose,
   onAddSubcategory,
-  onMoveUp,
-  onMoveDown,
+  onReorder,
   onEdit,
   onDelete,
 }) {
@@ -54,8 +51,7 @@ export function CategoryActionSheet({
           </Text>
 
           <Row iconKey="Phosphor.plus" label="Nouvelle sous-catégorie" onPress={onAddSubcategory} />
-          <Row iconKey="Phosphor.caret-up" label="Monter" disabled={!canMoveUp} onPress={onMoveUp} />
-          <Row iconKey="Phosphor.caret-down" label="Descendre" disabled={!canMoveDown} onPress={onMoveDown} />
+          <Row iconKey="Phosphor.list-bullets" label="Réordonner" onPress={onReorder} />
           <Row iconKey="Phosphor.pencil" label="Modifier" onPress={onEdit} />
           <Row iconKey="Phosphor.trash" label="Supprimer" color={colors.danger} onPress={confirmDelete} />
 
