@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from './CategoryIcon';
 import { useTheme } from '../theme/useTheme';
 import { ICON_GROUPS } from '../theme/iconCatalog';
@@ -10,6 +11,7 @@ import { ICON_GROUPS } from '../theme/iconCatalog';
 // — a deliberate limitation, not a bug: "café" won't find a "cafe" keyword.
 export function IconPicker({ visible, currentIconKey, onSelect, onClose }) {
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
 
   const groups = useMemo(() => {
@@ -64,7 +66,7 @@ export function IconPicker({ visible, currentIconKey, onSelect, onClose }) {
         <FlatList
           data={groups}
           keyExtractor={(group) => group.name}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: 24 + insets.bottom }]}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             <Text style={[styles.empty, { color: colors.textSecondary }]}>Aucune icône trouvée.</Text>

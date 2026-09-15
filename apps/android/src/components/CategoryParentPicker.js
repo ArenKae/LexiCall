@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from './CategoryIcon';
 import { useTheme } from '../theme/useTheme';
 import { useVocabularyStore } from '../store/useVocabularyStore';
@@ -14,6 +15,7 @@ const INDENT = 16;
 // become its own ancestor.
 export function CategoryParentPicker({ selectedId, excludeCategoryId, onChange }) {
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
   const categories = useVocabularyStore((state) => state.categories);
   const categoryOrder = useVocabularyStore((state) => state.categoryOrder);
   const [open, setOpen] = useState(false);
@@ -46,7 +48,12 @@ export function CategoryParentPicker({ selectedId, excludeCategoryId, onChange }
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          <Pressable style={[styles.sheet, { backgroundColor: colors.surface }]}>
+          <Pressable
+            style={[
+              styles.sheet,
+              { backgroundColor: colors.surface, paddingBottom: 28 + insets.bottom },
+            ]}
+          >
             <ScrollView style={styles.list}>
               <Pressable style={styles.row} onPress={() => pick(null)}>
                 <Text style={[styles.rowLabel, { color: colors.textPrimary }]}>{ROOT_LABEL}</Text>

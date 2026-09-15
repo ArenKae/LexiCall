@@ -163,7 +163,11 @@ export default function Categories() {
             disabled={!item.hasChildren}
           >
             {item.hasChildren && (
-              <TreeChevron expanded={expandedIds.has(item.key)} color={colors.textSecondary} />
+              <TreeChevron
+                expanded={expandedIds.has(item.key)}
+                color={colors.textPrimary}
+                size={20}
+              />
             )}
           </Pressable>
 
@@ -177,6 +181,7 @@ export default function Categories() {
               router.push('/');
             }}
             onLongPress={() => item.category && setActionsFor(item.category.Id)}
+            delayLongPress={300}
           >
             <CategoryIcon iconKey={item.iconKey} color={item.color} size={20} />
             <Text style={[styles.label, { color: colors.textPrimary }]} numberOfLines={2}>
@@ -228,7 +233,7 @@ const styles = StyleSheet.create({
   addButton: { paddingHorizontal: 14, paddingVertical: 8 },
   list: { paddingVertical: 10, paddingRight: 14 },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  chevron: { width: 22, alignItems: 'center', justifyContent: 'center' },
+  chevron: { width: 32, height: 44, alignItems: 'center', justifyContent: 'center' },
   rowBody: {
     flex: 1,
     flexDirection: 'row',

@@ -1,4 +1,5 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from './CategoryIcon';
 import { useTheme } from '../theme/useTheme';
 import { paletteSwatches } from '../utils/categoryColor';
@@ -10,6 +11,7 @@ const SWATCHES = paletteSwatches();
 // clear the override.
 export function ColorPicker({ visible, currentColorHex, onSelect, onClose }) {
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
 
   function pick(hex) {
     onSelect(hex);
@@ -19,7 +21,12 @@ export function ColorPicker({ visible, currentColorHex, onSelect, onClose }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.sheet, { backgroundColor: colors.surface }]}>
+        <Pressable
+          style={[
+            styles.sheet,
+            { backgroundColor: colors.surface, paddingBottom: 28 + insets.bottom },
+          ]}
+        >
           <Text style={[styles.title, { color: colors.textPrimary }]}>Choisir une couleur</Text>
 
           <View style={styles.grid}>

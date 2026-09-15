@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from './CategoryIcon';
 import { CategoryParentPicker } from './CategoryParentPicker';
 import { IconPicker } from './IconPicker';
@@ -15,6 +16,7 @@ const DEFAULT_ICON = 'Solar.tag';
 // there's always Reject on the card itself for that.
 function ExistingCategoryPicker({ selectedId, onChange }) {
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
   const categories = useVocabularyStore((state) => state.categories);
   const categoryOrder = useVocabularyStore((state) => state.categoryOrder);
   const [open, setOpen] = useState(false);
@@ -35,7 +37,12 @@ function ExistingCategoryPicker({ selectedId, onChange }) {
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          <Pressable style={[styles.sheet, { backgroundColor: colors.surface }]}>
+          <Pressable
+            style={[
+              styles.sheet,
+              { backgroundColor: colors.surface, paddingBottom: 28 + insets.bottom },
+            ]}
+          >
             <ScrollView style={styles.list}>
               {options.map(({ category, depth }) => (
                 <Pressable

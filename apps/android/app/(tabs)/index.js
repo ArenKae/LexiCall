@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
+import { EntryActionSheet } from '../../src/components/EntryActionSheet';
 import { EntryCard } from '../../src/components/EntryCard';
 import { FilterSheet } from '../../src/components/FilterSheet';
 import { useCategoryIndex } from '../../src/hooks/useCategoryIndex';
@@ -30,7 +31,10 @@ export default function Home() {
   const setCategoryFilter = useVocabularyStore((state) => state.setCategoryFilter);
   const setSortMode = useVocabularyStore((state) => state.setSortMode);
   const isHydrated = useVocabularyStore((state) => state.isHydrated);
+  const toggleArchive = useVocabularyStore((state) => state.toggleArchive);
+  const deleteEntry = useVocabularyStore((state) => state.deleteEntry);
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+  const [actionsFor, setActionsFor] = useState(null);
 
   const visible = useMemo(
     () => selectEntries({ entries, categories, filter, query, sortMode }),
@@ -38,6 +42,7 @@ export default function Home() {
   );
 
   const activeCategory = filter.categoryId ? categoryIndex.get(filter.categoryId) : null;
+  const actionsEntry = actionsFor ? entries.find((entry) => entry.Id === actionsFor) : null;
   const filterLabel = activeCategory ? activeCategory.Name : VIRTUAL_LABELS[filter.kind];
   const status = query.trim().length > 0
     ? `${visible.length} résultat${visible.length > 1 ? 's' : ''}`
@@ -120,9 +125,30 @@ export default function Home() {
             entry={item}
             categoryIndex={categoryIndex}
             onPress={() => router.push(`/entry/${item.Id}`)}
+            onLongPress={() => setActionsFor(item.Id)}
           />
         )}
       />
+
+      {actionsEntry && (
+        <EntryActionSheet
+          visible
+          entry={actionsEntry}
+          onClose={() => setActionsFor(null)}
+          onEdit={() => {
+            setActionsFor(null);
+            router.push(`/entry/edit?id=${actionsEntry.Id}`);
+          }}
+          onToggleArchive={() => {
+            setActionsFor(null);
+            toggleArchive(actionsEntry.Id);
+          }}
+          onDelete={() => {
+            setActionsFor(null);
+            deleteEntry(actionsEntry.Id);
+          }}
+        />
+      )}
     </View>
   );
 }

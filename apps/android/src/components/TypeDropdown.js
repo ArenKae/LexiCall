@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from './CategoryIcon';
 import { useTheme } from '../theme/useTheme';
 import { SELECTABLE_TYPES } from '../utils/vocabularyEntryTypes';
@@ -11,6 +12,7 @@ const UNDEFINED_LABEL = 'Non défini';
 // untyped state, stored as [Undefined], never as [].
 export function TypeDropdown({ selected, onChange }) {
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
 
   const toggle = (type) => {
@@ -38,7 +40,12 @@ export function TypeDropdown({ selected, onChange }) {
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          <Pressable style={[styles.sheet, { backgroundColor: colors.surface }]}>
+          <Pressable
+            style={[
+              styles.sheet,
+              { backgroundColor: colors.surface, paddingBottom: 28 + insets.bottom },
+            ]}
+          >
             {SELECTABLE_TYPES.map((type) => {
               const isSelected = selected.includes(type);
               return (

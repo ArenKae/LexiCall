@@ -1,4 +1,5 @@
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from './CategoryIcon';
 import { useTheme } from '../theme/useTheme';
 
@@ -16,6 +17,7 @@ function Row({ iconKey, label, color, onPress }) {
 // mockup aren't included: neither exists yet on any client.
 export function EntryActionSheet({ visible, entry, onClose, onEdit, onToggleArchive, onDelete }) {
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
 
   function confirmDelete() {
     onClose();
@@ -28,7 +30,12 @@ export function EntryActionSheet({ visible, entry, onClose, onEdit, onToggleArch
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.sheet, { backgroundColor: colors.surface }]}>
+        <Pressable
+          style={[
+            styles.sheet,
+            { backgroundColor: colors.surface, paddingBottom: 28 + insets.bottom },
+          ]}
+        >
           <Text style={[styles.title, { color: colors.textPrimary }]}>Que souhaitez-vous faire ?</Text>
 
           <Row iconKey="Phosphor.pencil" label="Modifier l’entrée" onPress={onEdit} />

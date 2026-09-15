@@ -1,4 +1,5 @@
 import { Alert, Modal, Pressable, StyleSheet, Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from './CategoryIcon';
 import { useTheme } from '../theme/useTheme';
 
@@ -29,6 +30,7 @@ export function CategoryActionSheet({
   onDelete,
 }) {
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
 
   function confirmDelete() {
     onClose();
@@ -41,7 +43,12 @@ export function CategoryActionSheet({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.sheet, { backgroundColor: colors.surface }]}>
+        <Pressable
+          style={[
+            styles.sheet,
+            { backgroundColor: colors.surface, paddingBottom: 28 + insets.bottom },
+          ]}
+        >
           <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
             {category.Name}
           </Text>

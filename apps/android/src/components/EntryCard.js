@@ -9,7 +9,7 @@ function typeLabel(types) {
 
 // One entry in the browsing list: word, grammatical type, first sense and the
 // categories it belongs to.
-export function EntryCard({ entry, categoryIndex, onPress }) {
+export function EntryCard({ entry, categoryIndex, onPress, onLongPress }) {
   const colors = useTheme();
   const categories = entry.CategoryIds.map((id) => categoryIndex.get(id)).filter(Boolean);
   const type = typeLabel(entry.Type);
@@ -17,6 +17,8 @@ export function EntryCard({ entry, categoryIndex, onPress }) {
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={300}
       style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
     >
       <View style={styles.headline}>
