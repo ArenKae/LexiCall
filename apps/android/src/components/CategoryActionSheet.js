@@ -51,8 +51,8 @@ export function CategoryActionSheet({
           </Text>
 
           <Row iconKey="Phosphor.plus" label="Nouvelle sous-catégorie" onPress={onAddSubcategory} />
-          <Row iconKey="Phosphor.list-bullets" label="Réordonner" onPress={onReorder} />
           <Row iconKey="Phosphor.pencil" label="Modifier" onPress={onEdit} />
+          <Row iconKey="Phosphor.list-bullets" label="Réordonner" onPress={onReorder} />
           <Row iconKey="Phosphor.trash" label="Supprimer" color={colors.danger} onPress={confirmDelete} />
 
           <Pressable style={[styles.cancel, { backgroundColor: colors.chipBackground }]} onPress={onClose}>
