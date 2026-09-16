@@ -607,6 +607,15 @@ public partial class MainWindow : Window
         ViewModel.ToggleArchiveEntry(ViewModel.SelectedEntry);
     }
 
+    // The padlock carries its entry (VocabularyEntry) as DataContext.
+    private void ToggleEntryLocksButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: Models.VocabularyEntry entry })
+        {
+            ViewModel.ToggleEntryLocks(entry);
+        }
+    }
+
     // The chip carries its category (VocabularyCategory) as DataContext.
     private void CategoryChip_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
@@ -663,7 +672,7 @@ public partial class MainWindow : Window
 
     // ─── Categories ───
 
-    // The three virtual nodes always sit first in CategoryTree (see
+    // The four virtual nodes always sit first in CategoryTree (see
     // MainWindowViewModel.RebuildCategoryTree). Setting IsSelected runs the
     // same selection path as clicking them in the tree (CategoryNodeViewModel.
     // IsSelected's setter calls back into OnCategoryNodeSelected).
@@ -677,13 +686,18 @@ public partial class MainWindow : Window
         ViewModel.CategoryTree[1].IsSelected = true;
     }
 
-    private void SelectArchivesButton_Click(object sender, RoutedEventArgs e)
+    private void SelectLockedButton_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.CategoryTree[2].IsSelected = true;
     }
 
+    private void SelectArchivesButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CategoryTree[3].IsSelected = true;
+    }
+
     // The swatch carries its node (CategoryNodeViewModel) as DataContext —
-    // same selection path as the two virtual-node buttons above.
+    // same selection path as the virtual-node buttons above.
     private void CollapsedRootCategory_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (sender is FrameworkElement { DataContext: CategoryNodeViewModel node })
@@ -810,7 +824,7 @@ public partial class MainWindow : Window
     {
         if (node.Depth == 0)
         {
-            return ViewModel.CategoryTree.Skip(3).ToList();
+            return ViewModel.CategoryTree.Skip(4).ToList();
         }
 
         var parent = FindParentNode(ViewModel.CategoryTree, node);

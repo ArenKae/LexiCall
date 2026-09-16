@@ -20,6 +20,7 @@
             <converters:Base64ImageConverter x:Key="Base64ImageConverter" />
             <converters:WidthBreakpointConverter x:Key="WidthBreakpointConverter" />
             <converters:VocabularyEntryTypeToLabelConverter x:Key="VocabularyEntryTypeToLabelConverter" />
+            <converters:EntryLockedConverter x:Key="EntryLockedConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

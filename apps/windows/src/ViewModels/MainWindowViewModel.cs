@@ -1135,6 +1135,32 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _ = PushEntryUpsertAsync(entry);
     }
 
+    // Quick-toggle from the entry list's padlock: locks or unlocks every
+    // AI-enrichment-lockable field at once, leaving any other locked field
+    // name untouched. The per-field checkboxes in the entry editor stay the
+    // fine-grained way to do the same thing.
+    public void ToggleEntryLocks(VocabularyEntry? entry)
+    {
+        if (entry is null)
+        {
+            return;
+        }
+
+        var shouldLock = !EntryLocks.IsFullyLocked(entry);
+        entry.LockedFields.RemoveAll(EntryLocks.LockableFields.Contains);
+
+        if (shouldLock)
+        {
+            entry.LockedFields.AddRange(EntryLocks.LockableFields);
+        }
+
+        entry.ClientLastWrite = DateTimeOffset.Now;
+        RebuildCategoryTree();
+        RefreshFilteredEntries();
+        SaveDatabase();
+        _ = PushEntryUpsertAsync(entry);
+    }
+
     public void DeleteEntry(VocabularyEntry entry)
     {
         var index = FindEntryIndex(entry.Id);
@@ -1390,6 +1416,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         uncategorizedNode.EntryCount = Entries.Count(entry => entry.CategoryIds.Count == 0 && !entry.IsArchived);
         CategoryTree.Add(uncategorizedNode);
 
+        var lockedNode = CategoryNodeViewModel.CreateLocked(OnCategoryNodeSelected);
+        lockedNode.EntryCount = Entries.Count(entry => !entry.IsArchived && EntryLocks.IsFullyLocked(entry));
+        CategoryTree.Add(lockedNode);
+
         var archivesNode = CategoryNodeViewModel.CreateArchives(OnCategoryNodeSelected);
         archivesNode.EntryCount = Entries.Count(entry => entry.IsArchived);
         CategoryTree.Add(archivesNode);
@@ -1429,15 +1459,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             }
         }
 
-        foreach (var rootNode in CategoryTree.Skip(3))
+        foreach (var rootNode in CategoryTree.Skip(4))
         {
             ComputeEntryCounts(rootNode);
         }
 
-        // "Sans catégorie" hides itself when empty (see the TreeViewItem style
-        // in Styles.xaml) — falls back to "Toutes les entrées" rather than
-        // leaving selection on an invisible node.
-        if (selectedKind == CategoryNodeKind.Uncategorized && uncategorizedNode.EntryCount == 0)
+        // "Sans catégorie" and "Verrouillées" hide themselves when empty (see
+        // the TreeViewItem style in Styles.xaml) — fall back to "Toutes les
+        // entrées" rather than leaving selection on an invisible node.
+        if ((selectedKind == CategoryNodeKind.Uncategorized && uncategorizedNode.EntryCount == 0) ||
+            (selectedKind == CategoryNodeKind.Locked && lockedNode.EntryCount == 0))
         {
             selectedKind = null;
         }
@@ -1456,7 +1487,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             CategoryNodeKind.Category => CollectNodes(CategoryTree)
                 .FirstOrDefault(node => node.Category?.Id == selectedCategoryId),
             CategoryNodeKind.Uncategorized => CategoryTree[1],
-            CategoryNodeKind.Archives => CategoryTree[2],
+            CategoryNodeKind.Locked => CategoryTree[2],
+            CategoryNodeKind.Archives => CategoryTree[3],
             _ => allNode
         } ?? allNode;
 
@@ -1739,6 +1771,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (_selectedCategoryNode.Kind == CategoryNodeKind.Uncategorized)
         {
             return !entry.IsArchived && entry.CategoryIds.Count == 0;
+        }
+
+        if (_selectedCategoryNode.Kind == CategoryNodeKind.Locked)
+        {
+            return !entry.IsArchived && EntryLocks.IsFullyLocked(entry);
         }
 
         return _activeCategoryFilterIds is not null &&

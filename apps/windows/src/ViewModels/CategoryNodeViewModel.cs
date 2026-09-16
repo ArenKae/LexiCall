@@ -13,6 +13,7 @@ public enum CategoryNodeKind
 {
     AllEntries,
     Uncategorized,
+    Locked,
     Archives,
     Category
 }
@@ -45,6 +46,9 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
     public static CategoryNodeViewModel CreateUncategorized(Action<CategoryNodeViewModel> onSelected) =>
         new(CategoryNodeKind.Uncategorized, category: null, onSelected);
 
+    public static CategoryNodeViewModel CreateLocked(Action<CategoryNodeViewModel> onSelected) =>
+        new(CategoryNodeKind.Locked, category: null, onSelected);
+
     public static CategoryNodeViewModel CreateArchives(Action<CategoryNodeViewModel> onSelected) =>
         new(CategoryNodeKind.Archives, category: null, onSelected);
 
@@ -67,6 +71,7 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
     {
         CategoryNodeKind.AllEntries => "Toutes les entrées",
         CategoryNodeKind.Uncategorized => "Sans catégorie",
+        CategoryNodeKind.Locked => "Verrouillées",
         CategoryNodeKind.Archives => "Archives",
         _ => Category!.Name
     };
@@ -81,6 +86,7 @@ public sealed class CategoryNodeViewModel : INotifyPropertyChanged
     {
         CategoryNodeKind.AllEntries => "Phosphor.stack",
         CategoryNodeKind.Uncategorized => "Solar.tag",
+        CategoryNodeKind.Locked => "Phosphor.lock-key",
         CategoryNodeKind.Archives => "Phosphor.books",
         _ => string.IsNullOrEmpty(Category!.IconGlyph) ? "Solar.tag" : Category.IconGlyph
     };

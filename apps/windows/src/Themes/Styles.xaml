@@ -423,6 +423,13 @@
                 </MultiDataTrigger.Conditions>
                 <Setter Property="Visibility" Value="Collapsed" />
             </MultiDataTrigger>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding Kind}" Value="{x:Static viewModels:CategoryNodeKind.Locked}" />
+                    <Condition Binding="{Binding EntryCount}" Value="0" />
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Visibility" Value="Collapsed" />
+            </MultiDataTrigger>
         </Style.Triggers>
     </Style>
 

@@ -205,6 +205,35 @@
                                 </Button>
                             </Border>
                             <Border Width="32" Height="32"
+                                    Margin="0,0,0,4"
+                                    CornerRadius="8"
+                                    BorderThickness="1.5">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Surface.Hover}" />
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding SelectedCategoryNode.Kind}" Value="{x:Static viewModels:CategoryNodeKind.Locked}">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Selection.Background}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Button Style="{StaticResource GhostButtonStyle}"
+                                        Width="24" Height="24"
+                                        Padding="0"
+                                        Click="SelectLockedButton_Click"
+                                        ToolTip="Verrouillées">
+                                    <Path Data="{StaticResource Icon.Phosphor.lock-key}"
+                                          Fill="{DynamicResource Brush.Icon.Neutral}"
+                                          Width="14" Height="14" Stretch="Uniform" />
+                                </Button>
+                            </Border>
+                            <Border Width="32" Height="32"
                                     CornerRadius="8"
                                     BorderThickness="1.5">
                                 <Border.Style>
@@ -1054,9 +1083,36 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel>
-                                        <TextBlock Text="{Binding Word}"
-                                                   FontFamily="{StaticResource Font.Serif}"
-                                                   FontSize="20" />
+                                        <DockPanel>
+                                            <!-- Locks/unlocks every AI-enrichment field of the entry at once. -->
+                                            <Button DockPanel.Dock="Right"
+                                                    Style="{StaticResource GhostButtonStyle}"
+                                                    Padding="4"
+                                                    VerticalAlignment="Center"
+                                                    Click="ToggleEntryLocksButton_Click"
+                                                    ToolTip="Verrouiller/déverrouiller tous les champs de ce mot pour l’enrichissement IA.">
+                                                <Path Width="15" Height="15" Stretch="Uniform">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Setter Property="Data" Value="{StaticResource Icon.Phosphor.lock-key-open}" />
+                                                            <Setter Property="Fill" Value="{DynamicResource Brush.Icon.Neutral}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Converter={StaticResource EntryLockedConverter}}" Value="True">
+                                                                    <Setter Property="Data" Value="{StaticResource Icon.Phosphor.lock-key}" />
+                                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+                                            </Button>
+
+                                            <TextBlock Text="{Binding Word}"
+                                                       FontFamily="{StaticResource Font.Serif}"
+                                                       FontSize="20"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </DockPanel>
 
                                         <ItemsControl Margin="0,4,0,0">
                                             <ItemsControl.ItemsSource>
