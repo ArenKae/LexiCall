@@ -9,7 +9,7 @@ function typeLabel(types) {
 
 // One entry in the browsing list: word, grammatical type, first sense and the
 // categories it belongs to.
-export function EntryCard({ entry, categoryIndex, onPress, onLongPress }) {
+export function EntryCard({ entry, categoryIndex, onPress, onLongPress, hideArchivedBadge }) {
   const colors = useTheme();
   const categories = entry.CategoryIds.map((id) => categoryIndex.get(id)).filter(Boolean);
   const type = typeLabel(entry.Type);
@@ -28,7 +28,7 @@ export function EntryCard({ entry, categoryIndex, onPress, onLongPress }) {
             <Text style={[styles.type, { color: colors.textSecondary }]}>{type}</Text>
           )}
         </View>
-        {entry.IsArchived && (
+        {entry.IsArchived && !hideArchivedBadge && (
           <Text style={[styles.archived, { color: colors.textMuted }]}>archivée</Text>
         )}
       </View>

@@ -28,6 +28,9 @@ const REORDER_ROW_HEIGHT = 52;
 const AUTO_SCROLL_EDGE = 90;
 const AUTO_SCROLL_MAX_STEP = 5;
 const AUTO_SCROLL_INTERVAL = 16;
+// Gap between rows: guide lines bleed down by exactly this much so a
+// continuing line meets the next row's instead of stopping at its own edge.
+const ROW_GAP = 8;
 
 // Hides everything nested under a collapsed node: the depth-first order means a
 // subtree is exactly the rows deeper than its root, up to the next shallower one.
@@ -48,6 +51,50 @@ function visibleRows(rows, expandedIds) {
   }
 
   return visible;
+}
+
+function computeTreeGuides(rows) {
+  const isLast = rows.map(() => true);
+  const openAtDepth = new Map();
+
+  rows.forEach((row, index) => {
+    const depth = row.depth;
+    if (openAtDepth.has(depth)) {
+      isLast[openAtDepth.get(depth)] = false;
+    }
+    for (const openDepth of [...openAtDepth.keys()]) {
+      if (openDepth >= depth) {
+        openAtDepth.delete(openDepth);
+      }
+    }
+    openAtDepth.set(depth, index);
+  });
+
+  const pathIsLast = [];
+  return rows.map((row, index) => {
+    const depth = row.depth;
+    pathIsLast.length = depth;
+    const guides = pathIsLast.slice(0, depth).map((last) => !last);
+    pathIsLast[depth] = isLast[index];
+    return { guides, isLast: isLast[index] };
+  });
+}
+
+function TreeGuides({ depth, guides, isLast, color }) {
+  return (
+    <View style={styles.guides}>
+      {guides.slice(0, depth - 1).map((continues, level) => (
+        <View key={level} style={styles.guideColumn}>
+          {continues && <View style={[styles.guideVertical, { backgroundColor: color }]} />}
+        </View>
+      ))}
+      <View style={styles.guideColumn}>
+        <View style={[styles.guideVerticalTopHalf, { backgroundColor: color }]} />
+        {!isLast && <View style={[styles.guideVerticalBottomHalf, { backgroundColor: color }]} />}
+        <View style={[styles.guideStub, { backgroundColor: color }]} />
+      </View>
+    </View>
+  );
 }
 
 // A row plus its whole subtree, which travels with it when dragged.
@@ -316,6 +363,13 @@ export default function Categories() {
   const shown = useMemo(() => visibleRows(rows, expandedIds), [rows, expandedIds]);
   shownRef.current = shown;
 
+  // Decorative only, so computed on the plain display rows regardless of mode
+  // — reorder mode simply ignores the extra fields.
+  const shownWithGuides = useMemo(() => {
+    const guides = computeTreeGuides(shown);
+    return shown.map((row, index) => ({ ...row, ...guides[index] }));
+  }, [shown]);
+
   // A category alone in its group has nowhere to go: its handle is shown faded
   // rather than hidden, so rows keep a single layout.
   const siblingCounts = useMemo(() => {
@@ -546,7 +600,7 @@ export default function Categories() {
         // showing nothing.
         key={reorderMode ? 'reorder' : 'browse'}
         ref={listRef}
-        data={shown}
+        data={shownWithGuides}
         keyExtractor={(row) => row.key}
         onLayout={(event) => {
           viewportHeightRef.current = event.nativeEvent.layout.height;
@@ -584,22 +638,15 @@ export default function Categories() {
               onRelease={onRelease}
             />
           ) : (
-            <View style={[styles.row, { marginLeft: 14 + item.depth * INDENT }]}>
-              <Pressable
-                onPress={() => toggle(item.key)}
-                hitSlop={10}
-                style={styles.chevron}
-                disabled={!item.hasChildren}
-              >
-                {item.hasChildren && (
-                  <TreeChevron
-                    expanded={expandedIds.has(item.key)}
-                    color={colors.textPrimary}
-                    size={20}
-                  />
-                )}
-              </Pressable>
-
+            <View style={styles.rowWrap}>
+              {item.depth > 0 && (
+                <TreeGuides
+                  depth={item.depth}
+                  guides={item.guides}
+                  isLast={item.isLast}
+                  color={colors.borderStrong}
+                />
+              )}
               <Pressable
                 style={[
                   styles.rowBody,
@@ -622,6 +669,22 @@ export default function Categories() {
                       {item.count}
                     </Text>
                   </View>
+                )}
+                {item.hasChildren && (
+                  <Pressable
+                    onPress={() => toggle(item.key)}
+                    hitSlop={8}
+                    style={[
+                      styles.expandButton,
+                      { backgroundColor: colors.chipBackground, borderColor: colors.borderStrong },
+                    ]}
+                  >
+                    <TreeChevron
+                      expanded={expandedIds.has(item.key)}
+                      color={colors.textPrimary}
+                      size={18}
+                    />
+                  </Pressable>
                 )}
               </Pressable>
             </View>
@@ -663,8 +726,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   addButton: { paddingHorizontal: 14, paddingVertical: 8 },
   list: { paddingVertical: 10, paddingRight: 14 },
-  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   chevron: { width: 32, height: 44, alignItems: 'center', justifyContent: 'center' },
+  rowWrap: { flexDirection: 'row', marginBottom: ROW_GAP },
   rowBody: {
     flex: 1,
     flexDirection: 'row',
@@ -672,11 +735,57 @@ const styles = StyleSheet.create({
     gap: 12,
     borderWidth: 1,
     borderRadius: 12,
-    paddingHorizontal: 12,
+    paddingLeft: 12,
+    paddingRight: 8,
     paddingVertical: 12,
   },
   label: { flex: 1, fontSize: 15 },
+  // Tree connector lines, one column per ancestor level plus the row's own
+  // elbow column: a centered vertical stroke, half-height for the elbow so it
+  // meets a horizontal stub at the row's middle instead of running through.
+  guides: { flexDirection: 'row' },
+  guideColumn: { width: INDENT, position: 'relative' },
+  guideVertical: {
+    position: 'absolute',
+    left: INDENT / 2 - 0.75,
+    top: 0,
+    bottom: -ROW_GAP,
+    width: 1.5,
+  },
+  guideVerticalTopHalf: {
+    position: 'absolute',
+    left: INDENT / 2 - 0.75,
+    top: 0,
+    height: '50%',
+    width: 1.5,
+  },
+  guideVerticalBottomHalf: {
+    position: 'absolute',
+    left: INDENT / 2 - 0.75,
+    top: '50%',
+    bottom: -ROW_GAP,
+    width: 1.5,
+  },
+  guideStub: {
+    position: 'absolute',
+    left: INDENT / 2 - 0.75,
+    top: '50%',
+    marginTop: -0.75,
+    height: 1.5,
+    width: INDENT / 2 + 0.75,
+  },
   badge: { minWidth: 28, alignItems: 'center', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  // A real bordered/filled button, not just an icon with hit padding — the
+  // expand/collapse affordance needs to read as its own tappable zone inside
+  // the card, distinct from the card's own press-to-filter area.
+  expandButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 9,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   badgeText: { fontSize: 12 },
   banner: {
     flexDirection: 'row',

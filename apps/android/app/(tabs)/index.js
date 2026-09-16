@@ -126,6 +126,7 @@ export default function Home() {
             categoryIndex={categoryIndex}
             onPress={() => router.push(`/entry/${item.Id}`)}
             onLongPress={() => setActionsFor(item.Id)}
+            hideArchivedBadge={filter.kind === ARCHIVES}
           />
         )}
       />
