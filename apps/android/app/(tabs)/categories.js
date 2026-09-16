@@ -16,8 +16,9 @@ import { TreeChevron } from '../../src/components/TreeChevron';
 import { useCategoryIndex } from '../../src/hooks/useCategoryIndex';
 import { useTheme } from '../../src/theme/useTheme';
 import { useVocabularyStore } from '../../src/store/useVocabularyStore';
+import { isEntryLocked } from '../../src/models/vocabulary';
 import { flattenCategories, getSiblingsInOrder } from '../../src/utils/categoryHierarchy';
-import { ALL_ENTRIES, ARCHIVES, UNCATEGORIZED } from '../../src/utils/filterEntries';
+import { ALL_ENTRIES, ARCHIVES, LOCKED, UNCATEGORIZED } from '../../src/utils/filterEntries';
 
 const INDENT = 20;
 const DEFAULT_CATEGORY_ICON = 'Solar.tag';
@@ -296,6 +297,9 @@ export default function Categories() {
       (entry) => entry.CategoryIds.length === 0 && !entry.IsArchived
     ).length;
     const archivedCount = entries.filter((entry) => entry.IsArchived).length;
+    const lockedCount = entries.filter(
+      (entry) => !entry.IsArchived && isEntryLocked(entry)
+    ).length;
 
     const virtualRows = [
       {
@@ -315,6 +319,17 @@ export default function Categories() {
               iconKey: 'Solar.tag',
               count: uncategorizedCount,
               filter: { kind: UNCATEGORIZED, categoryId: null },
+            },
+          ]
+        : []),
+      ...(lockedCount > 0
+        ? [
+            {
+              key: LOCKED,
+              label: 'Verrouillées',
+              iconKey: 'Phosphor.lock-key',
+              count: lockedCount,
+              filter: { kind: LOCKED, categoryId: null },
             },
           ]
         : []),

@@ -7,14 +7,22 @@ import { EntryActionSheet } from '../../src/components/EntryActionSheet';
 import { EntryCard } from '../../src/components/EntryCard';
 import { FilterSheet } from '../../src/components/FilterSheet';
 import { useCategoryIndex } from '../../src/hooks/useCategoryIndex';
+import { LOCKABLE_FIELDS } from '../../src/models/vocabulary';
 import { useTheme } from '../../src/theme/useTheme';
 import { useVocabularyStore } from '../../src/store/useVocabularyStore';
-import { ALL_ENTRIES, ARCHIVES, UNCATEGORIZED, selectEntries } from '../../src/utils/filterEntries';
+import {
+  ALL_ENTRIES,
+  ARCHIVES,
+  LOCKED,
+  UNCATEGORIZED,
+  selectEntries,
+} from '../../src/utils/filterEntries';
 
 const VIRTUAL_LABELS = {
   [ALL_ENTRIES]: 'Toutes les entrées',
   [UNCATEGORIZED]: 'Sans catégorie',
   [ARCHIVES]: 'Archives',
+  [LOCKED]: 'Verrouillées',
 };
 
 // Browsing list: the current category slice, narrowed by the search field.
@@ -33,8 +41,16 @@ export default function Home() {
   const isHydrated = useVocabularyStore((state) => state.isHydrated);
   const toggleArchive = useVocabularyStore((state) => state.toggleArchive);
   const deleteEntry = useVocabularyStore((state) => state.deleteEntry);
+  const updateEntry = useVocabularyStore((state) => state.updateEntry);
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
   const [actionsFor, setActionsFor] = useState(null);
+
+  function toggleLocks(entry, shouldLock) {
+    const kept = entry.LockedFields.filter((field) => !LOCKABLE_FIELDS.includes(field));
+    updateEntry(entry.Id, {
+      LockedFields: shouldLock ? [...kept, ...LOCKABLE_FIELDS] : kept,
+    });
+  }
 
   const visible = useMemo(
     () => selectEntries({ entries, categories, filter, query, sortMode }),
@@ -126,6 +142,7 @@ export default function Home() {
             categoryIndex={categoryIndex}
             onPress={() => router.push(`/entry/${item.Id}`)}
             onLongPress={() => setActionsFor(item.Id)}
+            onToggleLocks={(shouldLock) => toggleLocks(item, shouldLock)}
             hideArchivedBadge={filter.kind === ARCHIVES}
           />
         )}
