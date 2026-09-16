@@ -1,10 +1,12 @@
-// Persists the main window's size/position and the two resizable columns'
-// widths (categories, entry list) to settings.json. The 3rd column (detail)
-// stays elastic and is deliberately not saved.
+// Window geometry done through Win32 rather than WPF properties: persists the
+// main window's size/position and the two resizable columns' widths
+// (categories, entry list) to settings.json (the 3rd column, detail, stays
+// elastic and is deliberately not saved), and centers modals on their owner.
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Threading;
 
 namespace LexiCall.Desktop.Services;
 
@@ -50,6 +52,44 @@ public static class WindowLayoutService
             var handle = new WindowInteropHelper(window).Handle;
             SetWindowPos(handle, IntPtr.Zero, (int)left, (int)top, (int)width, (int)height, SwpNoZOrder | SwpNoActivate);
         };
+    }
+
+    // WindowStartupLocation="CenterOwner" only places the window once, before
+    // SizeToContent has settled its final size, and measures the owner via
+    // Window.Left/Top — DPI-dependent logical units that still report the
+    // restored position while the owner is maximized. Both windows are
+    // re-measured here in physical pixels instead. Call it again whenever the
+    // content resizes the window, which otherwise grows from its top-left
+    // corner and drifts off-centre.
+    public static void CenterOnOwner(Window window)
+    {
+        // Loaded priority: a SizeToContent window is measured once WPF has
+        // applied its new size, not while the resize is still pending.
+        window.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            if (window.Owner is not { } owner)
+            {
+                return;
+            }
+
+            window.UpdateLayout();
+
+            var handle = new WindowInteropHelper(window).Handle;
+            var ownerHandle = new WindowInteropHelper(owner).Handle;
+
+            if (handle == IntPtr.Zero ||
+                ownerHandle == IntPtr.Zero ||
+                !GetWindowRect(handle, out var bounds) ||
+                !GetWindowRect(ownerHandle, out var ownerBounds))
+            {
+                return;
+            }
+
+            var left = ownerBounds.Left + ((ownerBounds.Right - ownerBounds.Left) - (bounds.Right - bounds.Left)) / 2;
+            var top = ownerBounds.Top + ((ownerBounds.Bottom - ownerBounds.Top) - (bounds.Bottom - bounds.Top)) / 2;
+
+            SetWindowPos(handle, IntPtr.Zero, left, top, 0, 0, SwpNoZOrder | SwpNoActivate | SwpNoSize);
+        }));
     }
 
     public static void Save(Window window, ColumnDefinition categoryColumn, ColumnDefinition entryListColumn)
@@ -104,6 +144,7 @@ public static class WindowLayoutService
         return true;
     }
 
+    private const uint SwpNoSize = 0x0001;
     private const uint SwpNoZOrder = 0x0004;
     private const uint SwpNoActivate = 0x0010;
     private const int SmXVirtualScreen = 76;
@@ -116,6 +157,9 @@ public static class WindowLayoutService
 
     [DllImport("user32.dll")]
     private static extern bool GetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT placement);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT bounds);
 
     [DllImport("user32.dll")]
     private static extern int GetSystemMetrics(int index);
