@@ -4,12 +4,17 @@ import { isNewer } from '../utils/timestamps';
 // replaces anything genuinely newer, and marks whatever it keeps as already
 // synced — a record just received from the server needs no push back, and
 // leaving SyncedAt null would queue the entire first pull for re-upload.
+// Returns the count it actually changed alongside the records: a full pull
+// carries everything, most of which lands on an identical local copy.
 export function mergePulled(local, pulled) {
   const byId = new Map(local.map((record) => [record.Id, record]));
+  let applied = 0;
 
   for (const record of pulled) {
     if (record.IsDeleted) {
-      byId.delete(record.Id);
+      if (byId.delete(record.Id)) {
+        applied++;
+      }
       continue;
     }
 
@@ -17,8 +22,9 @@ export function mergePulled(local, pulled) {
 
     if (!existing || isNewer(record.ClientLastWrite, existing.ClientLastWrite)) {
       byId.set(record.Id, { ...record, SyncedAt: record.ClientLastWrite });
+      applied++;
     }
   }
 
-  return [...byId.values()];
+  return { records: [...byId.values()], applied };
 }

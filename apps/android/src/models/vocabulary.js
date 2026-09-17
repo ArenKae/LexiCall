@@ -2,6 +2,12 @@
 // the defaults the rest of the app relies on.
 import { UNDEFINED_TYPE } from '../utils/vocabularyEntryTypes';
 
+export const LOCKABLE_FIELDS = ['Type', 'Definition', 'Synonyms', 'ExampleSentences'];
+
+export function isEntryLocked(entry) {
+  return LOCKABLE_FIELDS.every((field) => entry.LockedFields.includes(field));
+}
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }

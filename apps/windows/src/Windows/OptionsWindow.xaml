@@ -93,6 +93,96 @@
                             Click="TestApiConnectionButton_Click"
                             ToolTip="Vérifie que l'API est joignable avec l'URL/la clé ci-dessus." />
                 </Grid>
+
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0"
+                               Text="Renvoie toutes les modifications locales et retélécharge les données divergentes depuis le serveur."
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap"
+                               FontSize="12"
+                               Foreground="{DynamicResource Brush.Text.Secondary}" />
+
+                    <Button x:Name="FullResyncButton"
+                            Grid.Column="1"
+                            Style="{StaticResource GhostButtonStyle}"
+                            Margin="12,0,0,0"
+                            VerticalAlignment="Center"
+                            Click="FullResyncButton_Click"
+                            ToolTip="Chaque enregistrement reste arbitré par date de modification : le plus récent des deux côtés gagne.">
+                        <StackPanel Orientation="Horizontal">
+                            <!-- Spinner and idle icon share the slot: each is
+                                 visible exactly when the other is not. -->
+                            <Path Width="13" Height="13" Stretch="Uniform"
+                                  Data="{StaticResource Icon.Phosphor.circle-half-tilt}"
+                                  Margin="0,0,8,0"
+                                  VerticalAlignment="Center"
+                                  RenderTransformOrigin="0.5,0.5">
+                                <Path.RenderTransform>
+                                    <RotateTransform Angle="0" />
+                                </Path.RenderTransform>
+                                <Path.Style>
+                                    <Style TargetType="Path">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Setter Property="Fill" Value="{DynamicResource Brush.Text.Secondary}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsFullResyncing}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                                <Path.Triggers>
+                                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation
+                                                    Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                    From="0" To="360" Duration="0:0:0.8"
+                                                    RepeatBehavior="Forever" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Path.Triggers>
+                            </Path>
+
+                            <Path Data="{StaticResource Icon.Phosphor.arrows-counter-clockwise}"
+                                  Width="13" Height="13"
+                                  Stretch="Uniform"
+                                  Margin="0,0,8,0"
+                                  VerticalAlignment="Center">
+                                <Path.Style>
+                                    <Style TargetType="Path">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Setter Property="Fill" Value="{DynamicResource Brush.Text.Secondary}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsFullResyncing}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                            </Path>
+
+                            <TextBlock VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Tout resynchroniser" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsFullResyncing}" Value="True">
+                                                <Setter Property="Text" Value="Resynchronisation…" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Button>
+                </Grid>
             </StackPanel>
         </Border>
 

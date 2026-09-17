@@ -3,13 +3,16 @@ import { create } from 'zustand';
 import { normalizeCategory, normalizeEntry } from '../models/vocabulary';
 import { createApiClient } from '../services/apiClient';
 import {
+  importDatabaseFrom,
   loadDatabase,
   loadSettings,
   resetLocalData,
   saveDatabase,
   saveSettings,
+  stageDatabaseExport,
 } from '../services/storage';
 import { loadSyncHistory, saveSyncHistory, MAX_HISTORY_ENTRIES } from '../services/syncHistoryStore';
+import { getDescendantIds } from '../utils/categoryHierarchy';
 import { ALL_ENTRIES, SORT_RECENT } from '../utils/filterEntries';
 import { UNDEFINED_TYPE } from '../utils/vocabularyEntryTypes';
 import { mergePulled } from './mergePulled';
@@ -18,13 +21,29 @@ import { runSyncCycle } from './syncCycle';
 // In-memory vocabulary state, hydrated from the local JSON files, pushed to the
 // API on every mutation and refreshed by delta pulls.
 
+// Checkpoint standing for "pull everything". Not null: omitting updated_since
+// returns the live view *without* tombstones, so records deleted on the server
+// but still lingering locally would never be cleaned up.
+const FULL_PULL_CHECKPOINT = '1970-01-01T00:00:00Z';
+
 // CreatedAt and ClientLastWrite are stamped from the same instant at
 // creation, so any difference means at least one edit happened since.
 function changeKind(record) {
   return record.CreatedAt === record.ClientLastWrite ? 'Created' : 'Updated';
 }
 
+function normalizeBaseUrl(baseUrl) {
+  return (baseUrl ?? '').trim().replace(/\/+$/, '').toLowerCase();
+}
+
 export const useVocabularyStore = create((set, get) => {
+  // Bumped by importDatabase: a resync started before an import must drop its
+  // whole batch instead of writing the pre-import state back over the freshly
+  // imported file.
+  let dataGeneration = 0;
+  let resyncRequestedWhileSyncing = false;
+  let fullResyncRequested = false;
+
   function persist(patch) {
     const next = { ...get(), ...patch };
     set(patch);
@@ -53,6 +72,45 @@ export const useVocabularyStore = create((set, get) => {
   function client() {
     const { apiBaseUrl, apiKey } = get();
     return createApiClient(apiBaseUrl, apiKey);
+  }
+
+  // Drops everything describing a relationship with one specific server: every
+  // record is then pushed again and the whole server view pulled back, both
+  // still arbitrated per record by Last-Write-Wins.
+  async function invalidateSyncState() {
+    const syncedAgainstBaseUrl = normalizeBaseUrl(get().apiBaseUrl);
+
+    persist({
+      entries: get().entries.map((entry) => ({ ...entry, SyncedAt: null })),
+      categories: get().categories.map((category) => ({ ...category, SyncedAt: null })),
+    });
+    set({ lastPulledAt: FULL_PULL_CHECKPOINT, syncedAgainstBaseUrl });
+    await saveSettings({ lastPulledAt: FULL_PULL_CHECKPOINT, syncedAgainstBaseUrl });
+  }
+
+  // A parent that would create a cycle, or a name already used by a sibling —
+  // checked against live state (not a snapshot the form opened with), since
+  // that's what a save actually lands against. categoryId is null for a
+  // not-yet-created category: it can't be its own ancestor either way, so the
+  // cycle check is naturally a no-op there.
+  function validateCategory(categoryId, name, parentId) {
+    const categories = get().categories;
+
+    if (parentId) {
+      const descendantIds = categoryId ? getDescendantIds(categories, categoryId) : new Set();
+      if (parentId === categoryId || descendantIds.has(parentId)) {
+        return 'Le parent choisi créerait un cycle dans la hiérarchie.';
+      }
+    }
+
+    const duplicateExists = categories.some(
+      (category) =>
+        category.Id !== categoryId &&
+        category.ParentId === parentId &&
+        category.Name.toLowerCase() === name.toLowerCase()
+    );
+
+    return duplicateExists ? 'Une catégorie porte déjà ce nom au même niveau.' : null;
   }
 
   // Marks a record synced only if it hasn't been edited again since the push
@@ -130,8 +188,11 @@ export const useVocabularyStore = create((set, get) => {
     apiBaseUrl: '',
     apiKey: '',
     lastPulledAt: null,
+    syncedAgainstBaseUrl: null,
     isHydrated: false,
     isSyncing: false,
+    // Drives the Options screen's "Tout resynchroniser" spinner and label.
+    isFullResyncing: false,
     statusMessage: '',
     // NotConfigured | Syncing | Ok | Problem
     globalSyncStatus: 'NotConfigured',
@@ -145,6 +206,11 @@ export const useVocabularyStore = create((set, get) => {
     searchQuery: '',
     // In-memory only, like the two above — never written to settings.json.
     sortMode: SORT_RECENT,
+    // Manual category color/order overrides — local to this device, never
+    // synced (see saveApiConfig-adjacent settings.json fields).
+    categoryColors: {},
+    categoryOrder: {},
+    virtualCategories: {},
 
     setCategoryFilter: (categoryFilter) => set({ categoryFilter }),
     setSearchQuery: (searchQuery) => set({ searchQuery }),
@@ -167,6 +233,10 @@ export const useVocabularyStore = create((set, get) => {
         apiBaseUrl: settings.apiBaseUrl,
         apiKey: settings.apiKey,
         lastPulledAt: settings.lastPulledAt,
+        syncedAgainstBaseUrl: settings.syncedAgainstBaseUrl,
+        categoryColors: settings.categoryColors,
+        categoryOrder: settings.categoryOrder,
+        virtualCategories: settings.virtualCategories,
         isHydrated: true,
         // A resync fires as soon as hydration completes, so a configured client
         // is already syncing by the time this status is read.
@@ -204,9 +274,14 @@ export const useVocabularyStore = create((set, get) => {
     },
 
     resync: async () => {
-      const state = get();
+      if (get().isEditorOpen) {
+        return;
+      }
 
-      if (state.isSyncing || state.isEditorOpen) {
+      // A cycle already running defers this one to right after it, rather than
+      // dropping it: a full resync or an import must not wait a whole tick.
+      if (get().isSyncing) {
+        resyncRequestedWhileSyncing = true;
         return;
       }
 
@@ -219,7 +294,34 @@ export const useVocabularyStore = create((set, get) => {
 
       set({ isSyncing: true, globalSyncStatus: 'Syncing' });
 
-      try {
+      // Every exit below is the cycle's own, not the action's: the deferred
+      // rerun after the finally must still get its turn.
+      const runCycle = async () => {
+        // Sync state built against another server describes nothing here, so
+        // it is wiped and rebuilt — but only once this server has actually
+        // answered, so a half-typed URL can't trigger it. Skipped entirely
+        // when nothing ever pulled: there is no divergence to heal yet.
+        if (normalizeBaseUrl(get().syncedAgainstBaseUrl) !== normalizeBaseUrl(get().apiBaseUrl)) {
+          if ((await api.testConnection()) !== 'Ok') {
+            set({ globalSyncStatus: 'Problem', statusMessage: 'API injoignable.' });
+            return;
+          }
+
+          if (get().lastPulledAt === null) {
+            const syncedAgainstBaseUrl = normalizeBaseUrl(get().apiBaseUrl);
+            set({ syncedAgainstBaseUrl });
+            await saveSettings({ syncedAgainstBaseUrl });
+          } else {
+            await invalidateSyncState();
+            fullResyncRequested = true;
+          }
+        }
+
+        const isFullResync = fullResyncRequested;
+        fullResyncRequested = false;
+
+        const generation = dataGeneration;
+        const state = get();
         const result = await runSyncCycle({
           client: api,
           entries: state.entries,
@@ -230,6 +332,9 @@ export const useVocabularyStore = create((set, get) => {
         });
 
         if (!result.reachable) {
+          // The request survives to the next cycle rather than being lost to
+          // an outage that had nothing to do with it.
+          fullResyncRequested = isFullResync;
           set({ globalSyncStatus: 'Problem', statusMessage: 'API injoignable.' });
           return;
         }
@@ -250,6 +355,7 @@ export const useVocabularyStore = create((set, get) => {
 
         let entries = applySynced(get().entries);
         let categories = applySynced(get().categories);
+        let appliedPulls = 0;
         const historyRows = [
           ...result.deletions.map((row) => ({
             EntityType: row.entityType,
@@ -291,9 +397,21 @@ export const useVocabularyStore = create((set, get) => {
           historyRows.push(...pullRows(pulledCategories, 'Category', categories));
           historyRows.push(...pullRows(pulledEntries, 'Entry', entries));
 
-          categories = mergePulled(categories, pulledCategories);
-          entries = mergePulled(entries, pulledEntries);
-          await saveSettings({ lastPulledAt: result.pull.checkpoint });
+          const mergedCategories = mergePulled(categories, pulledCategories);
+          const mergedEntries = mergePulled(entries, pulledEntries);
+          categories = mergedCategories.records;
+          entries = mergedEntries.records;
+          appliedPulls = mergedCategories.applied + mergedEntries.applied;
+
+          if (generation === dataGeneration) {
+            await saveSettings({ lastPulledAt: result.pull.checkpoint });
+          }
+        }
+
+        // An import landed while this cycle was in flight: its whole batch
+        // describes the replaced database, so none of it may be written back.
+        if (generation !== dataGeneration) {
+          return;
         }
 
         persist({
@@ -314,10 +432,98 @@ export const useVocabularyStore = create((set, get) => {
             ? `${result.pull.entries.length} entrée(s) et ${result.pull.categories.length} catégorie(s) reçues.`
             : 'Échec du rapatriement.',
         });
-        recordHistory(historyRows);
+        // A full resync touches every record, which would blow the history cap
+        // and erase everything else — one summary row replaces the hundreds of
+        // per-record ones.
+        if (isFullResync) {
+          const pushed = result.pushes.filter((row) => row.success).length;
+          const failures = result.pushes.length - pushed;
+
+          recordHistory([
+            {
+              // No entity: this row describes a whole cycle, not one record.
+              EntityType: 'Entry',
+              EntityId: null,
+              EntityLabel: 'Resynchronisation complète',
+              Operation: 'FullResync',
+              Outcome: failures > 0 ? 'Failure' : 'Success',
+              Details:
+                `${pushed} envoyé(s) · ${appliedPulls} reçu(s)` +
+                (failures > 0 ? ` · ${failures} échec(s)` : ''),
+            },
+          ]);
+        } else {
+          recordHistory(historyRows);
+        }
+      };
+
+      try {
+        await runCycle();
       } finally {
         set({ isSyncing: false });
       }
+
+      if (resyncRequestedWhileSyncing) {
+        resyncRequestedWhileSyncing = false;
+        await get().resync();
+      }
+    },
+
+    // Wipes every trace of a past relationship with the configured server and
+    // runs one cycle: everything local is pushed again, the server's whole
+    // view pulled back, each record still arbitrated by Last-Write-Wins.
+    forceFullResync: async () => {
+      if (!client().isConfigured()) {
+        set({ globalSyncStatus: 'NotConfigured' });
+        return;
+      }
+
+      await invalidateSyncState();
+      fullResyncRequested = true;
+      set({ isFullResyncing: true });
+
+      try {
+        await get().resync();
+      } finally {
+        set({ isFullResyncing: false });
+      }
+    },
+
+    // Hands the database to the share sheet as a dated copy; returns the uri
+    // the caller shares, since sharing itself is a UI concern.
+    exportDatabase: () => {
+      const state = get();
+
+      return stageDatabaseExport({
+        Entries: state.entries,
+        Categories: state.categories,
+        PendingEntryDeletions: state.pendingEntryDeletions,
+        PendingCategoryDeletions: state.pendingCategoryDeletions,
+      });
+    },
+
+    // Replaces the local database with a picked file, then resyncs. The forced
+    // checkpoint matters: imported records carry their own SyncedAt, so
+    // without it the import would neither push nor pull and would sit
+    // silently out of sync forever.
+    importDatabase: async (sourceFile) => {
+      const database = await importDatabaseFrom(sourceFile);
+
+      dataGeneration++;
+      set({
+        entries: database.Entries,
+        categories: database.Categories,
+        pendingEntryDeletions: database.PendingEntryDeletions,
+        pendingCategoryDeletions: database.PendingCategoryDeletions,
+        lastPulledAt: FULL_PULL_CHECKPOINT,
+        categoryFilter: { kind: ALL_ENTRIES, categoryId: null },
+        searchQuery: '',
+        statusMessage: `${database.Entries.length} entrée(s) importée(s).`,
+      });
+      await saveSettings({ lastPulledAt: FULL_PULL_CHECKPOINT });
+
+      get().resync();
+      return database;
     },
 
     addEntry: (draft) => {
@@ -395,6 +601,126 @@ export const useVocabularyStore = create((set, get) => {
         pushUpsert('Entry', entry);
       }
     },
+
+    // Returns { error, category }: error is a message on failure (the screen
+    // shows it and never navigates away, matching a failed entry save) or
+    // null on success, with the created record — a categorization suggestion
+    // accepted as "new category" needs the id it was just given.
+    addCategory: (draft) => {
+      const id = randomUUID();
+      const error = validateCategory(id, draft.Name, draft.ParentId);
+
+      if (error) {
+        return { error, category: null };
+      }
+
+      const now = new Date().toISOString();
+      const category = {
+        ...draft,
+        Id: id,
+        CreatedAt: now,
+        ClientLastWrite: now,
+        IsDeleted: false,
+        SyncedAt: null,
+      };
+
+      persist({ categories: [...get().categories, category] });
+      pushUpsert('Category', category);
+      return { error: null, category };
+    },
+
+    updateCategory: (id, draft) => {
+      const existing = get().categories.find((category) => category.Id === id);
+
+      if (!existing) {
+        return null;
+      }
+
+      const error = validateCategory(id, draft.Name, draft.ParentId);
+
+      if (error) {
+        return error;
+      }
+
+      const updated = {
+        ...existing,
+        ...draft,
+        Id: existing.Id,
+        CreatedAt: existing.CreatedAt,
+        ClientLastWrite: new Date().toISOString(),
+        SyncedAt: null,
+      };
+
+      persist({
+        categories: get().categories.map((category) => (category.Id === id ? updated : category)),
+      });
+      pushUpsert('Category', updated);
+      return null;
+    },
+
+    // Same guardrails as the API's own delete route (subcategories, entries
+    // still filed under it) — checked here first so the common case never
+    // round-trips to find out.
+    deleteCategory: (id) => {
+      const categories = get().categories;
+      const category = categories.find((item) => item.Id === id);
+
+      if (!category) {
+        return null;
+      }
+
+      if (categories.some((item) => item.ParentId === id)) {
+        return 'Impossible de supprimer une catégorie qui contient des sous-catégories.';
+      }
+
+      const usageCount = get().entries.filter((entry) => entry.CategoryIds.includes(id)).length;
+
+      if (usageCount > 0) {
+        return `Impossible de supprimer : cette catégorie est utilisée par ${usageCount} mot(s).`;
+      }
+
+      const pending = { Id: id, DeletedAt: new Date().toISOString(), Label: category.Name };
+      const categoryColors = { ...get().categoryColors };
+      const categoryOrder = { ...get().categoryOrder };
+      delete categoryColors[id];
+      delete categoryOrder[id];
+
+      persist({
+        categories: categories.filter((item) => item.Id !== id),
+        pendingCategoryDeletions: [...get().pendingCategoryDeletions, pending],
+      });
+      set({ categoryColors, categoryOrder });
+      saveSettings({ categoryColors, categoryOrder });
+      pushDeletion('Category', pending);
+      return null;
+    },
+
+    // Commits a whole reordering pass at once (the drag-and-drop mode builds
+    // its own draft ranks and only writes them when the user validates).
+    setCategoryOrder: (categoryOrder) => {
+      set({ categoryOrder });
+      saveSettings({ categoryOrder });
+    },
+
+    // Null clears the override and reverts to the automatic golden-angle hue.
+    setCategoryColor: (categoryId, hexColor) => {
+      const categoryColors = { ...get().categoryColors };
+
+      if (hexColor) {
+        categoryColors[categoryId] = hexColor;
+      } else {
+        delete categoryColors[categoryId];
+      }
+
+      set({ categoryColors });
+      saveSettings({ categoryColors });
+    },
+
+    setVirtualCategoryEnabled: (kind, enabled) => {
+      const virtualCategories = { ...get().virtualCategories, [kind]: enabled };
+      set({ virtualCategories });
+      saveSettings({ virtualCategories });
+    },
   };
 });
 
@@ -412,5 +738,17 @@ export function createEntryDraft(initialCategoryId) {
     Images: [],
     IsArchived: false,
     LockedFields: [],
+  };
+}
+
+// A blank category draft, ready for the editor to fill in and pass to
+// addCategory. initialParentId pre-selects a parent when creating a
+// subcategory from an existing node.
+export function createCategoryDraft(initialParentId) {
+  return {
+    Name: '',
+    ParentId: initialParentId ?? null,
+    Description: '',
+    IconGlyph: '',
   };
 }

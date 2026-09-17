@@ -22,9 +22,13 @@ public partial class ImagePreviewWindow : Window
         _images = images;
         _currentIndex = startIndex;
 
-        var workArea = SystemParameters.WorkArea;
-        PreviewImage.MaxWidth = workArea.Width * 0.8;
-        PreviewImage.MaxHeight = workArea.Height * 0.8;
+        // Capped against the owner, not the screen work area: that area covers
+        // the primary monitor in logical units, which overflows the actual
+        // screen once the app sits on a smaller or differently scaled one. The
+        // height leaves room for the title bar, caption and Fermer button, so
+        // the whole modal still fits inside the owner.
+        PreviewImage.MaxWidth = owner.ActualWidth * 0.8;
+        PreviewImage.MaxHeight = owner.ActualHeight * 0.7;
 
         RefreshCurrentImage();
     }
@@ -38,6 +42,10 @@ public partial class ImagePreviewWindow : Window
 
         PreviousButton.Visibility = _images.Count > 1 && _currentIndex > 0 ? Visibility.Visible : Visibility.Collapsed;
         NextButton.Visibility = _images.Count > 1 && _currentIndex < _images.Count - 1 ? Visibility.Visible : Visibility.Collapsed;
+
+        // Each image resizes the window, which would otherwise keep its
+        // top-left corner and drift off-centre as the format changes.
+        WindowLayoutService.CenterOnOwner(this);
     }
 
     private void ShowPrevious()

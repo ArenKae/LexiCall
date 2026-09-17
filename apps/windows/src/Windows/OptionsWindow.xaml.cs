@@ -58,6 +58,34 @@ public partial class OptionsWindow : Window
         };
     }
 
+    private async void FullResyncButton_Click(object sender, RoutedEventArgs e)
+    {
+        var viewModel = (MainWindowViewModel)DataContext;
+
+        // Progress is shown by the button's own spinner and label; the status
+        // line only carries the outcome.
+        FullResyncButton.IsEnabled = false;
+        ApiConnectionStatusText.Text = string.Empty;
+
+        try
+        {
+            await viewModel.ForceFullResyncAsync();
+        }
+        finally
+        {
+            FullResyncButton.IsEnabled = true;
+        }
+
+        ApiConnectionStatusText.Text = viewModel.GlobalSyncStatus switch
+        {
+            GlobalSyncStatus.Ok => "Resynchronisation terminée.",
+            // A cycle was already running: this one was queued behind it.
+            GlobalSyncStatus.Syncing => "Resynchronisation en cours en arrière-plan.",
+            GlobalSyncStatus.NotConfigured => "Synchronisation désactivée (URL vide).",
+            _ => "Resynchronisation incomplète, voir l'historique."
+        };
+    }
+
     private void OpenDataFolderButton_Click(object sender, RoutedEventArgs e)
     {
         // The folder may not exist yet (no save has happened): create it so

@@ -74,6 +74,9 @@
                                             <DataTrigger Binding="{Binding Operation}" Value="{x:Static models:SyncHistoryOperation.Delete}">
                                                 <Setter Property="Data" Value="{StaticResource Icon.Phosphor.trash}" />
                                             </DataTrigger>
+                                            <DataTrigger Binding="{Binding Operation}" Value="{x:Static models:SyncHistoryOperation.FullResync}">
+                                                <Setter Property="Data" Value="{StaticResource Icon.Phosphor.arrows-counter-clockwise}" />
+                                            </DataTrigger>
                                             <DataTrigger Binding="{Binding Outcome}" Value="{x:Static models:SyncHistoryOutcome.Success}">
                                                 <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
                                             </DataTrigger>
@@ -133,6 +136,9 @@
                                                         </MultiDataTrigger.Conditions>
                                                         <Setter Property="Text" Value="Catégorie — suppression" />
                                                     </MultiDataTrigger>
+                                                    <DataTrigger Binding="{Binding Operation}" Value="{x:Static models:SyncHistoryOperation.FullResync}">
+                                                        <Setter Property="Text" Value="{Binding Details}" />
+                                                    </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </TextBlock.Style>

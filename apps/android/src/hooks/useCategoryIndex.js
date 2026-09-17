@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useVocabularyStore } from '../store/useVocabularyStore';
 import { computeColorIndexes } from '../utils/categoryHierarchy';
-import { colorFromIndex } from '../utils/categoryColor';
+import { resolveCategoryColor } from '../utils/categoryColor';
 
 // A category with no icon of its own still gets one.
 const DEFAULT_ICON = 'Solar.tag';
@@ -10,19 +10,21 @@ const DEFAULT_ICON = 'Solar.tag';
 // rows that only hold a CategoryId.
 export function useCategoryIndex() {
   const categories = useVocabularyStore((state) => state.categories);
+  const categoryColors = useVocabularyStore((state) => state.categoryColors);
 
   return useMemo(() => {
     const colorIndexes = computeColorIndexes(categories);
+    const categoriesById = new Map(categories.map((category) => [category.Id, category]));
 
     return new Map(
       categories.map((category) => [
         category.Id,
         {
           ...category,
-          color: colorFromIndex(colorIndexes.get(category.Id) ?? 0),
+          color: resolveCategoryColor(category, categoriesById, colorIndexes, categoryColors),
           icon: category.IconGlyph || DEFAULT_ICON,
         },
       ])
     );
-  }, [categories]);
+  }, [categories, categoryColors]);
 }

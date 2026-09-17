@@ -9,12 +9,24 @@ install:
     npm install
 
 # Start the Metro dev server (Expo Go / dev client on a connected device).
+# Uses its own script name, not "android" -- `expo prebuild` overwrites that
+# one to `expo run:android` on every run, so `start` would silently regress
+# to the slow native build otherwise.
 start:
-    npm run android
+    npm run dev:android
 
-# Local native build (expo run:android): builds and installs on a connected device.
+# Production release APK: regenerates the native project, then builds a
+# signed release build with Android Studio's bundled JDK.
 build:
-    npm run build:android
+    printf '\033[1;36m==> [1/4] Prebuild natif (npx expo prebuild)\033[0m\n'
+    npx expo prebuild --platform android
+    printf '\033[1;36m==> [2/4] Build Gradle release (gradlew assembleRelease)\033[0m\n'
+    cd android && JAVA_HOME=/opt/android-studio/jbr ./gradlew assembleRelease
+    printf '\033[1;36m==> [3/4] Copie de l'\''APK vers /mnt/hgfs/Shared\033[0m\n'
+    cp android/app/build/outputs/apk/release/app-release.apk /mnt/hgfs/Shared/
+    printf '\033[1;32m==> [4/4] Build terminee.\033[0m\n'
+    printf '\033[1;32mAPK signe disponible ici : apps/android/android/app/build/outputs/apk/release/app-release.apk\033[0m\n'
+    printf '\033[1;32mAPK copie ici : /mnt/hgfs/Shared/app-release.apk\033[0m\n'
 
 # Remove node_modules and Expo/Gradle build caches.
 clean:

@@ -87,11 +87,6 @@ prod-down:
 prod-backup:
     ./deploy/backup.sh
 
-# One-off, idempotent vocabulary.json -> Mongo migration (see api/README.md).
-[group('production')]
-migrate *ARGS:
-    PYTHONPATH=src .venv/bin/python -m migration.migrate_from_json {{ARGS}}
-
 # Interactive mongosh shell, authenticated as the scoped app user — no root
 # in this repo, MongoDB is shared infra owned outside it. A disposable
 # mongo:8.0 container on the external `lexicall-db` network reaches it;

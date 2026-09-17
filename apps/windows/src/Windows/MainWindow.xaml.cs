@@ -1,6 +1,8 @@
-// Code-behind for the main window: opens modal windows, relays category-tree
+﻿// Code-behind for the main window: opens modal windows, relays category-tree
 // interactions to MainWindowViewModel, and shows confirmations/errors via
 // themed dialogs (ConfirmationDialog, AlertDialog).
+using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -8,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using LexiCall.Desktop.Services;
+using LexiCall.Desktop.Utilities;
 using LexiCall.Desktop.ViewModels;
 
 namespace LexiCall.Desktop.Windows;
@@ -37,6 +40,7 @@ public partial class MainWindow : Window
         }
 
         Closing += MainWindow_Closing;
+        ClickAwayPopup.Register(SortModePopup);
 
         // Attached to the TreeView (not the DataTemplate) so the clickable
         // area matches the TreeViewItem's selection highlight.
@@ -130,10 +134,88 @@ public partial class MainWindow : Window
         new SyncHistoryWindow(ViewModel) { Owner = this }.ShowDialog();
     }
 
+    // The file picker is a WPF detail: the ViewModel only receives the chosen
+    // path and knows nothing about OpenFileDialog.
+    private void ImportDatabaseButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "Base LexiCall (*.json)|*.json",
+            CheckFileExists = true
+        };
+
+        // Scoped to the dialogs only: the import itself must be able to fire
+        // its resync, which this flag would otherwise suppress (see
+        // MainWindowViewModel.TryResyncAsync).
+        ViewModel.IsEditorDialogOpen = true;
+        try
+        {
+            if (dialog.ShowDialog(this) != true)
+            {
+                return;
+            }
+
+            var confirmed = ConfirmationDialog.Show(
+                this,
+                "Cette action remplace la base de vocabulaire locale par le fichier choisi. Une copie de sauvegarde de la base actuelle sera conservée à côté.",
+                "Importer une base",
+                confirmText: "Importer");
+
+            if (!confirmed)
+            {
+                return;
+            }
+        }
+        finally
+        {
+            ViewModel.IsEditorDialogOpen = false;
+        }
+
+        try
+        {
+            ViewModel.ImportDatabase(dialog.FileName);
+        }
+        catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
+        {
+            AlertDialog.Show(this, $"Import impossible : {exception.Message}", "Importer une base");
+        }
+    }
+
+    private void ExportDatabaseButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = "Base LexiCall (*.json)|*.json",
+            FileName = "vocabulary.json"
+        };
+
+        ViewModel.IsEditorDialogOpen = true;
+        try
+        {
+            if (dialog.ShowDialog(this) == true)
+            {
+                ViewModel.ExportDatabase(dialog.FileName);
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            AlertDialog.Show(this, $"Export impossible : {exception.Message}", "Exporter la base");
+        }
+        finally
+        {
+            ViewModel.IsEditorDialogOpen = false;
+        }
+    }
+
     private void ClearSearchButton_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.SearchQuery = string.Empty;
         SearchTextBox.Focus();
+    }
+
+    private void SortOptionList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        SortModePopup.IsOpen = false;
     }
 
     // ─── Entries ───
@@ -525,6 +607,15 @@ public partial class MainWindow : Window
         ViewModel.ToggleArchiveEntry(ViewModel.SelectedEntry);
     }
 
+    // The padlock carries its entry (VocabularyEntry) as DataContext.
+    private void ToggleEntryLocksButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: Models.VocabularyEntry entry })
+        {
+            ViewModel.ToggleEntryLocks(entry);
+        }
+    }
+
     // The chip carries its category (VocabularyCategory) as DataContext.
     private void CategoryChip_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
@@ -581,7 +672,7 @@ public partial class MainWindow : Window
 
     // ─── Categories ───
 
-    // The three virtual nodes always sit first in CategoryTree (see
+    // The four virtual nodes always sit first in CategoryTree (see
     // MainWindowViewModel.RebuildCategoryTree). Setting IsSelected runs the
     // same selection path as clicking them in the tree (CategoryNodeViewModel.
     // IsSelected's setter calls back into OnCategoryNodeSelected).
@@ -595,13 +686,18 @@ public partial class MainWindow : Window
         ViewModel.CategoryTree[1].IsSelected = true;
     }
 
-    private void SelectArchivesButton_Click(object sender, RoutedEventArgs e)
+    private void SelectLockedButton_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.CategoryTree[2].IsSelected = true;
     }
 
+    private void SelectArchivesButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CategoryTree[3].IsSelected = true;
+    }
+
     // The swatch carries its node (CategoryNodeViewModel) as DataContext —
-    // same selection path as the two virtual-node buttons above.
+    // same selection path as the virtual-node buttons above.
     private void CollapsedRootCategory_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (sender is FrameworkElement { DataContext: CategoryNodeViewModel node })
@@ -728,7 +824,7 @@ public partial class MainWindow : Window
     {
         if (node.Depth == 0)
         {
-            return ViewModel.CategoryTree.Skip(3).ToList();
+            return ViewModel.CategoryTree.Skip(4).ToList();
         }
 
         var parent = FindParentNode(ViewModel.CategoryTree, node);

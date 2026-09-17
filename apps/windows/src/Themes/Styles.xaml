@@ -423,6 +423,13 @@
                 </MultiDataTrigger.Conditions>
                 <Setter Property="Visibility" Value="Collapsed" />
             </MultiDataTrigger>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding Kind}" Value="{x:Static viewModels:CategoryNodeKind.Locked}" />
+                    <Condition Binding="{Binding EntryCount}" Value="0" />
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Visibility" Value="Collapsed" />
+            </MultiDataTrigger>
         </Style.Triggers>
     </Style>
 
@@ -776,6 +783,36 @@
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="LockIcon" Property="Data" Value="{DynamicResource Icon.Phosphor.lock-key}" />
                             <Setter TargetName="LockIcon" Property="Fill" Value="{DynamicResource Brush.Danger}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ToggleButton: icon dropdown -->
+    <Style x:Key="IconDropdownToggleStyle" TargetType="ToggleButton">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="ClickMode" Value="Press" />
+        <Setter Property="Width" Value="22" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Root"
+                            Background="Transparent"
+                            CornerRadius="6"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.Surface.Hover}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource Brush.Selection.Background}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

@@ -32,6 +32,11 @@ internal sealed class AppSettings
     // VocabularyEntry/Category.SyncedAt.
     public string? LastPulledAt { get; set; }
 
+    // Server identity the sync state above (and every record's SyncedAt)
+    // describes. Both are meaningless against a different server, so a resync
+    // that finds a mismatch here wipes them and starts over.
+    public string? SyncedAgainstBaseUrl { get; set; }
+
     // Manually assigned category colors (Id → "#RRGGBB"), see
     // CategoryColorStore. Purely a local presentation preference for this
     // Windows install — never written to vocabulary.json or synced to api/,

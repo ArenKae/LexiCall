@@ -1,27 +1,37 @@
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from './CategoryIcon';
 import { useTheme } from '../theme/useTheme';
 
-function Row({ iconKey, label, color, onPress }) {
+function Row({ iconKey, label, color, disabled, onPress }) {
   const colors = useTheme();
+  const tint = disabled ? colors.textMuted : (color ?? colors.textPrimary);
+
   return (
-    <Pressable style={styles.row} onPress={onPress}>
-      <CategoryIcon iconKey={iconKey} color={color ?? colors.textPrimary} size={20} />
-      <Text style={[styles.rowText, { color: color ?? colors.textPrimary }]}>{label}</Text>
+    <Pressable style={styles.row} onPress={disabled ? undefined : onPress} disabled={disabled}>
+      <CategoryIcon iconKey={iconKey} color={tint} size={20} />
+      <Text style={[styles.rowText, { color: tint }]}>{label}</Text>
     </Pressable>
   );
 }
 
-// Bottom sheet for an entry's actions. Dupliquer/Enrichir avec l'IA from the
-// mockup aren't included: neither exists yet on any client.
-export function EntryActionSheet({ visible, entry, onClose, onEdit, onToggleArchive, onDelete }) {
+// Bottom sheet for a category's actions, opened by a long-press on its row
+// in the Catégories tab.
+export function CategoryActionSheet({
+  visible,
+  category,
+  onClose,
+  onAddSubcategory,
+  onReorder,
+  onEdit,
+  onDelete,
+}) {
   const colors = useTheme();
   const insets = useSafeAreaInsets();
 
   function confirmDelete() {
     onClose();
-    Alert.alert('Confirmer la suppression', `Supprimer « ${entry.Word} » ?`, [
+    Alert.alert('Confirmer la suppression', `Supprimer « ${category.Name} » ?`, [
       { text: 'Annuler', style: 'cancel' },
       { text: 'Supprimer', style: 'destructive', onPress: onDelete },
     ]);
@@ -36,20 +46,16 @@ export function EntryActionSheet({ visible, entry, onClose, onEdit, onToggleArch
             { backgroundColor: colors.surface, paddingBottom: 28 + insets.bottom },
           ]}
         >
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Que souhaitez-vous faire ?</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
+            {category.Name}
+          </Text>
 
-          <Row iconKey="Phosphor.pencil" label="Modifier l’entrée" onPress={onEdit} />
-          <Row
-            iconKey="Solar.archive-check"
-            label={entry.IsArchived ? 'Désarchiver' : 'Archiver'}
-            onPress={onToggleArchive}
-          />
+          <Row iconKey="Phosphor.plus" label="Nouvelle sous-catégorie" onPress={onAddSubcategory} />
+          <Row iconKey="Phosphor.pencil" label="Modifier" onPress={onEdit} />
+          <Row iconKey="Phosphor.list-bullets" label="Réordonner" onPress={onReorder} />
           <Row iconKey="Phosphor.trash" label="Supprimer" color={colors.danger} onPress={confirmDelete} />
 
-          <Pressable
-            style={[styles.cancel, { backgroundColor: colors.chipBackground }]}
-            onPress={onClose}
-          >
+          <Pressable style={[styles.cancel, { backgroundColor: colors.chipBackground }]} onPress={onClose}>
             <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>Annuler</Text>
           </Pressable>
         </Pressable>

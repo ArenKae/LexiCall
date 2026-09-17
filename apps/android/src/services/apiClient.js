@@ -7,6 +7,9 @@ const CONNECTION_TIMEOUT_MS = 2000;
 const PULL_TIMEOUT_MS = 20000;
 // An entry push can carry up to four base64 images in the same request.
 const PUSH_TIMEOUT_MS = 30000;
+// LLM-backed calls (2-6s typical, more with the web_search fallback) get far
+// more room than the 2s tuned for silent background sync.
+const ENRICHMENT_TIMEOUT_MS = 20000;
 
 async function fetchWithTimeout(url, options, timeoutMs) {
   const controller = new AbortController();
@@ -123,6 +126,59 @@ export function createApiClient(baseUrl, apiKey) {
     }
   }
 
+  // FastAPI's default error shape is {"detail": "..."} (HTTPException) or
+  // {"detail": [...]} (422 validation errors) — fall back to the raw body,
+  // then to the bare status code, for anything else (e.g. a proxy error page).
+  async function readErrorDetail(response) {
+    let body;
+    try {
+      body = await response.text();
+    } catch {
+      return `HTTP ${response.status}`;
+    }
+    if (!body) {
+      return `HTTP ${response.status}`;
+    }
+    try {
+      const parsed = JSON.parse(body);
+      if (typeof parsed?.detail === 'string') {
+        return parsed.detail;
+      }
+    } catch {
+      // Not JSON — fall through to the raw body.
+    }
+    return body.length > 300 ? body.slice(0, 300) : body;
+  }
+
+  // Resolves to { status: 'NotConfigured' | 'Failed' | 'Ok', result, errorDetail }
+  // — an explicit user action, not background sync, so the caller can show a
+  // real error instead of a swallowed failure.
+  async function postEnrichment(path, payload) {
+    if (!isConfigured()) {
+      return { status: 'NotConfigured', result: null, errorDetail: null };
+    }
+
+    try {
+      const response = await fetchWithTimeout(
+        `${root}${path}`,
+        {
+          method: 'POST',
+          headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        },
+        ENRICHMENT_TIMEOUT_MS
+      );
+
+      if (!response.ok) {
+        return { status: 'Failed', result: null, errorDetail: await readErrorDetail(response) };
+      }
+
+      return { status: 'Ok', result: await response.json(), errorDetail: null };
+    } catch (error) {
+      return { status: 'Failed', result: null, errorDetail: String(error?.message ?? error) };
+    }
+  }
+
   return {
     isConfigured,
     testConnection,
@@ -133,5 +189,17 @@ export function createApiClient(baseUrl, apiKey) {
     upsertCategory: (category) => upsert('/categories', category),
     deleteEntry: (id, deletedAt) => remove('/entries', id, deletedAt),
     deleteCategory: (id, deletedAt) => remove('/categories', id, deletedAt),
+    // draft: { Word, Definition, Type, Synonyms, ExampleSentences, LockedFields }.
+    suggestFields: (draft) => postEnrichment('/enrichment/fields', draft),
+    // A single sense's wording — the caller always re-sends the original
+    // anchor, never a previous rephrase's output, to avoid cumulative drift.
+    rephraseDefinition: (word, definition) =>
+      postEnrichment('/enrichment/rephrase-definition', { Word: word, Definition: definition }),
+    categorize: (word, definition) =>
+      postEnrichment('/enrichment/categorize', { Word: word, Definition: definition }),
+    // Full repair pass over the category embeddings, recomputing whatever the
+    // best-effort refresh following a category write missed. Nothing to send:
+    // the server works out on its own what drifted.
+    reindexCategoryEmbeddings: () => postEnrichment('/categories/reindex-embeddings', {}),
   };
 }

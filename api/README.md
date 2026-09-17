@@ -14,7 +14,7 @@ just run-api                 # uvicorn --reload on localhost:8000
 ```
 
 From `api/` directly, the same recipes exist without the `-api` suffix (`just install`,
-`just run`, `just migrate`, `just dev-mongo-up`, `just dev-mongo-down`, ...). There's no
+`just run`, `just dev-mongo-up`, `just dev-mongo-down`, ...). There's no
 `test`/`lint` recipe yet — run directly from `api/`:
 
 ```bash
@@ -48,41 +48,6 @@ image's own `Id`). A `GET /entries` response carries image metadata alone, so bo
 fetch the bytes through this route, one image at a time, when an entry is actually displayed,
 and cache them locally under the image `Id`.
 
-## Migrating existing data
-
-```bash
-just migrate-api -- --input /path/to/vocabulary.json --dry-run
-just migrate-api -- --input /path/to/vocabulary.json
-```
-
-Never point directly at the repo's `templates/vocabulary.json`: make a
-working copy before any attempt. The script is idempotent (upsert by the
-application field `Id`, never by Mongo's native `_id`) — rerunning with the
-same file duplicates nothing.
-
-Entries carrying an inline `ImageBase64` get it split out into the `entry_images` collection
-(see "Entry images" above) as they're upserted, and the field is `$unset` from the `entries`
-document — `--dry-run` won't show this: it returns before touching Mongo at all, so it only
-validates JSON sanitization (duplicate/cyclic categories, empty `Word`/`Definition`, orphaned
-`CategoryIds`), never the image split. To actually rehearse the image split before running
-against production, run the migration for real against a disposable/dev Mongo first.
-
-### One-off: splitting inline images still in Mongo
-
-`migrate_from_json.py` only ever sees entries present in whichever `vocabulary.json` file it's
-given. Entries that only ever existed through live client sync (never captured in a single
-`vocabulary.json` snapshot) can still carry an inline `ImageBase64` field even after that
-migration has run. `split_images_in_place.py` covers that gap: it reads `entries` straight from
-Mongo — no JSON file involved — splits any inline image out to `entry_images`, and clears the
-field, including entries where it's just an empty string. Idempotent, safe to rerun. No `just`
-recipe wraps it yet (unlike `migrate-api`, it takes no `--input`):
-
-```bash
-cd api
-PYTHONPATH=src .venv/bin/python -m migration.split_images_in_place --dry-run
-PYTHONPATH=src .venv/bin/python -m migration.split_images_in_place
-```
-
 ## AI enrichment
 
 Foundational plumbing for upcoming AI-assisted features (definition suggestion, field
@@ -101,10 +66,7 @@ shape is rejected by OpenAI, not caught locally.
 
 `Definition` is a list of senses, one element per distinct meaning — a single string couldn't
 represent a word like "ladre" (leper / miser), and every consumer downstream needs the senses
-apart rather than fused. `migration/split_definitions.py` converts an existing corpus, splitting
-only on newlines the user wrote themselves (never on punctuation, which on real data separates a
-rephrasing far more often than a sense) and leaving `UpdatedAt` untouched, since a schema change
-is not a user edit.
+apart rather than fused.
 
 `Type` is a list too, but at the entry level rather than per sense: a word can genuinely work as
 several parts of speech ("rose": noun and adjective) without each sense needing its own type — the
@@ -114,8 +76,7 @@ though not on the free-text lists: each item must be an exact enum value, so a c
 be worked around by cramming two answers into one element. `["Undefined"]` is how an untyped entry
 is stored, and it never coexists with a real type. `Nom` sits alongside `Nom masculin`/`Nom
 féminin` for words used in both genders ("un/une juste", "la rose" the flower vs "le rose" the
-colour), where picking a gender would be arbitrary. `migration/wrap_entry_types.py` converts an
-existing corpus by plain wrapping, inferring no second type.
+colour), where picking a gender would be arbitrary.
 
 `POST /enrichment/fields` judges, per field (Definition/Type/Synonyms/ExampleSentences), whether
 the given current value is worth suggesting a replacement for — conservative by default, a
@@ -158,8 +119,8 @@ write it follows, which means a vector can also end up missing or stale that way
 whatever drifted (failed refreshes and membership changes alike) and drops embeddings whose
 category is gone, returning `{embedded, unchanged, orphans_removed}`. Costs nothing when the corpus
 is already current, so it doubles as routine hygiene rather than being purely an error-repair path.
-The same pass is available on the server as
-`PYTHONPATH=src .venv/bin/python -m migration.index_category_embeddings [--dry-run]`.
+Both clients expose it as a user action (Windows: `MainWindow.xaml.cs`/`VocabularyApiClient.
+TryReindexCategoryEmbeddingsAsync`; Android: `options.js` via `apiClient.reindexCategoryEmbeddings`).
 
 Two manual debug tools sit in `tests/` (not pytest tests — they drive the API's own modules
 directly and print every request, intermediate result and cost estimate). No `just` recipe wraps

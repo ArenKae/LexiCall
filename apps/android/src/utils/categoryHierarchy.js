@@ -13,7 +13,28 @@ function compareNames(a, b) {
   return compareText(a.Name, b.Name);
 }
 
-function buildChildrenLookup(categories) {
+// Manual rank (from settings.json, see the store's categoryOrder) takes
+// priority if either compared category has one, otherwise alphabetical — a
+// category added later to an already-reordered group sorts alphabetically
+// after the manually positioned ones, until it's moved in turn.
+function sortSiblings(siblings, order) {
+  siblings.sort((a, b) => {
+    const rankA = order[a.Id];
+    const rankB = order[b.Id];
+    const hasRankA = rankA !== undefined;
+    const hasRankB = rankB !== undefined;
+
+    if (hasRankA && hasRankB) {
+      return rankA - rankB;
+    }
+    if (hasRankA !== hasRankB) {
+      return hasRankA ? -1 : 1;
+    }
+    return compareNames(a, b);
+  });
+}
+
+function buildChildrenLookup(categories, order = {}) {
   const knownIds = new Set(categories.map((category) => category.Id));
   const roots = [];
   const childrenByParent = new Map();
@@ -31,17 +52,19 @@ function buildChildrenLookup(categories) {
     childrenByParent.set(parentId, siblings);
   }
 
-  roots.sort(compareNames);
+  sortSiblings(roots, order);
   for (const siblings of childrenByParent.values()) {
-    siblings.sort(compareNames);
+    sortSiblings(siblings, order);
   }
 
   return { roots, childrenByParent };
 }
 
 // Depth-first walk returning [{ category, depth }], roots first then children.
-export function flattenCategories(categories) {
-  const { roots, childrenByParent } = buildChildrenLookup(categories);
+// order (categoryOrder from settings) breaks ties within a sibling group;
+// omitted, siblings stay purely alphabetical.
+export function flattenCategories(categories, order = {}) {
+  const { roots, childrenByParent } = buildChildrenLookup(categories, order);
   const flattened = [];
   const visited = new Set();
 
@@ -67,6 +90,16 @@ export function flattenCategories(categories) {
   }
 
   return flattened;
+}
+
+// Siblings (same effective parent as category, itself included) in the
+// current display order — used to move a category up/down among them.
+export function getSiblingsInOrder(categories, category, order = {}) {
+  const knownIds = new Set(categories.map((item) => item.Id));
+  const parentId = effectiveParentId(category, knownIds);
+  const siblings = categories.filter((item) => effectiveParentId(item, knownIds) === parentId);
+  sortSiblings(siblings, order);
+  return siblings;
 }
 
 export function getDescendantIds(categories, rootId) {

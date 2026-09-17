@@ -1,4 +1,5 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from './CategoryIcon';
 import { SortControl } from './SortControl';
 import { useTheme } from '../theme/useTheme';
@@ -18,11 +19,17 @@ export function FilterSheet({
   onResetFilter,
 }) {
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.sheet, { backgroundColor: colors.surface }]}>
+        <Pressable
+          style={[
+            styles.sheet,
+            { backgroundColor: colors.surface, paddingBottom: 28 + insets.bottom },
+          ]}
+        >
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Trier par</Text>
           <SortControl value={sortMode} onChange={onSortModeChange} />
 

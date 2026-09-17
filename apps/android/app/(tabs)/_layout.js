@@ -17,6 +17,11 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      // Default is "firstRoute": back always jumps to Accueil regardless of
+      // which tab was active before, so once you're already there it has
+      // nowhere left to go and falls through to closing the app. "history"
+      // makes back return to whichever tab was actually visited last.
+      backBehavior="history"
       screenOptions={{
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.textPrimary,
@@ -58,8 +63,8 @@ export default function TabsLayout() {
         options={{ title: 'Recherche', tabBarIcon: icon('Phosphor.magnifying-glass') }}
       />
       <Tabs.Screen
-        name="more"
-        options={{ title: 'Plus', tabBarIcon: icon('Phosphor.dots-three-circle-vertical') }}
+        name="options"
+        options={{ title: 'Options', tabBarIcon: icon('Phosphor.gear') }}
       />
     </Tabs>
   );

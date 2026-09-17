@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CategoryIcon } from './CategoryIcon';
 import { useTheme } from '../theme/useTheme';
+import { isEntryLocked } from '../models/vocabulary';
 import { UNDEFINED_TYPE } from '../utils/vocabularyEntryTypes';
 
 function typeLabel(types) {
@@ -10,30 +11,43 @@ function typeLabel(types) {
 
 // One entry in the browsing list: word, grammatical type, first sense and the
 // categories it belongs to.
-export function EntryCard({ entry, categoryIndex, onPress }) {
+export function EntryCard({
+  entry,
+  categoryIndex,
+  onPress,
+  onLongPress,
+  onToggleLocks,
+  hideArchivedBadge,
+}) {
   const colors = useTheme();
   const categories = entry.CategoryIds.map((id) => categoryIndex.get(id)).filter(Boolean);
-  const leadCategory = categories[0];
   const type = typeLabel(entry.Type);
+  const allLocked = isEntryLocked(entry);
 
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={300}
       style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
     >
       <View style={styles.headline}>
-        {leadCategory && (
-          <CategoryIcon iconKey={leadCategory.icon} color={leadCategory.color} size={22} />
-        )}
         <View style={styles.headlineText}>
           <Text style={[styles.word, { color: colors.textPrimary }]}>{entry.Word}</Text>
           {type.length > 0 && (
             <Text style={[styles.type, { color: colors.textSecondary }]}>{type}</Text>
           )}
         </View>
-        {entry.IsArchived && (
+        {entry.IsArchived && !hideArchivedBadge && (
           <Text style={[styles.archived, { color: colors.textMuted }]}>archivée</Text>
         )}
+        <Pressable onPress={() => onToggleLocks(!allLocked)} hitSlop={12} style={styles.lock}>
+          <CategoryIcon
+            iconKey={allLocked ? 'Phosphor.lock-key' : 'Phosphor.lock-key-open'}
+            color={allLocked ? colors.danger : colors.textMuted}
+            size={18}
+          />
+        </Pressable>
       </View>
 
       <Text style={[styles.sense, { color: colors.textSecondary }]} numberOfLines={2}>
@@ -66,6 +80,7 @@ const styles = StyleSheet.create({
   word: { fontSize: 19, fontWeight: '700' },
   type: { fontSize: 12, fontStyle: 'italic', marginTop: 1 },
   archived: { fontSize: 11, fontStyle: 'italic' },
+  lock: { paddingVertical: 2, paddingHorizontal: 2 },
   sense: { fontSize: 13, lineHeight: 18, marginTop: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   chip: {

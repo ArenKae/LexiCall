@@ -19,26 +19,40 @@
                    MouseLeftButtonUp="PreviewImage_MouseLeftButtonUp" />
 
             <Button x:Name="PreviousButton"
-                    Content="‹"
-                    FontSize="20"
-                    Width="32" Height="32"
+                    Width="44" Height="44"
                     Padding="0"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
                     Margin="8,0,0,0"
                     ToolTip="Image précédente"
-                    Click="PreviousButton_Click" />
+                    Click="PreviousButton_Click">
+                <Path Data="M 8 2 L 2 9 L 8 16"
+                      Stroke="{DynamicResource Brush.Text.Primary}"
+                      StrokeThickness="2"
+                      StrokeLineJoin="Round"
+                      StrokeStartLineCap="Round"
+                      StrokeEndLineCap="Round"
+                      Width="13" Height="20"
+                      Stretch="Uniform" />
+            </Button>
 
             <Button x:Name="NextButton"
-                    Content="›"
-                    FontSize="20"
-                    Width="32" Height="32"
+                    Width="44" Height="44"
                     Padding="0"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Center"
                     Margin="0,0,8,0"
                     ToolTip="Image suivante"
-                    Click="NextButton_Click" />
+                    Click="NextButton_Click">
+                <Path Data="M 2 2 L 8 9 L 2 16"
+                      Stroke="{DynamicResource Brush.Text.Primary}"
+                      StrokeThickness="2"
+                      StrokeLineJoin="Round"
+                      StrokeStartLineCap="Round"
+                      StrokeEndLineCap="Round"
+                      Width="13" Height="20"
+                      Stretch="Uniform" />
+            </Button>
         </Grid>
 
         <TextBlock x:Name="CaptionText"

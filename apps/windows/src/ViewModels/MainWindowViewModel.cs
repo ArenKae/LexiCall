@@ -1,4 +1,4 @@
-// Main ViewModel: exposes the category tree, the filtered entry list
+﻿// Main ViewModel: exposes the category tree, the filtered entry list
 // (category + search), and CRUD operations on entries and categories to
 // MainWindow.xaml.
 using System.Collections.ObjectModel;
@@ -30,17 +30,43 @@ public enum GlobalSyncStatus
     Problem
 }
 
+// Order the entry list is shown in. In-memory only, never persisted to
+// settings.json — it resets to Recent on every launch.
+public enum EntrySortMode
+{
+    Recent,
+    Alphabetical
+}
+
+// One line of the entry list's sort dropdown (MainWindow.xaml).
+public sealed record EntrySortOption(EntrySortMode Mode, string Label);
+
 // One sense of the selected entry's definition, as the detail card renders it.
 public sealed record EntrySenseDisplay(string NumberDisplay, string Text, bool ShowNumber);
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
+    // Checkpoint standing for "pull everything". Not null: omitting
+    // updated_since returns the live view *without* tombstones, so locally
+    // lingering records deleted on the server would never be cleaned up.
+    private const string FullPullCheckpoint = "1970-01-01T00:00:00Z";
+
+    // Explicit, so ordering and date/time formatting stay French whatever the
+    // machine's own locale is.
+    private static readonly CultureInfo FrenchCulture = CultureInfo.GetCultureInfo("fr-FR");
+
+    // Accent- and case-insensitive French ordering, so "Éphémère" files under E.
+    private static readonly StringComparer WordComparer = StringComparer.Create(
+        FrenchCulture,
+        CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace);
+
     private readonly VocabularyRepository _repository;
     private VocabularyApiClient _apiClient;
     private string? _apiBaseUrl;
     private string? _apiKey;
     private string _searchQuery = string.Empty;
     private string _searchStatusText = string.Empty;
+    private EntrySortMode _sortMode = EntrySortMode.Recent;
     private VocabularyEntry? _selectedEntry;
     private CategoryNodeViewModel? _selectedCategoryNode;
     private HashSet<Guid>? _activeCategoryFilterIds;
@@ -48,6 +74,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly List<PendingDeletion> _pendingCategoryDeletions;
     private readonly DispatcherTimer _periodicSyncTimer;
     private bool _isSyncing;
+
+    // Bumped by ImportDatabase: a resync started before the import must drop
+    // its whole batch instead of writing the pre-import state back over the
+    // freshly imported file.
+    private int _dataGeneration;
+    private bool _resyncRequestedWhileSyncing;
+    private bool _fullResyncRequested;
+    private bool _suppressPerRecordSyncHistory;
     private GlobalSyncStatus _globalSyncStatus = GlobalSyncStatus.NotConfigured;
     private DateTimeOffset? _lastSyncedAt;
 
@@ -140,6 +174,40 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _searchStatusText, value);
     }
 
+    public IReadOnlyList<EntrySortOption> SortOptions { get; } =
+    [
+        new(EntrySortMode.Recent, "Plus récent"),
+        new(EntrySortMode.Alphabetical, "Alphabétique")
+    ];
+
+    public EntrySortMode SortMode
+    {
+        get => _sortMode;
+        set
+        {
+            if (SetProperty(ref _sortMode, value))
+            {
+                OnPropertyChanged(nameof(SelectedSortOption));
+                OnPropertyChanged(nameof(SortModeToolTip));
+                RefreshFilteredEntries();
+            }
+        }
+    }
+
+    public EntrySortOption SelectedSortOption
+    {
+        get => SortOptions.First(option => option.Mode == SortMode);
+        set
+        {
+            if (value is not null)
+            {
+                SortMode = value.Mode;
+            }
+        }
+    }
+
+    public string SortModeToolTip => $"Trier les entrées ({SelectedSortOption.Label})";
+
     public bool HasEntries => Entries.Count > 0;
 
     public bool HasFilteredEntries => FilteredEntries.Count > 0;
@@ -191,7 +259,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 null => "Jamais synchronisé",
                 { } syncedAt when syncedAt < entry.ClientLastWrite => "Synchronisation en attente",
-                { } syncedAt => $"Synchronisé le {syncedAt.LocalDateTime:g}"
+                { } syncedAt => $"Synchronisé le {syncedAt.LocalDateTime.ToString("dd/MM/yy à HH:mm", FrenchCulture)}"
             };
         }
     }
@@ -333,6 +401,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         set => SetProperty(ref _isReindexingCategories, value);
     }
 
+    private bool _isFullResyncing;
+
+    // Drives the Options window's "Tout resynchroniser" spinner and label.
+    public bool IsFullResyncing
+    {
+        get => _isFullResyncing;
+        private set => SetProperty(ref _isFullResyncing, value);
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public void ToggleTheme()
@@ -365,6 +442,110 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedEntrySyncIsSynced));
     }
 
+    // Called by OptionsWindow's "Resynchronisation complète" button, and the
+    // recovery path whenever the configured server turns out to differ from
+    // the one the sync state was built against.
+    public async Task ForceFullResyncAsync()
+    {
+        if (!_apiClient.IsConfigured)
+        {
+            GlobalSyncStatus = GlobalSyncStatus.NotConfigured;
+            return;
+        }
+
+        InvalidateSyncState();
+        _fullResyncRequested = true;
+        IsFullResyncing = true;
+
+        try
+        {
+            // No ConfigureAwait(false): IsFullResyncing drives a bound spinner
+            // and must be cleared back on the UI thread.
+            await TryResyncAsync();
+        }
+        finally
+        {
+            IsFullResyncing = false;
+        }
+    }
+
+    // Drops everything that describes a relationship with a specific server:
+    // every record is then pushed again and the whole server view pulled back,
+    // both still arbitrated per record by Last-Write-Wins.
+    private void InvalidateSyncState()
+    {
+        foreach (var entry in Entries)
+        {
+            entry.SyncedAt = null;
+        }
+
+        foreach (var category in Categories)
+        {
+            category.SyncedAt = null;
+        }
+
+        var settings = SettingsStore.Load();
+        settings.LastPulledAt = FullPullCheckpoint;
+        settings.SyncedAgainstBaseUrl = NormalizeBaseUrl(_apiBaseUrl);
+        SettingsStore.Save(settings);
+        SaveDatabase();
+    }
+
+    private static string NormalizeBaseUrl(string? baseUrl) =>
+        (baseUrl ?? string.Empty).Trim().TrimEnd('/').ToLowerInvariant();
+
+    public void ExportDatabase(string destinationPath)
+    {
+        SaveDatabase();
+        _repository.ExportTo(destinationPath);
+    }
+
+    // Replaces the local database with an imported file and reloads everything
+    // bound to it.
+    public void ImportDatabase(string sourcePath)
+    {
+        _repository.ImportFrom(sourcePath);
+        _dataGeneration++;
+
+        var database = _repository.LoadDatabase();
+
+        Entries.Clear();
+
+        foreach (var entry in database.Entries)
+        {
+            Entries.Add(entry);
+        }
+
+        Categories.Clear();
+
+        foreach (var category in database.Categories)
+        {
+            Categories.Add(category);
+        }
+
+        _pendingEntryDeletions.Clear();
+        _pendingEntryDeletions.AddRange(database.PendingEntryDeletions);
+        _pendingCategoryDeletions.Clear();
+        _pendingCategoryDeletions.AddRange(database.PendingCategoryDeletions);
+
+        // Forces the next resync to pull the server's full view instead of a
+        // delta: imported records carry their own SyncedAt, so without this an
+        // import would neither push nor pull anything and stay silently out of
+        // sync forever.
+        var settings = SettingsStore.Load();
+        settings.LastPulledAt = FullPullCheckpoint;
+        SettingsStore.Save(settings);
+
+        RebuildCategoryTree();
+        RefreshFilteredEntries();
+        SelectedEntry = FilteredEntries.FirstOrDefault();
+        OnEntriesChanged();
+        OnPropertyChanged(nameof(HasCategories));
+
+        GlobalSyncStatus = _apiClient.IsConfigured ? GlobalSyncStatus.Syncing : GlobalSyncStatus.NotConfigured;
+        _ = TryResyncAsync();
+    }
+
     // Called from OptionsWindow's "Tester la connexion" button — reflects the
     // manual test result on GlobalSyncStatus immediately, rather than leaving
     // the sidebar footer stuck on its previous state until the next periodic
@@ -386,16 +567,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return status;
     }
 
-    // Shared entry point for startup and the periodic timer — re-entrancy
-    // guard (a resync already running skips a second one) and edit guard
-    // (see IsEditorDialogOpen). Both checked at trigger time: DispatcherTimer
-    // .Tick and IsEditorDialogOpen writes both run on the UI thread, so
-    // there's no race to handle. If either guard trips, this call is simply
-    // skipped — the next tick, 60 seconds later, retries on its own.
+    // Shared entry point for startup, the periodic timer and ImportDatabase —
+    // re-entrancy guard (a resync already running defers a second one to right
+    // after it, so an import never waits a full tick for its full pull) and
+    // edit guard (see IsEditorDialogOpen). Both checked at trigger time:
+    // DispatcherTimer.Tick and IsEditorDialogOpen writes both run on the UI
+    // thread, so there's no race to handle.
     private async Task TryResyncAsync()
     {
-        if (_isSyncing || IsEditorDialogOpen)
+        if (IsEditorDialogOpen)
         {
+            return;
+        }
+
+        if (_isSyncing)
+        {
+            _resyncRequestedWhileSyncing = true;
             return;
         }
 
@@ -408,6 +595,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         finally
         {
             _isSyncing = false;
+        }
+
+        if (_resyncRequestedWhileSyncing)
+        {
+            _resyncRequestedWhileSyncing = false;
+            await TryResyncAsync().ConfigureAwait(false);
         }
     }
 
@@ -425,6 +618,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
+        var generation = _dataGeneration;
+
+        // Read before the first await, while still on the caller's thread.
+        // Comparing here rather than in UpdateApiSettings: that one runs on
+        // every keystroke in the Options URL field, which would invalidate the
+        // sync state once per typed character.
+        var serverChanged = !string.Equals(
+            SettingsStore.Load().SyncedAgainstBaseUrl,
+            NormalizeBaseUrl(_apiBaseUrl),
+            StringComparison.Ordinal);
+
         // Still on the caller's thread here (no await yet) — no
         // Dispatcher.Invoke needed for these two writes.
         GlobalSyncStatus = GlobalSyncStatus.Syncing;
@@ -433,10 +637,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (status != ApiConnectionStatus.Ok)
         {
             // Unreachable or misconfigured API: no point attempting hundreds
-            // of upserts that would all fail, on every startup.
+            // of upserts that would all fail, on every startup. _fullResyncRequested
+            // is deliberately left set so the request survives to the next cycle.
             Application.Current.Dispatcher.Invoke(() => GlobalSyncStatus = GlobalSyncStatus.Problem);
             return;
         }
+
+        // Only once the server answered: a half-typed URL that briefly looks
+        // configured must not wipe the sync state.
+        if (serverChanged)
+        {
+            Application.Current.Dispatcher.Invoke(InvalidateSyncState);
+            _fullResyncRequested = true;
+        }
+
+        var isFullResync = _fullResyncRequested;
+        _fullResyncRequested = false;
 
         // Retries pending deletions. Entries before categories — the
         // reverse of the "categories before entries" convention below: the
@@ -534,6 +750,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         // (only reads via .ToList()/.Where()).
         Application.Current.Dispatcher.Invoke(() =>
         {
+            if (generation != _dataGeneration)
+            {
+                return;
+            }
+
+            // A full resync touches every record, which would blow the 200-row
+            // history cap and erase everything else — one summary row below
+            // replaces the hundreds of per-record ones.
+            _suppressPerRecordSyncHistory = isFullResync;
+
             foreach (var category in syncedCategories)
             {
                 category.SyncedAt = category.ClientLastWrite;
@@ -572,8 +798,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     GetChangeKind(entry.CreatedAt, entry.ClientLastWrite));
             }
 
-            MergePulled(Categories, categoriesPull.Items, FindCategoryIndex, c => c.Id, c => c.ClientLastWrite, c => c.CreatedAt, c => c.IsDeleted, (c, t) => c.SyncedAt = t, SyncHistoryEntityType.Category, c => c.Name);
-            MergePulled(Entries, entriesPull.Items, FindEntryIndex, e => e.Id, e => e.ClientLastWrite, e => e.CreatedAt, e => e.IsDeleted, (e, t) => e.SyncedAt = t, SyncHistoryEntityType.Entry, e => e.Word);
+            var appliedPulls =
+                MergePulled(Categories, categoriesPull.Items, FindCategoryIndex, c => c.Id, c => c.ClientLastWrite, c => c.CreatedAt, c => c.IsDeleted, (c, t) => c.SyncedAt = t, SyncHistoryEntityType.Category, c => c.Name) +
+                MergePulled(Entries, entriesPull.Items, FindEntryIndex, e => e.Id, e => e.ClientLastWrite, e => e.CreatedAt, e => e.IsDeleted, (e, t) => e.SyncedAt = t, SyncHistoryEntityType.Entry, e => e.Word);
+
+            if (isFullResync)
+            {
+                _suppressPerRecordSyncHistory = false;
+                RecordFullResyncHistory(
+                    syncedCategories.Count + syncedEntries.Count,
+                    categoryPushResults.Count(r => !r.Success) + entryPushResults.Count(r => !r.Success),
+                    appliedPulls);
+            }
+
             RebuildCategoryTree();
             RefreshFilteredEntries();
             SaveDatabase();
@@ -590,7 +827,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(SelectedEntrySyncIsSynced));
         });
 
-        if (categoriesPull.ServerTimestamp is { } newCheckpoint)
+        if (categoriesPull.ServerTimestamp is { } newCheckpoint && generation == _dataGeneration)
         {
             var latest = SettingsStore.Load();
             latest.LastPulledAt = newCheckpoint;
@@ -603,8 +840,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     // newer — a defensive check, the server already returns only rows newer
     // than the checkpoint). Generic over VocabularyEntry and
     // VocabularyCategory via small delegate accessors, since the two models
-    // share no common interface.
-    private void MergePulled<T>(
+    // share no common interface. Returns how many records it actually applied,
+    // which a full resync reports instead of its per-record history rows.
+    private int MergePulled<T>(
         ObservableCollection<T> collection,
         IReadOnlyList<T> pulled,
         Func<Guid, int> findIndex,
@@ -616,6 +854,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SyncHistoryEntityType entityType,
         Func<T, string> getLabel)
     {
+        var applied = 0;
+
         foreach (var item in pulled)
         {
             var index = findIndex(getId(item));
@@ -629,6 +869,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     // history reads by effect, not by mechanism.
                     RecordSyncHistory(entityType, getId(item), getLabel(collection[index]), SyncHistoryOperation.Delete, SyncHistoryOutcome.Success);
                     collection.RemoveAt(index);
+                    applied++;
                 }
 
                 continue;
@@ -645,6 +886,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 collection.Add(item);
                 RecordSyncHistory(entityType, getId(item), getLabel(item), SyncHistoryOperation.Pull, SyncHistoryOutcome.Success,
                     GetChangeKind(getCreatedAt(item), getClientLastWrite(item)));
+                applied++;
             }
             else if (getClientLastWrite(item) > getClientLastWrite(collection[index]))
             {
@@ -652,8 +894,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 collection[index] = item;
                 RecordSyncHistory(entityType, getId(item), getLabel(item), SyncHistoryOperation.Pull, SyncHistoryOutcome.Success,
                     GetChangeKind(getCreatedAt(item), getClientLastWrite(item)));
+                applied++;
             }
         }
+
+        return applied;
     }
 
     // Must only be called on the UI thread: mutates the UI-bound SyncHistory
@@ -661,7 +906,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void RecordSyncHistory(SyncHistoryEntityType entityType, Guid entityId, string entityLabel,
         SyncHistoryOperation operation, SyncHistoryOutcome outcome, SyncHistoryChangeKind? changeKind = null)
     {
-        SyncHistory.Insert(0, new SyncHistoryEntry
+        if (_suppressPerRecordSyncHistory)
+        {
+            return;
+        }
+
+        InsertSyncHistory(new SyncHistoryEntry
         {
             Timestamp = DateTimeOffset.Now,
             EntityType = entityType,
@@ -671,6 +921,30 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             Outcome = outcome,
             ChangeKind = changeKind
         });
+    }
+
+    // The one row a full resync leaves behind. EntityType/EntityId carry no
+    // meaning here: the row describes a whole cycle, not a single record.
+    private void RecordFullResyncHistory(int pushed, int pushFailures, int pulled)
+    {
+        var details = $"{pushed} envoyés · {pulled} reçus"
+            + (pushFailures > 0 ? $" · {pushFailures} échecs" : string.Empty);
+
+        InsertSyncHistory(new SyncHistoryEntry
+        {
+            Timestamp = DateTimeOffset.Now,
+            EntityType = SyncHistoryEntityType.Entry,
+            EntityId = Guid.Empty,
+            EntityLabel = "Resynchronisation complète",
+            Operation = SyncHistoryOperation.FullResync,
+            Outcome = pushFailures > 0 ? SyncHistoryOutcome.Failure : SyncHistoryOutcome.Success,
+            Details = details
+        });
+    }
+
+    private void InsertSyncHistory(SyncHistoryEntry historyEntry)
+    {
+        SyncHistory.Insert(0, historyEntry);
 
         while (SyncHistory.Count > SyncHistoryStore.MaxEntries)
         {
@@ -855,6 +1129,32 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         // whatever view it was just selected from, so RefreshFilteredEntries
         // always ends up picking a new SelectedEntry — its own setter is
         // what refreshes ArchiveButtonText, no extra notification needed here.
+        RebuildCategoryTree();
+        RefreshFilteredEntries();
+        SaveDatabase();
+        _ = PushEntryUpsertAsync(entry);
+    }
+
+    // Quick-toggle from the entry list's padlock: locks or unlocks every
+    // AI-enrichment-lockable field at once, leaving any other locked field
+    // name untouched. The per-field checkboxes in the entry editor stay the
+    // fine-grained way to do the same thing.
+    public void ToggleEntryLocks(VocabularyEntry? entry)
+    {
+        if (entry is null)
+        {
+            return;
+        }
+
+        var shouldLock = !EntryLocks.IsFullyLocked(entry);
+        entry.LockedFields.RemoveAll(EntryLocks.LockableFields.Contains);
+
+        if (shouldLock)
+        {
+            entry.LockedFields.AddRange(EntryLocks.LockableFields);
+        }
+
+        entry.ClientLastWrite = DateTimeOffset.Now;
         RebuildCategoryTree();
         RefreshFilteredEntries();
         SaveDatabase();
@@ -1116,6 +1416,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         uncategorizedNode.EntryCount = Entries.Count(entry => entry.CategoryIds.Count == 0 && !entry.IsArchived);
         CategoryTree.Add(uncategorizedNode);
 
+        var lockedNode = CategoryNodeViewModel.CreateLocked(OnCategoryNodeSelected);
+        lockedNode.EntryCount = Entries.Count(entry => !entry.IsArchived && EntryLocks.IsFullyLocked(entry));
+        CategoryTree.Add(lockedNode);
+
         var archivesNode = CategoryNodeViewModel.CreateArchives(OnCategoryNodeSelected);
         archivesNode.EntryCount = Entries.Count(entry => entry.IsArchived);
         CategoryTree.Add(archivesNode);
@@ -1155,15 +1459,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             }
         }
 
-        foreach (var rootNode in CategoryTree.Skip(3))
+        foreach (var rootNode in CategoryTree.Skip(4))
         {
             ComputeEntryCounts(rootNode);
         }
 
-        // "Sans catégorie" hides itself when empty (see the TreeViewItem style
-        // in Styles.xaml) — falls back to "Toutes les entrées" rather than
-        // leaving selection on an invisible node.
-        if (selectedKind == CategoryNodeKind.Uncategorized && uncategorizedNode.EntryCount == 0)
+        // "Sans catégorie" and "Verrouillées" hide themselves when empty (see
+        // the TreeViewItem style in Styles.xaml) — fall back to "Toutes les
+        // entrées" rather than leaving selection on an invisible node.
+        if ((selectedKind == CategoryNodeKind.Uncategorized && uncategorizedNode.EntryCount == 0) ||
+            (selectedKind == CategoryNodeKind.Locked && lockedNode.EntryCount == 0))
         {
             selectedKind = null;
         }
@@ -1182,7 +1487,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             CategoryNodeKind.Category => CollectNodes(CategoryTree)
                 .FirstOrDefault(node => node.Category?.Id == selectedCategoryId),
             CategoryNodeKind.Uncategorized => CategoryTree[1],
-            CategoryNodeKind.Archives => CategoryTree[2],
+            CategoryNodeKind.Locked => CategoryTree[2],
+            CategoryNodeKind.Archives => CategoryTree[3],
             _ => allNode
         } ?? allNode;
 
@@ -1400,16 +1706,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             .Where(entry => EntryMatchesCategory(entry) && EntryMatchesSearch(entry))
             .ToList();
 
-        if (!string.IsNullOrWhiteSpace(SearchQuery))
-        {
-            var normalizedQuery = NormalizeForSearch(SearchQuery);
+        var normalizedQuery = string.IsNullOrWhiteSpace(SearchQuery)
+            ? null
+            : NormalizeForSearch(SearchQuery);
 
-            // Stable sort: entries whose Word contains the pattern float to
-            // the top, ties keep their original relative order.
-            matchingEntries = matchingEntries
-                .OrderByDescending(entry => SearchFieldMatches(entry.Word, normalizedQuery))
-                .ToList();
-        }
+        // An entry matched only on its definition/notes/etc. is a weaker hit
+        // than one matched on the word itself, so word matches float to the
+        // top; SortMode orders everything below that (and breaks its ties).
+        var ranked = matchingEntries
+            .OrderByDescending(entry => normalizedQuery is not null && SearchFieldMatches(entry.Word, normalizedQuery));
+
+        matchingEntries = (SortMode == EntrySortMode.Alphabetical
+                ? ranked.ThenBy(entry => entry.Word, WordComparer)
+                : ranked.ThenByDescending(entry => entry.CreatedAt).ThenBy(entry => entry.Word, WordComparer))
+            .ToList();
 
         FilteredEntries.Clear();
 
@@ -1461,6 +1771,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (_selectedCategoryNode.Kind == CategoryNodeKind.Uncategorized)
         {
             return !entry.IsArchived && entry.CategoryIds.Count == 0;
+        }
+
+        if (_selectedCategoryNode.Kind == CategoryNodeKind.Locked)
+        {
+            return !entry.IsArchived && EntryLocks.IsFullyLocked(entry);
         }
 
         return _activeCategoryFilterIds is not null &&

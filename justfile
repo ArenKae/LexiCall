@@ -51,7 +51,7 @@ install-android:
 start-android:
     just --justfile apps/android/justfile --working-directory apps/android start
 
-# Local native build (expo run:android): builds and installs on a connected device.
+# Production release APK (prebuild + gradlew assembleRelease).
 [group('app : android')]
 build-android:
     just --justfile apps/android/justfile --working-directory apps/android build
@@ -110,11 +110,6 @@ down:
 [group('api : prod')]
 backup:
     just --justfile api/justfile --working-directory api prod-backup
-
-# One-off, idempotent vocabulary.json -> Mongo migration.
-[group('api : prod')]
-migrate *ARGS:
-    just --justfile api/justfile --working-directory api migrate {{ARGS}}
 
 # Interactive mongosh shell on the prod stack.
 [group('api : prod')]

@@ -1,4 +1,5 @@
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from '../src/components/CategoryIcon';
 import { useTheme } from '../src/theme/useTheme';
 import { useVocabularyStore } from '../src/store/useVocabularyStore';
@@ -9,6 +10,7 @@ const OPERATION_ICONS = {
   Push: 'Phosphor.caret-circle-up',
   Pull: 'Phosphor.caret-circle-down',
   Delete: 'Phosphor.trash',
+  FullResync: 'Phosphor.arrows-counter-clockwise',
 };
 
 const OPERATION_LABELS = { Push: 'Envoyé', Pull: 'Reçu', Delete: 'Supprimé' };
@@ -28,6 +30,7 @@ function formatTimestamp(iso) {
 
 export default function SyncHistory() {
   const colors = useTheme();
+  const insets = useSafeAreaInsets();
   const syncHistory = useVocabularyStore((state) => state.syncHistory);
   const clearSyncHistory = useVocabularyStore((state) => state.clearSyncHistory);
 
@@ -51,12 +54,16 @@ export default function SyncHistory() {
         }
         renderItem={({ item }) => {
           const failed = item.Outcome === 'Failure';
-          const details = [
-            OPERATION_LABELS[item.Operation] ?? item.Operation,
-            item.ChangeKind ? CHANGE_LABELS[item.ChangeKind] : null,
-            item.EntityType === 'Category' ? 'catégorie' : null,
-            formatTimestamp(item.Timestamp),
-          ].filter(Boolean);
+          // A full-resync row carries its own counts instead of describing one
+          // record, so its own summary replaces the per-record breakdown.
+          const details = item.Details
+            ? [item.Details, formatTimestamp(item.Timestamp)]
+            : [
+                OPERATION_LABELS[item.Operation] ?? item.Operation,
+                item.ChangeKind ? CHANGE_LABELS[item.ChangeKind] : null,
+                item.EntityType === 'Category' ? 'catégorie' : null,
+                formatTimestamp(item.Timestamp),
+              ].filter(Boolean);
 
           return (
             <View style={[styles.row, { borderBottomColor: colors.borderSubtle }]}>
@@ -80,7 +87,12 @@ export default function SyncHistory() {
       />
 
       {syncHistory.length > 0 && (
-        <View style={[styles.footer, { borderTopColor: colors.borderSubtle }]}>
+        <View
+          style={[
+            styles.footer,
+            { borderTopColor: colors.borderSubtle, paddingBottom: 14 + insets.bottom },
+          ]}
+        >
           <Pressable style={[styles.clear, { borderColor: colors.danger }]} onPress={confirmClear}>
             <Text style={{ color: colors.danger, fontWeight: '600' }}>Vider l’historique</Text>
           </Pressable>

@@ -13,7 +13,18 @@ export function CategoryIcon({ iconKey, color, size = 20 }) {
 
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${icon.viewBox} ${icon.viewBox}`}>
-      <Path d={icon.d} fill={color} fillRule={icon.fillRule} clipRule={icon.fillRule} />
+      {icon.strokeWidth ? (
+        <Path
+          d={icon.d}
+          fill="none"
+          stroke={color}
+          strokeWidth={icon.strokeWidth}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ) : (
+        <Path d={icon.d} fill={color} fillRule={icon.fillRule} clipRule={icon.fillRule} />
+      )}
     </Svg>
   );
 }

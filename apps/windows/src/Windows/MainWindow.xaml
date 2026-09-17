@@ -19,14 +19,58 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="4,0,4,18">
-            <TextBlock Text="LexiCall"
-                       FontFamily="{StaticResource Font.Serif}"
-                       FontSize="28" />
-            <TextBlock Text="Organisation et recherche de vocabulaire par catégorie."
-                       Margin="0,2,0,0"
-                       Foreground="{DynamicResource Brush.Text.Secondary}" />
-        </StackPanel>
+        <Grid Grid.Row="0" Margin="4,0,4,18">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="LexiCall"
+                           FontFamily="{StaticResource Font.Serif}"
+                           FontSize="28" />
+                <TextBlock Text="Organisation et recherche de vocabulaire par catégorie."
+                           Margin="0,2,0,0"
+                           Foreground="{DynamicResource Brush.Text.Secondary}" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center">
+                <Button x:Name="ImportDatabaseButton"
+                        Style="{StaticResource GhostButtonStyle}"
+                        Padding="10,6"
+                        Click="ImportDatabaseButton_Click"
+                        ToolTip="Remplace la base de vocabulaire locale par un fichier JSON choisi.">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="{StaticResource Icon.Phosphor.folder-open}"
+                              Fill="{DynamicResource Brush.Text.Secondary}"
+                              Width="15" Height="15" Stretch="Uniform"
+                              VerticalAlignment="Center" />
+                        <TextBlock Text="Importer"
+                                   Margin="7,0,0,0"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <Button x:Name="ExportDatabaseButton"
+                        Style="{StaticResource GhostButtonStyle}"
+                        Margin="8,0,0,0"
+                        Padding="10,6"
+                        Click="ExportDatabaseButton_Click"
+                        ToolTip="Enregistre une copie de la base de vocabulaire locale.">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="{StaticResource Icon.Phosphor.floppy-disk}"
+                              Fill="{DynamicResource Brush.Text.Secondary}"
+                              Width="15" Height="15" Stretch="Uniform"
+                              VerticalAlignment="Center" />
+                        <TextBlock Text="Exporter"
+                                   Margin="7,0,0,0"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
@@ -156,6 +200,35 @@
                                         Click="SelectUncategorizedButton_Click"
                                         ToolTip="Sans catégorie">
                                     <Path Data="{StaticResource Icon.Solar.tag}"
+                                          Fill="{DynamicResource Brush.Icon.Neutral}"
+                                          Width="14" Height="14" Stretch="Uniform" />
+                                </Button>
+                            </Border>
+                            <Border Width="32" Height="32"
+                                    Margin="0,0,0,4"
+                                    CornerRadius="8"
+                                    BorderThickness="1.5">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Surface.Hover}" />
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding SelectedCategoryNode.Kind}" Value="{x:Static viewModels:CategoryNodeKind.Locked}">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Selection.Background}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Button Style="{StaticResource GhostButtonStyle}"
+                                        Width="24" Height="24"
+                                        Padding="0"
+                                        Click="SelectLockedButton_Click"
+                                        ToolTip="Verrouillées">
+                                    <Path Data="{StaticResource Icon.Phosphor.lock-key}"
                                           Fill="{DynamicResource Brush.Icon.Neutral}"
                                           Width="14" Height="14" Stretch="Uniform" />
                                 </Button>
@@ -800,14 +873,14 @@
                              ToolTip="Recherche dans les mots, définitions, notes, exemples et catégories.">
                         <TextBox.Style>
                             <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                                <Setter Property="Padding" Value="9,6,40,6" />
+                                <Setter Property="Padding" Value="9,6,66,6" />
                                 <Style.Triggers>
                                     <MultiDataTrigger>
                                         <MultiDataTrigger.Conditions>
                                             <Condition Binding="{Binding SearchQuery}" Value="" />
                                             <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsKeyboardFocusWithin}" Value="False" />
                                         </MultiDataTrigger.Conditions>
-                                        <Setter Property="Padding" Value="36,6,40,6" />
+                                        <Setter Property="Padding" Value="36,6,66,6" />
                                     </MultiDataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -869,11 +942,70 @@
                         </TextBlock.Style>
                     </TextBlock>
 
+                    <!-- Sort mode -->
+                    <Grid HorizontalAlignment="Right"
+                          VerticalAlignment="Center"
+                          Margin="0,0,13,0">
+                        <ToggleButton x:Name="SortModeToggle"
+                                      Style="{StaticResource IconDropdownToggleStyle}"
+                                      IsChecked="{Binding IsOpen, ElementName=SortModePopup, Mode=TwoWay}"
+                                      ToolTip="{Binding SortModeToolTip}">
+                            <Canvas Width="14" Height="14">
+                                <Line X1="0.5" Y1="2" X2="13.5" Y2="2"
+                                      Stroke="{DynamicResource Brush.Text.Secondary}"
+                                      StrokeThickness="1.4"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" />
+                                <Line X1="0.5" Y1="7" X2="9" Y2="7"
+                                      Stroke="{DynamicResource Brush.Text.Secondary}"
+                                      StrokeThickness="1.4"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" />
+                                <Line X1="0.5" Y1="12" X2="5" Y2="12"
+                                      Stroke="{DynamicResource Brush.Text.Secondary}"
+                                      StrokeThickness="1.4"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" />
+                            </Canvas>
+                        </ToggleButton>
+
+                        <Popup x:Name="SortModePopup"
+                               PlacementTarget="{Binding ElementName=SortModeToggle}"
+                               Placement="Bottom"
+                               HorizontalOffset="-120"
+                               VerticalOffset="4"
+                               AllowsTransparency="True"
+                               PopupAnimation="Fade">
+                            <Border Background="{DynamicResource Brush.Surface}"
+                                    BorderBrush="{DynamicResource Brush.Border.Strong}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="4"
+                                    MinWidth="150">
+                                <ListBox ItemsSource="{Binding SortOptions}"
+                                         SelectedItem="{Binding SelectedSortOption, Mode=TwoWay}"
+                                         SelectionChanged="SortOptionList_SelectionChanged">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                                            <Setter Property="Padding" Value="8,5" />
+                                            <Setter Property="Margin" Value="0" />
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Label}" />
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Border>
+                        </Popup>
+                    </Grid>
+
                     <!-- Clear cross -->
                     <Button HorizontalAlignment="Right"
                             VerticalAlignment="Center"
                             Width="18" Height="18"
-                            Margin="0,0,15,0"
+                            Margin="0,0,41,0"
                             Padding="0"
                             Focusable="False"
                             Click="ClearSearchButton_Click"
@@ -951,9 +1083,36 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel>
-                                        <TextBlock Text="{Binding Word}"
-                                                   FontFamily="{StaticResource Font.Serif}"
-                                                   FontSize="20" />
+                                        <DockPanel>
+                                            <!-- Locks/unlocks every AI-enrichment field of the entry at once. -->
+                                            <Button DockPanel.Dock="Right"
+                                                    Style="{StaticResource GhostButtonStyle}"
+                                                    Padding="4"
+                                                    VerticalAlignment="Center"
+                                                    Click="ToggleEntryLocksButton_Click"
+                                                    ToolTip="Verrouiller/déverrouiller tous les champs de ce mot pour l’enrichissement IA.">
+                                                <Path Width="15" Height="15" Stretch="Uniform">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Setter Property="Data" Value="{StaticResource Icon.Phosphor.lock-key-open}" />
+                                                            <Setter Property="Fill" Value="{DynamicResource Brush.Icon.Neutral}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Converter={StaticResource EntryLockedConverter}}" Value="True">
+                                                                    <Setter Property="Data" Value="{StaticResource Icon.Phosphor.lock-key}" />
+                                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+                                            </Button>
+
+                                            <TextBlock Text="{Binding Word}"
+                                                       FontFamily="{StaticResource Font.Serif}"
+                                                       FontSize="20"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </DockPanel>
 
                                         <ItemsControl Margin="0,4,0,0">
                                             <ItemsControl.ItemsSource>

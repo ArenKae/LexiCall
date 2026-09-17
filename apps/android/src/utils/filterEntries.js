@@ -2,10 +2,12 @@
 import { compareText } from './collation';
 import { getDescendantIds } from './categoryHierarchy';
 import { entryMatchesSearch, entryWordMatchesSearch, normalizeForSearch } from './search';
+import { isEntryLocked } from '../models/vocabulary';
 
 export const ALL_ENTRIES = 'all';
 export const UNCATEGORIZED = 'uncategorized';
 export const ARCHIVES = 'archives';
+export const LOCKED = 'locked';
 
 export const SORT_RECENT = 'recent';
 export const SORT_ALPHABETICAL = 'alphabetical';
@@ -26,6 +28,9 @@ export function entryMatchesFilter(entry, filter, subtreeIds) {
   }
   if (filter.kind === UNCATEGORIZED) {
     return !entry.IsArchived && entry.CategoryIds.length === 0;
+  }
+  if (filter.kind === LOCKED) {
+    return !entry.IsArchived && isEntryLocked(entry);
   }
   if (filter.kind === ALL_ENTRIES) {
     return !entry.IsArchived;
