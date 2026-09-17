@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -317,7 +316,7 @@ export default function EntryEditor() {
       <Stack.Screen options={{ title: isEditing ? 'Modifier l’entrée' : 'Ajouter un mot' }} />
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
       >
         <ScrollView
           ref={scrollRef}

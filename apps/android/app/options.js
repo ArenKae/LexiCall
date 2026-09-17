@@ -1,6 +1,15 @@
 import * as Sharing from 'expo-sharing';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { CategoryIcon } from '../src/components/CategoryIcon';
 import { pickDatabaseFile } from '../src/services/storage';
 import { useTheme } from '../src/theme/useTheme';
@@ -143,10 +152,11 @@ export default function Options() {
   }
 
   return (
-    <ScrollView
-      style={{ backgroundColor: colors.background }}
-      contentContainerStyle={styles.content}
-    >
+    <KeyboardAvoidingView style={styles.flex} behavior="padding">
+      <ScrollView
+        style={{ backgroundColor: colors.background }}
+        contentContainerStyle={styles.content}
+      >
       <Text style={[styles.section, { color: colors.textPrimary }]}>Synchronisation API</Text>
 
       <Text style={[styles.label, { color: colors.textSecondary }]}>Adresse du serveur</Text>
@@ -272,11 +282,13 @@ export default function Options() {
       <Pressable style={[styles.button, styles.reset, { borderColor: colors.danger }]} onPress={handleReset}>
         <Text style={{ color: colors.danger }}>Effacer les données locales</Text>
       </Pressable>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   content: { padding: 16, gap: 8 },
   section: { fontSize: 16, fontWeight: '700', marginTop: 12 },
   label: { fontSize: 13, marginTop: 8 },

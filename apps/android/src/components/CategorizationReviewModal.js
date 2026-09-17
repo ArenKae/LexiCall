@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from './CategoryIcon';
 import { CategorySuggestionCard } from './CategorySuggestionCard';
@@ -71,7 +79,10 @@ export function CategorizationReviewModal({ visible, suggestions, currentCategor
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        behavior="padding"
+      >
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.textPrimary }]}>Suggestions de catégorie</Text>
           <Pressable onPress={onClose} hitSlop={10}>
@@ -107,7 +118,7 @@ export function CategorizationReviewModal({ visible, suggestions, currentCategor
             <Text style={[styles.saveText, { color: colors.textOnAccent }]}>Enregistrer</Text>
           </Pressable>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

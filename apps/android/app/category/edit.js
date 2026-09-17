@@ -1,6 +1,14 @@
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
 import { CategoryParentPicker } from '../../src/components/CategoryParentPicker';
@@ -99,7 +107,7 @@ export default function CategoryEditor() {
   ];
 
   return (
-    <>
+    <KeyboardAvoidingView style={styles.flex} behavior="padding">
       <Stack.Screen options={{ title: isEditing ? 'Modifier la catégorie' : 'Nouvelle catégorie' }} />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.label, { color: colors.textSecondary }]}>Nom *</Text>
@@ -201,11 +209,12 @@ export default function CategoryEditor() {
         onSelect={setColorHex}
         onClose={() => setColorPickerOpen(false)}
       />
-    </>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   content: { padding: 16, paddingBottom: 24, gap: 6 },
   label: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 16 },
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
