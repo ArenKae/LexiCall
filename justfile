@@ -111,11 +111,6 @@ down:
 backup:
     just --justfile api/justfile --working-directory api prod-backup
 
-# One-off, idempotent vocabulary.json -> Mongo migration.
-[group('api : prod')]
-migrate *ARGS:
-    just --justfile api/justfile --working-directory api migrate {{ARGS}}
-
 # Interactive mongosh shell on the prod stack.
 [group('api : prod')]
 mongosh:
