@@ -210,6 +210,7 @@ export const useVocabularyStore = create((set, get) => {
     // synced (see saveApiConfig-adjacent settings.json fields).
     categoryColors: {},
     categoryOrder: {},
+    virtualCategories: {},
 
     setCategoryFilter: (categoryFilter) => set({ categoryFilter }),
     setSearchQuery: (searchQuery) => set({ searchQuery }),
@@ -235,6 +236,7 @@ export const useVocabularyStore = create((set, get) => {
         syncedAgainstBaseUrl: settings.syncedAgainstBaseUrl,
         categoryColors: settings.categoryColors,
         categoryOrder: settings.categoryOrder,
+        virtualCategories: settings.virtualCategories,
         isHydrated: true,
         // A resync fires as soon as hydration completes, so a configured client
         // is already syncing by the time this status is read.
@@ -712,6 +714,12 @@ export const useVocabularyStore = create((set, get) => {
 
       set({ categoryColors });
       saveSettings({ categoryColors });
+    },
+
+    setVirtualCategoryEnabled: (kind, enabled) => {
+      const virtualCategories = { ...get().virtualCategories, [kind]: enabled };
+      set({ virtualCategories });
+      saveSettings({ virtualCategories });
     },
   };
 });

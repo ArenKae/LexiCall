@@ -264,6 +264,7 @@ export default function Categories() {
   const entries = useVocabularyStore((state) => state.entries);
   const categories = useVocabularyStore((state) => state.categories);
   const categoryOrder = useVocabularyStore((state) => state.categoryOrder);
+  const virtualCategories = useVocabularyStore((state) => state.virtualCategories);
   const setCategoryFilter = useVocabularyStore((state) => state.setCategoryFilter);
   const deleteCategory = useVocabularyStore((state) => state.deleteCategory);
   const setCategoryOrder = useVocabularyStore((state) => state.setCategoryOrder);
@@ -322,7 +323,7 @@ export default function Categories() {
             },
           ]
         : []),
-      ...(lockedCount > 0
+      ...(lockedCount > 0 && virtualCategories[LOCKED] !== false
         ? [
             {
               key: LOCKED,
@@ -333,7 +334,7 @@ export default function Categories() {
             },
           ]
         : []),
-      ...(archivedCount > 0
+      ...(archivedCount > 0 && virtualCategories[ARCHIVES] !== false
         ? [
             {
               key: ARCHIVES,
@@ -360,7 +361,15 @@ export default function Categories() {
     // Reordering only ever touches real categories, so the virtual selections
     // are left out of that mode entirely.
     return reorderMode ? categoryRows : [...virtualRows, ...categoryRows];
-  }, [categories, activeOrder, entries, categoryIndex, colors.iconNeutral, reorderMode]);
+  }, [
+    categories,
+    activeOrder,
+    entries,
+    categoryIndex,
+    colors.iconNeutral,
+    reorderMode,
+    virtualCategories,
+  ]);
 
   const actionSheetCategory = actionsFor
     ? categories.find((category) => category.Id === actionsFor)

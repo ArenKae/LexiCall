@@ -1,6 +1,7 @@
 // Local persistence: the vocabulary database and the app settings, each in its
 // own JSON file under the app's document directory.
 import { File, Paths } from 'expo-file-system';
+import { ARCHIVES, LOCKED } from '../utils/filterEntries';
 
 const DATABASE_FILE = 'vocabulary.json';
 const SETTINGS_FILE = 'settings.json';
@@ -19,6 +20,7 @@ const DEFAULT_SETTINGS = {
   // differently. { [categoryId]: "#RRGGBB" } and { [categoryId]: rank }.
   categoryColors: {},
   categoryOrder: {},
+  virtualCategories: { [LOCKED]: true, [ARCHIVES]: true },
 };
 
 function fileFor(name) {

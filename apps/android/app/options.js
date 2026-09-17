@@ -15,6 +15,12 @@ import { pickDatabaseFile } from '../src/services/storage';
 import { useTheme } from '../src/theme/useTheme';
 import { useVocabularyStore } from '../src/store/useVocabularyStore';
 import { needsPush } from '../src/store/syncCycle';
+import { ARCHIVES, LOCKED } from '../src/utils/filterEntries';
+
+const CONFIGURABLE_VIRTUAL_CATEGORIES = [
+  { kind: LOCKED, label: 'Verrouillées' },
+  { kind: ARCHIVES, label: 'Archives' },
+];
 
 const CONNECTION_LABELS = {
   Ok: 'Connexion réussie.',
@@ -235,6 +241,40 @@ export default function Options() {
 
       <View style={[styles.separator, { backgroundColor: colors.borderSubtle }]} />
 
+      <Text style={[styles.section, { color: colors.textPrimary }]}>Catégories virtuelles</Text>
+      <Text style={[styles.hint, { color: colors.textMuted }]}>
+        Sélections proposées en haut de l’écran Catégories. « Toutes les entrées » est toujours
+        affichée, et « Sans catégorie » n’apparaît que s’il y a des entrées concernées.
+      </Text>
+      {CONFIGURABLE_VIRTUAL_CATEGORIES.map(({ kind, label }) => {
+        const enabled = store.virtualCategories[kind] !== false;
+
+        return (
+          <Pressable
+            key={kind}
+            style={styles.checkRow}
+            onPress={() => store.setVirtualCategoryEnabled(kind, !enabled)}
+          >
+            <View
+              style={[
+                styles.checkbox,
+                {
+                  borderColor: enabled ? colors.accent : colors.borderStrong,
+                  backgroundColor: enabled ? colors.accent : 'transparent',
+                },
+              ]}
+            >
+              {enabled && (
+                <CategoryIcon iconKey="Phosphor.check" color={colors.textOnAccent} size={12} />
+              )}
+            </View>
+            <Text style={[styles.checkLabel, { color: colors.textPrimary }]}>{label}</Text>
+          </Pressable>
+        );
+      })}
+
+      <View style={[styles.separator, { backgroundColor: colors.borderSubtle }]} />
+
       <Text style={[styles.section, { color: colors.textPrimary }]}>État local</Text>
       <Text style={[styles.message, { color: colors.textSecondary }]}>
         {store.entries.length} entrée(s) · {store.categories.length} catégorie(s)
@@ -290,6 +330,16 @@ export default function Options() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { padding: 16, gap: 8 },
+  checkRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkLabel: { fontSize: 15 },
   section: { fontSize: 16, fontWeight: '700', marginTop: 12 },
   label: { fontSize: 13, marginTop: 8 },
   input: {
