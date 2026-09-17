@@ -63,8 +63,8 @@ export default function TabsLayout() {
         options={{ title: 'Recherche', tabBarIcon: icon('Phosphor.magnifying-glass') }}
       />
       <Tabs.Screen
-        name="more"
-        options={{ title: 'Plus', tabBarIcon: icon('Phosphor.dots-three-circle-vertical') }}
+        name="options"
+        options={{ title: 'Options', tabBarIcon: icon('Phosphor.gear') }}
       />
     </Tabs>
   );
