@@ -1,10 +1,10 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategorizationReviewModal } from '../../src/components/CategorizationReviewModal';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
 import { EnrichmentReviewModal } from '../../src/components/EnrichmentReviewModal';
-import { EntryActionSheet } from '../../src/components/EntryActionSheet';
 import { EntryImageGallery } from '../../src/components/EntryImageGallery';
 import { useCategoryIndex } from '../../src/hooks/useCategoryIndex';
 import { useEntryImages } from '../../src/hooks/useEntryImages';
@@ -31,6 +31,17 @@ function Section({ title, iconKey, color, children }) {
   );
 }
 
+function ActionButton({ iconKey, label, color, onPress }) {
+  return (
+    <Pressable style={styles.actionButton} onPress={onPress}>
+      <CategoryIcon iconKey={iconKey} color={color} size={22} />
+      <Text style={[styles.actionLabel, { color }]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 // Full read-only view of one entry.
 export default function EntryDetail() {
   const { id } = useLocalSearchParams();
@@ -47,7 +58,7 @@ export default function EntryDetail() {
   const addCategory = useVocabularyStore((state) => state.addCategory);
   // Called before the missing-entry branch below: hooks can't sit after a return.
   const { states: imageStates, retry: retryImage } = useEntryImages(entry);
-  const [actionsVisible, setActionsVisible] = useState(false);
+  const insets = useSafeAreaInsets();
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichmentSuggestions, setEnrichmentSuggestions] = useState(null);
   const [isCategorizing, setIsCategorizing] = useState(false);
@@ -56,8 +67,12 @@ export default function EntryDetail() {
 
   if (!entry) {
     return (
-      <View style={styles.centered}>
+      <View style={[styles.centered, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <Text style={{ color: colors.textSecondary }}>Entrée introuvable.</Text>
+        <Pressable style={styles.missingBack} onPress={() => router.back()} hitSlop={10}>
+          <CategoryIcon iconKey="Phosphor.caret-left" color={colors.accent} size={18} />
+          <Text style={{ color: colors.accent, fontSize: 15, fontWeight: '600' }}>Retour</Text>
+        </Pressable>
       </View>
     );
   }
@@ -200,36 +215,23 @@ export default function EntryDetail() {
     });
   }
 
-  return (
-    <ScrollView contentContainerStyle={styles.content}>
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <Pressable onPress={() => setActionsVisible(true)} hitSlop={10} style={styles.menuButton}>
-              <CategoryIcon iconKey="Phosphor.dots-three-circle-vertical" color={colors.textPrimary} size={22} />
-            </Pressable>
-          ),
-        }}
-      />
-
-      <EntryActionSheet
-        visible={actionsVisible}
-        entry={entry}
-        onClose={() => setActionsVisible(false)}
-        onEdit={() => {
-          setActionsVisible(false);
-          router.push(`/entry/edit?id=${entry.Id}`);
-        }}
-        onToggleArchive={() => {
-          setActionsVisible(false);
-          toggleArchive(entry.Id);
-        }}
-        onDelete={() => {
+  function confirmDelete() {
+    Alert.alert('Confirmer la suppression', `Supprimer « ${entry.Word} » ?`, [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Supprimer',
+        style: 'destructive',
+        onPress: () => {
           deleteEntry(entry.Id);
           router.back();
-        }}
-      />
+        },
+      },
+    ]);
+  }
 
+  return (
+    <View style={styles.screen}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 18 }]}>
       <Text selectable style={[styles.word, { color: colors.textPrimary }]}>
         {entry.Word}
       </Text>
@@ -384,13 +386,69 @@ export default function EntryDetail() {
           <EntryImageGallery images={entry.Images} states={imageStates} onRetry={retryImage} />
         </Section>
       )}
-    </ScrollView>
+      </ScrollView>
+
+      <View
+        style={[
+          styles.actionBar,
+          {
+            backgroundColor: colors.surface,
+            borderTopColor: colors.borderSubtle,
+            paddingBottom: 8 + insets.bottom,
+          },
+        ]}
+      >
+        <ActionButton
+          iconKey="Phosphor.arrow-left"
+          label="Retour"
+          color={colors.textPrimary}
+          onPress={() => router.back()}
+        />
+        <ActionButton
+          iconKey="Phosphor.pencil"
+          label="Modifier"
+          color={colors.textPrimary}
+          onPress={() => router.push(`/entry/edit?id=${entry.Id}`)}
+        />
+        <ActionButton
+          iconKey="Solar.archive-check"
+          label={entry.IsArchived ? 'Désarchiver' : 'Archiver'}
+          color={colors.textPrimary}
+          onPress={() => toggleArchive(entry.Id)}
+        />
+        <ActionButton
+          iconKey="Phosphor.trash"
+          label="Supprimer"
+          color={colors.danger}
+          onPress={confirmDelete}
+        />
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 18, paddingBottom: 40 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  screen: { flex: 1 },
+  content: { padding: 18, paddingBottom: 28 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
+  missingBack: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
+  actionBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderTopWidth: 1,
+    paddingTop: 8,
+    paddingHorizontal: 4,
+  },
+  actionButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    minHeight: 48,
+    paddingHorizontal: 2,
+    paddingVertical: 6,
+  },
+  actionLabel: { fontSize: 11, fontWeight: '600' },
   // Serif for the word and its senses.
   word: { fontFamily: 'serif', fontSize: 30 },
   type: { fontSize: 14, fontStyle: 'italic', marginTop: 2 },
@@ -421,7 +479,6 @@ const styles = StyleSheet.create({
   sense: { flexDirection: 'row', gap: 8, marginTop: 14 },
   senseNumber: { fontFamily: 'serif', fontSize: 16 },
   senseText: { flex: 1, fontFamily: 'serif', fontSize: 16, lineHeight: 24 },
-  menuButton: { paddingHorizontal: 4 },
   section: { marginTop: 22 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   sectionTitle: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
