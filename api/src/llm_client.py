@@ -1,6 +1,7 @@
 # Wrapper around the OpenAI Responses API: centralizes structured JSON
 # output, reasoning effort, and the built-in web_search tool for every
 # LLM-backed feature (definition suggestion, field enrichment, categorization).
+
 import json
 from functools import lru_cache
 

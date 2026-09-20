@@ -1,6 +1,7 @@
 # AI enrichment orchestration: composes llm_client + external context
 # sources (wiktionary_client, embeddings, ...) into prompts for each
 # enrichment feature.
+
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Literal
@@ -17,6 +18,7 @@ ENRICHABLE_FIELDS = ("Definition", "Type", "Synonyms", "ExampleSentences")
 # extra slot gets filled whether or not it is warranted: the model reaches
 # for a marginal nature rather than leaving it empty.
 MAX_ENTRY_TYPES = 2
+
 # PascalCase (matches VocabularyEntry.LockedFields entries / JSON aliases) ->
 # snake_case (matches the JSON schema sent to the LLM and the response dict
 # key expected by EntryEnrichmentSuggestions).

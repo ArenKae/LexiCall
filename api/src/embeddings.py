@@ -1,6 +1,5 @@
-# Category embeddings — the retrieval half of auto-categorization. No LLM
-# call happens here; this module only turns categories and words into
-# vectors and ranks them against each other.
+# Category embeddings: the retrieval half of auto-categorization. This module 
+# turns categories and words into vectors and ranks them against each other.
 #
 # Indexing, ahead of any user action: each live category's text
 # (build_category_embedding_text) is vectorized (embed_texts) and stored in
@@ -14,6 +13,7 @@
 # and paths are handed to the LLM, which makes the attach-or-create
 # decision. Cutting to a top-K is what keeps that LLM call's token cost flat
 # however large the category corpus grows.
+
 import numpy as np
 from openai import OpenAI
 
@@ -31,9 +31,6 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
     because renaming a parent category invalidates every descendant's text
     at once — one request instead of one per category."""
     if not settings.openai_api_key:
-        # Precise, actionable message instead of the SDK's generic "Missing
-        # credentials..." — this is a server misconfiguration, not an
-        # OpenAI-side failure.
         raise RuntimeError("OPENAI_API_KEY n'est pas configurée côté serveur (voir api/.env).")
 
     client = OpenAI(api_key=settings.openai_api_key)
@@ -77,9 +74,9 @@ def build_category_embedding_text(
 
 
 def build_category_path(category: dict, by_id: dict[str, dict]) -> str:
-    """The category's place in the tree as "Racine › Enfant", which is what
+    """The category's place in the tree as "Root › Child", which is what
     identifies it for a human (and for the LLM at decision time): a child's
-    own name is often too terse to stand alone ("Anatomie et physiologie")."""
+    own name is often too terse to stand alone."""
     return " › ".join(node["Name"] for node in _ancestor_chain(category, by_id))
 
 

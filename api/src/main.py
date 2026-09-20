@@ -1,5 +1,6 @@
 # FastAPI entry point: assembles the routers, exposes / and /health,
 # initializes Mongo indexes on startup.
+
 import json
 from contextlib import asynccontextmanager
 

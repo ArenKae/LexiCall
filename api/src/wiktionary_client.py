@@ -5,6 +5,7 @@
 # (etymology, translations, pronunciation, references...); keeps synonyms
 # and a capped number of literary citations as context for the Synonyms/
 # ExampleSentences enrichment fields.
+
 import re
 
 import httpx

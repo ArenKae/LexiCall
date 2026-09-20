@@ -1,5 +1,6 @@
 # Static API key authentication (X-API-Key header) — single-user usage,
 # no accounts/sessions.
+
 import secrets
 
 from fastapi import Header, HTTPException

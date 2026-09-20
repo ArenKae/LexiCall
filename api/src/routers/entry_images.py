@@ -1,6 +1,7 @@
 # Read-only access to entry images, kept in their own collection so that
 # scanning `entries` never pages image bytes into cache. Writing goes through
 # the entry PUT instead, so two requests can never race to set the same image.
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 

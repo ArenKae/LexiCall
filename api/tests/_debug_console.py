@@ -3,6 +3,7 @@
 # key/value lines, and the OpenAI pricing used for their cost estimates.
 # Everything is printed by these helpers rather than by SDK/httpx debug
 # logging, which would dump each request as one unreadable line.
+
 import itertools
 import shutil
 import sys

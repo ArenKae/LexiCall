@@ -1,6 +1,7 @@
 # Timestamp formatting shared by the repositories (CAS comparisons) and the
 # routers (X-Sync-Timestamp header): centralizes the format so it stays
 # identical everywhere two timestamps are compared.
+
 from datetime import datetime, timezone
 
 
