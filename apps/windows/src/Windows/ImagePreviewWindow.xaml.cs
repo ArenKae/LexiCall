@@ -1,4 +1,5 @@
 // Enlarged preview modal for an entry's image(s) — see ImagePreviewWindow.xaml.
+
 using System.Windows;
 using System.Windows.Input;
 using LexiCall.Desktop.Services;
@@ -36,7 +37,9 @@ public partial class ImagePreviewWindow : Window
     private void RefreshCurrentImage()
     {
         var current = _images[_currentIndex];
-        PreviewImage.Source = current.Image;
+        // Decoded at full size here, not reused from the card: the thumbnail
+        // behind it is decoded small on purpose and would show blurred.
+        PreviewImage.Source = current.CreateFullSizeImage() ?? current.Image;
         CaptionText.Text = current.Caption;
         CaptionText.Visibility = string.IsNullOrWhiteSpace(current.Caption) ? Visibility.Collapsed : Visibility.Visible;
 

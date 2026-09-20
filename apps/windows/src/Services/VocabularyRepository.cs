@@ -1,5 +1,6 @@
 // Local persistence layer: loads/saves the whole database as one JSON file at
 // %LOCALAPPDATA%\LexiCall\vocabulary.json.
+
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -33,22 +34,38 @@ public sealed class VocabularyRepository
             return new VocabularyDatabase();
         }
 
-        var json = File.ReadAllText(_filePath);
+        // Parsed and deserialized straight off the stream, never through an
+        // intermediate string: the whole file is one allocation well past the
+        // 85 KB large-object threshold, and the LOH is never compacted.
+        using var stream = File.OpenRead(_filePath);
 
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return new VocabularyDatabase();
-        }
-
-        if (JsonNode.Parse(json) is not JsonObject root)
+        if (IsBlank(stream) || JsonNode.Parse(stream) is not JsonObject root)
         {
             return new VocabularyDatabase();
         }
 
         MigrateLegacyClientLastWrite(root);
 
-        return SanitizeDatabase(
-            JsonSerializer.Deserialize<VocabularyDatabase>(root.ToJsonString(), JsonOptions) ?? new VocabularyDatabase());
+        return SanitizeDatabase(root.Deserialize<VocabularyDatabase>(JsonOptions) ?? new VocabularyDatabase());
+    }
+
+    // A blank file counts as no file at all. Anything else that fails to parse
+    // is left to throw: starting from an empty database would overwrite the
+    // unreadable original on the next save.
+    private static bool IsBlank(Stream stream)
+    {
+        int next;
+
+        while ((next = stream.ReadByte()) >= 0)
+        {
+            if (!char.IsWhiteSpace((char)next))
+            {
+                stream.Position = 0;
+                return false;
+            }
+        }
+
+        return true;
     }
 
     // A file saved before the ClientLastWrite/UpdatedAt split still has every
@@ -85,8 +102,11 @@ public sealed class VocabularyRepository
             Directory.CreateDirectory(directory);
         }
 
-        var json = JsonSerializer.Serialize(database, JsonOptions);
-        File.WriteAllText(_filePath, json);
+        // Written straight to the stream rather than via JsonSerializer.Serialize's
+        // string: a multi-MB string lands on the large object heap, which is
+        // never compacted, and this runs on every mutation.
+        using var stream = File.Create(_filePath);
+        JsonSerializer.Serialize(stream, database, JsonOptions);
     }
 
     public void ExportTo(string destinationPath)

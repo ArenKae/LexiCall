@@ -130,24 +130,28 @@
                                         <Setter Property="Visibility" Value="Collapsed" />
                                         <Setter Property="Fill" Value="{DynamicResource Brush.Text.Secondary}" />
                                         <Style.Triggers>
+                                            <!-- Spun from the trigger, not from Loaded: a Forever
+                                                 animation started on load never stops while the
+                                                 dialog is open. -->
                                             <DataTrigger Binding="{Binding IsFullResyncing}" Value="True">
                                                 <Setter Property="Visibility" Value="Visible" />
+                                                <DataTrigger.EnterActions>
+                                                    <BeginStoryboard x:Name="FullResyncSpinner">
+                                                        <Storyboard>
+                                                            <DoubleAnimation
+                                                                Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                From="0" To="360" Duration="0:0:0.8"
+                                                                RepeatBehavior="Forever" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </DataTrigger.EnterActions>
+                                                <DataTrigger.ExitActions>
+                                                    <StopStoryboard BeginStoryboardName="FullResyncSpinner" />
+                                                </DataTrigger.ExitActions>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Path.Style>
-                                <Path.Triggers>
-                                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                        <BeginStoryboard>
-                                            <Storyboard>
-                                                <DoubleAnimation
-                                                    Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                    From="0" To="360" Duration="0:0:0.8"
-                                                    RepeatBehavior="Forever" />
-                                            </Storyboard>
-                                        </BeginStoryboard>
-                                    </EventTrigger>
-                                </Path.Triggers>
                             </Path>
 
                             <Path Data="{StaticResource Icon.Phosphor.arrows-counter-clockwise}"
