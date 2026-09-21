@@ -3,13 +3,13 @@ import { create } from 'zustand';
 import { normalizeCategory, normalizeEntry } from '../models/vocabulary';
 import { createApiClient } from '../services/apiClient';
 import {
+  exportDatabaseToPickedFolder,
   importDatabaseFrom,
   loadDatabase,
   loadSettings,
   resetLocalData,
   saveDatabase,
   saveSettings,
-  stageDatabaseExport,
 } from '../services/storage';
 import { loadSyncHistory, saveSyncHistory, MAX_HISTORY_ENTRIES } from '../services/syncHistoryStore';
 import { getDescendantIds } from '../utils/categoryHierarchy';
@@ -489,12 +489,10 @@ export const useVocabularyStore = create((set, get) => {
       }
     },
 
-    // Hands the database to the share sheet as a dated copy; returns the uri
-    // the caller shares, since sharing itself is a UI concern.
     exportDatabase: () => {
       const state = get();
 
-      return stageDatabaseExport({
+      return exportDatabaseToPickedFolder({
         Entries: state.entries,
         Categories: state.categories,
         PendingEntryDeletions: state.pendingEntryDeletions,
