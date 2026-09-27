@@ -17,7 +17,6 @@ export const EntryCard = memo(function EntryCard({
   categoryIndex,
   onPress,
   onLongPress,
-  onToggleLocks,
   hideArchivedBadge,
 }) {
   const colors = useTheme();
@@ -42,13 +41,13 @@ export const EntryCard = memo(function EntryCard({
         {entry.IsArchived && !hideArchivedBadge && (
           <Text style={[styles.archived, { color: colors.textMuted }]}>archivée</Text>
         )}
-        <Pressable onPress={() => onToggleLocks(entry, !allLocked)} hitSlop={12} style={styles.lock}>
+        <View style={styles.lock}>
           <CategoryIcon
             iconKey={allLocked ? 'Phosphor.lock-key' : 'Phosphor.lock-key-open'}
-            color={allLocked ? colors.danger : colors.textMuted}
+            color={allLocked ? colors.success : colors.textMuted}
             size={18}
           />
-        </Pressable>
+        </View>
       </View>
 
       <Text style={[styles.sense, { color: colors.textSecondary }]} numberOfLines={2}>

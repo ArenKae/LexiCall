@@ -10,7 +10,6 @@ import { FilterSheet } from '../../src/components/FilterSheet';
 import { ScrollJumpButtons } from '../../src/components/ScrollJumpButtons';
 import { useCategoryIndex } from '../../src/hooks/useCategoryIndex';
 import { useScrollEdges } from '../../src/hooks/useScrollEdges';
-import { lockedFieldsFor } from '../../src/models/vocabulary';
 import { useTheme } from '../../src/theme/useTheme';
 import { useVocabularyStore } from '../../src/store/useVocabularyStore';
 import {
@@ -50,15 +49,9 @@ export default function Home() {
   const isHydrated = useVocabularyStore((state) => state.isHydrated);
   const toggleArchive = useVocabularyStore((state) => state.toggleArchive);
   const deleteEntry = useVocabularyStore((state) => state.deleteEntry);
-  const updateEntry = useVocabularyStore((state) => state.updateEntry);
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
   const [actionsFor, setActionsFor] = useState(null);
   const listRef = useRef(null);
-
-  const toggleLocks = useCallback(
-    (entry, shouldLock) => updateEntry(entry.Id, { LockedFields: lockedFieldsFor(entry, shouldLock) }),
-    [updateEntry]
-  );
 
   const listQuery = useDeferredValue(query);
   const visible = useMemo(
@@ -77,11 +70,10 @@ export default function Home() {
         categoryIndex={categoryIndex}
         onPress={openEntry}
         onLongPress={showActions}
-        onToggleLocks={toggleLocks}
         hideArchivedBadge={hideArchivedBadge}
       />
     ),
-    [categoryIndex, openEntry, showActions, toggleLocks, hideArchivedBadge]
+    [categoryIndex, openEntry, showActions, hideArchivedBadge]
   );
 
   const activeCategory = filter.categoryId ? categoryIndex.get(filter.categoryId) : null;
