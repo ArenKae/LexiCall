@@ -1,12 +1,14 @@
 import Feather from '@expo/vector-icons/Feather';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
 import { EntryActionSheet } from '../../src/components/EntryActionSheet';
 import { EntryCard } from '../../src/components/EntryCard';
 import { FilterSheet } from '../../src/components/FilterSheet';
+import { ScrollJumpButtons } from '../../src/components/ScrollJumpButtons';
 import { useCategoryIndex } from '../../src/hooks/useCategoryIndex';
+import { useScrollEdges } from '../../src/hooks/useScrollEdges';
 import { LOCKABLE_FIELDS } from '../../src/models/vocabulary';
 import { useTheme } from '../../src/theme/useTheme';
 import { useVocabularyStore } from '../../src/store/useVocabularyStore';
@@ -44,17 +46,37 @@ export default function Home() {
   const updateEntry = useVocabularyStore((state) => state.updateEntry);
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
   const [actionsFor, setActionsFor] = useState(null);
+  const listRef = useRef(null);
 
-  function toggleLocks(entry, shouldLock) {
-    const kept = entry.LockedFields.filter((field) => !LOCKABLE_FIELDS.includes(field));
-    updateEntry(entry.Id, {
-      LockedFields: shouldLock ? [...kept, ...LOCKABLE_FIELDS] : kept,
-    });
-  }
+  const toggleLocks = useCallback(
+    (entry, shouldLock) => {
+      const kept = entry.LockedFields.filter((field) => !LOCKABLE_FIELDS.includes(field));
+      updateEntry(entry.Id, {
+        LockedFields: shouldLock ? [...kept, ...LOCKABLE_FIELDS] : kept,
+      });
+    },
+    [updateEntry]
+  );
 
   const visible = useMemo(
     () => selectEntries({ entries, categories, filter, query, sortMode }),
     [entries, categories, filter, query, sortMode]
+  );
+  const scrollEdges = useScrollEdges(listRef, visible.length);
+
+  const hideArchivedBadge = filter.kind === ARCHIVES;
+  const renderEntry = useCallback(
+    ({ item }) => (
+      <EntryCard
+        entry={item}
+        categoryIndex={categoryIndex}
+        onPress={() => router.push(`/entry/${item.Id}`)}
+        onLongPress={() => setActionsFor(item.Id)}
+        onToggleLocks={(shouldLock) => toggleLocks(item, shouldLock)}
+        hideArchivedBadge={hideArchivedBadge}
+      />
+    ),
+    [categoryIndex, router, toggleLocks, hideArchivedBadge]
   );
 
   const activeCategory = filter.categoryId ? categoryIndex.get(filter.categoryId) : null;
@@ -126,9 +148,11 @@ export default function Home() {
       />
 
       <FlatList
+        ref={listRef}
         data={visible}
         keyExtractor={(entry) => entry.Id}
         contentContainerStyle={styles.list}
+        {...scrollEdges.listProps}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: colors.textSecondary }]}>
             {isHydrated
@@ -136,16 +160,14 @@ export default function Home() {
               : 'Chargement…'}
           </Text>
         }
-        renderItem={({ item }) => (
-          <EntryCard
-            entry={item}
-            categoryIndex={categoryIndex}
-            onPress={() => router.push(`/entry/${item.Id}`)}
-            onLongPress={() => setActionsFor(item.Id)}
-            onToggleLocks={(shouldLock) => toggleLocks(item, shouldLock)}
-            hideArchivedBadge={filter.kind === ARCHIVES}
-          />
-        )}
+        renderItem={renderEntry}
+        strictMode
+      />
+
+      <ScrollJumpButtons
+        edges={scrollEdges.edges}
+        onScrollToTop={scrollEdges.scrollToTop}
+        onScrollToBottom={scrollEdges.scrollToBottom}
       />
 
       {actionsEntry && (
@@ -197,6 +219,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   backControlText: { fontSize: 14, fontWeight: '700' },
-  list: { paddingTop: 6, paddingBottom: 16 },
+  list: { paddingTop: 6, paddingBottom: 64 },
   empty: { padding: 28, textAlign: 'center' },
 });
