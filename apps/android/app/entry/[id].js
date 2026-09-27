@@ -234,9 +234,18 @@ export default function EntryDetail() {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 18 }]}>
-      <Text selectable style={[styles.word, { color: colors.textPrimary }]}>
-        {entry.Word}
-      </Text>
+      <View style={styles.headline}>
+        <Text selectable style={[styles.word, { color: colors.textPrimary }]}>
+          {entry.Word}
+        </Text>
+        <View style={styles.lockIndicator}>
+          <CategoryIcon
+            iconKey={isLocked ? 'Phosphor.lock-key' : 'Phosphor.lock-key-open'}
+            color={isLocked ? colors.success : colors.textMuted}
+            size={22}
+          />
+        </View>
+      </View>
       {types.length > 0 && (
         <Text selectable style={[styles.type, { color: colors.textSecondary }]}>
           {types.join(', ')}
@@ -463,7 +472,9 @@ const styles = StyleSheet.create({
   },
   actionLabel: { fontSize: 11, fontWeight: '600' },
   // Serif for the word and its senses.
-  word: { fontFamily: 'serif', fontSize: 30 },
+  headline: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  word: { flex: 1, fontFamily: 'serif', fontSize: 30 },
+  lockIndicator: { marginTop: 10 },
   type: { fontSize: 14, fontStyle: 'italic', marginTop: 2 },
   pillRow: {
     flexDirection: 'row',

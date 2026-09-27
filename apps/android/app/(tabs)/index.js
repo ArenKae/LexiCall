@@ -61,6 +61,7 @@ export default function Home() {
   const scrollEdges = useScrollEdges(listRef, visible.length);
 
   const hideArchivedBadge = filter.kind === ARCHIVES;
+  const hideLockIndicator = filter.kind === LOCKED;
   const openEntry = useCallback((entry) => router.push(`/entry/${entry.Id}`), [router]);
   const showActions = useCallback((entry) => setActionsFor(entry.Id), []);
   const renderEntry = useCallback(
@@ -71,9 +72,10 @@ export default function Home() {
         onPress={openEntry}
         onLongPress={showActions}
         hideArchivedBadge={hideArchivedBadge}
+        hideLockIndicator={hideLockIndicator}
       />
     ),
-    [categoryIndex, openEntry, showActions, hideArchivedBadge]
+    [categoryIndex, openEntry, showActions, hideArchivedBadge, hideLockIndicator]
   );
 
   const activeCategory = filter.categoryId ? categoryIndex.get(filter.categoryId) : null;

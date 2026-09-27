@@ -18,6 +18,7 @@ export const EntryCard = memo(function EntryCard({
   onPress,
   onLongPress,
   hideArchivedBadge,
+  hideLockIndicator,
 }) {
   const colors = useTheme();
   const categories = entry.CategoryIds.map((id) => categoryIndex.get(id)).filter(Boolean);
@@ -41,13 +42,15 @@ export const EntryCard = memo(function EntryCard({
         {entry.IsArchived && !hideArchivedBadge && (
           <Text style={[styles.archived, { color: colors.textMuted }]}>archivée</Text>
         )}
-        <View style={styles.lock}>
-          <CategoryIcon
-            iconKey={allLocked ? 'Phosphor.lock-key' : 'Phosphor.lock-key-open'}
-            color={allLocked ? colors.success : colors.textMuted}
-            size={18}
-          />
-        </View>
+        {!hideLockIndicator && (
+          <View style={styles.lock}>
+            <CategoryIcon
+              iconKey={allLocked ? 'Phosphor.lock-key' : 'Phosphor.lock-key-open'}
+              color={allLocked ? colors.success : colors.textMuted}
+              size={18}
+            />
+          </View>
+        )}
       </View>
 
       <Text style={[styles.sense, { color: colors.textSecondary }]} numberOfLines={2}>
