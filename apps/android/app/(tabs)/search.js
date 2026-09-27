@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
+import { CloseButton } from '../../src/components/CloseButton';
 import { useCategoryIndex } from '../../src/hooks/useCategoryIndex';
 import { useTheme } from '../../src/theme/useTheme';
 import { useVocabularyStore } from '../../src/store/useVocabularyStore';
@@ -84,11 +85,7 @@ export default function Search() {
           autoCorrect={false}
           autoFocus
         />
-        {query.length > 0 && (
-          <Pressable onPress={() => setQuery('')} hitSlop={8}>
-            <CategoryIcon iconKey="Phosphor.x" color={colors.textMuted} size={15} />
-          </Pressable>
-        )}
+        {query.length > 0 && <CloseButton size={22} onPress={() => setQuery('')} />}
       </View>
 
       <View style={styles.segments}>

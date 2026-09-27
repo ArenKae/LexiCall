@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from './CategoryIcon';
+import { CloseButton } from './CloseButton';
 import { useTheme } from '../theme/useTheme';
 import { ICON_GROUPS } from '../theme/iconCatalog';
 
@@ -52,11 +53,7 @@ export function IconPicker({ visible, currentIconKey, onSelect, onClose }) {
               autoCapitalize="none"
               autoCorrect={false}
             />
-            {query.length > 0 && (
-              <Pressable onPress={() => setQuery('')} hitSlop={8}>
-                <CategoryIcon iconKey="Phosphor.x" color={colors.textMuted} size={15} />
-              </Pressable>
-            )}
+            {query.length > 0 && <CloseButton size={22} onPress={() => setQuery('')} />}
           </View>
           <Pressable onPress={onClose} hitSlop={10} style={styles.closeButton}>
             <Text style={[styles.closeLabel, { color: colors.accent }]}>Fermer</Text>

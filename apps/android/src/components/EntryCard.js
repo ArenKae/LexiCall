@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CategoryIcon } from './CategoryIcon';
 import { useTheme } from '../theme/useTheme';
@@ -11,7 +12,7 @@ function typeLabel(types) {
 
 // One entry in the browsing list: word, grammatical type, first sense and the
 // categories it belongs to.
-export function EntryCard({
+export const EntryCard = memo(function EntryCard({
   entry,
   categoryIndex,
   onPress,
@@ -26,8 +27,8 @@ export function EntryCard({
 
   return (
     <Pressable
-      onPress={onPress}
-      onLongPress={onLongPress}
+      onPress={() => onPress(entry)}
+      onLongPress={() => onLongPress(entry)}
       delayLongPress={300}
       style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
     >
@@ -41,7 +42,7 @@ export function EntryCard({
         {entry.IsArchived && !hideArchivedBadge && (
           <Text style={[styles.archived, { color: colors.textMuted }]}>archivée</Text>
         )}
-        <Pressable onPress={() => onToggleLocks(!allLocked)} hitSlop={12} style={styles.lock}>
+        <Pressable onPress={() => onToggleLocks(entry, !allLocked)} hitSlop={12} style={styles.lock}>
           <CategoryIcon
             iconKey={allLocked ? 'Phosphor.lock-key' : 'Phosphor.lock-key-open'}
             color={allLocked ? colors.danger : colors.textMuted}
@@ -71,7 +72,7 @@ export function EntryCard({
       )}
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 14, padding: 14, marginHorizontal: 14, marginBottom: 10 },

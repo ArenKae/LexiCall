@@ -347,11 +347,13 @@ export default function EntryEditor() {
                 onPress={handleEnrich}
                 disabled={!canRunAi || isEnriching}
               >
-                {isEnriching ? (
-                  <ActivityIndicator size="small" color={aiColor} />
-                ) : (
-                  <CategoryIcon iconKey="Phosphor.sparkle" color={aiColor} size={14} />
-                )}
+                <View style={styles.aiIcon}>
+                  {isEnriching ? (
+                    <ActivityIndicator size={14} color={aiColor} />
+                  ) : (
+                    <CategoryIcon iconKey="Phosphor.sparkle" color={aiColor} size={14} />
+                  )}
+                </View>
                 <Text style={{ color: aiColor, fontSize: 13, fontWeight: '600' }}>Enrichir</Text>
               </Pressable>
             </View>
@@ -403,11 +405,13 @@ export default function EntryEditor() {
                 onPress={handleCategorize}
                 disabled={!canRunAi || isCategorizing}
               >
-                {isCategorizing ? (
-                  <ActivityIndicator size="small" color={aiColor} />
-                ) : (
-                  <CategoryIcon iconKey="Phosphor.sparkle" color={aiColor} size={14} />
-                )}
+                <View style={styles.aiIcon}>
+                  {isCategorizing ? (
+                    <ActivityIndicator size={14} color={aiColor} />
+                  ) : (
+                    <CategoryIcon iconKey="Phosphor.sparkle" color={aiColor} size={14} />
+                  )}
+                </View>
                 <Text style={{ color: aiColor, fontSize: 13, fontWeight: '600' }}>Catégoriser</Text>
               </Pressable>
             </View>
@@ -510,6 +514,7 @@ export default function EntryEditor() {
       {categorizationSuggestions && (
         <CategorizationReviewModal
           visible
+          word={fields.Word.trim()}
           suggestions={categorizationSuggestions}
           currentCategoryNames={fields.CategoryIds
             .map((categoryId) => categoryIndex.get(categoryId)?.Name)
@@ -546,6 +551,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 4,
   },
+  aiIcon: { width: 14, height: 14, alignItems: 'center', justifyContent: 'center' },
   error: { fontSize: 13, marginTop: 12 },
   footer: { borderTopWidth: 1, padding: 14 },
   saveButton: {

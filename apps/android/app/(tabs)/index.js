@@ -1,15 +1,16 @@
 import Feather from '@expo/vector-icons/Feather';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
+import { CloseButton } from '../../src/components/CloseButton';
 import { EntryActionSheet } from '../../src/components/EntryActionSheet';
 import { EntryCard } from '../../src/components/EntryCard';
 import { FilterSheet } from '../../src/components/FilterSheet';
 import { ScrollJumpButtons } from '../../src/components/ScrollJumpButtons';
 import { useCategoryIndex } from '../../src/hooks/useCategoryIndex';
 import { useScrollEdges } from '../../src/hooks/useScrollEdges';
-import { LOCKABLE_FIELDS } from '../../src/models/vocabulary';
+import { lockedFieldsFor } from '../../src/models/vocabulary';
 import { useTheme } from '../../src/theme/useTheme';
 import { useVocabularyStore } from '../../src/store/useVocabularyStore';
 import {
@@ -19,6 +20,12 @@ import {
   UNCATEGORIZED,
   selectEntries,
 } from '../../src/utils/filterEntries';
+
+const VIRTUAL_ICONS = {
+  [UNCATEGORIZED]: 'Solar.tag',
+  [ARCHIVES]: 'Phosphor.books',
+  [LOCKED]: 'Phosphor.lock-key',
+};
 
 const VIRTUAL_LABELS = {
   [ALL_ENTRIES]: 'Toutes les entrées',
@@ -49,40 +56,39 @@ export default function Home() {
   const listRef = useRef(null);
 
   const toggleLocks = useCallback(
-    (entry, shouldLock) => {
-      const kept = entry.LockedFields.filter((field) => !LOCKABLE_FIELDS.includes(field));
-      updateEntry(entry.Id, {
-        LockedFields: shouldLock ? [...kept, ...LOCKABLE_FIELDS] : kept,
-      });
-    },
+    (entry, shouldLock) => updateEntry(entry.Id, { LockedFields: lockedFieldsFor(entry, shouldLock) }),
     [updateEntry]
   );
 
+  const listQuery = useDeferredValue(query);
   const visible = useMemo(
-    () => selectEntries({ entries, categories, filter, query, sortMode }),
-    [entries, categories, filter, query, sortMode]
+    () => selectEntries({ entries, categories, filter, query: listQuery, sortMode }),
+    [entries, categories, filter, listQuery, sortMode]
   );
   const scrollEdges = useScrollEdges(listRef, visible.length);
 
   const hideArchivedBadge = filter.kind === ARCHIVES;
+  const openEntry = useCallback((entry) => router.push(`/entry/${entry.Id}`), [router]);
+  const showActions = useCallback((entry) => setActionsFor(entry.Id), []);
   const renderEntry = useCallback(
     ({ item }) => (
       <EntryCard
         entry={item}
         categoryIndex={categoryIndex}
-        onPress={() => router.push(`/entry/${item.Id}`)}
-        onLongPress={() => setActionsFor(item.Id)}
-        onToggleLocks={(shouldLock) => toggleLocks(item, shouldLock)}
+        onPress={openEntry}
+        onLongPress={showActions}
+        onToggleLocks={toggleLocks}
         hideArchivedBadge={hideArchivedBadge}
       />
     ),
-    [categoryIndex, router, toggleLocks, hideArchivedBadge]
+    [categoryIndex, openEntry, showActions, toggleLocks, hideArchivedBadge]
   );
 
   const activeCategory = filter.categoryId ? categoryIndex.get(filter.categoryId) : null;
   const actionsEntry = actionsFor ? entries.find((entry) => entry.Id === actionsFor) : null;
   const filterLabel = activeCategory ? activeCategory.Name : VIRTUAL_LABELS[filter.kind];
-  const status = query.trim().length > 0
+  const clearFilter = () => setCategoryFilter({ kind: ALL_ENTRIES, categoryId: null });
+  const status = listQuery.trim().length > 0
     ? `${visible.length} résultat${visible.length > 1 ? 's' : ''}`
     : `${visible.length} mot${visible.length > 1 ? 's' : ''}`;
 
@@ -105,11 +111,7 @@ export default function Home() {
             autoCapitalize="none"
             autoCorrect={false}
           />
-          {query.length > 0 && (
-            <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
-              <CategoryIcon iconKey="Phosphor.x" color={colors.textMuted} size={15} />
-            </Pressable>
-          )}
+          {query.length > 0 && <CloseButton size={22} onPress={() => setSearchQuery('')} />}
           <View style={[styles.separator, { backgroundColor: colors.borderSubtle }]} />
           <Pressable onPress={() => setFilterSheetVisible(true)} hitSlop={8}>
             <Feather name="sliders" size={18} color={colors.textMuted} />
@@ -117,17 +119,22 @@ export default function Home() {
         </View>
 
         {filter.kind !== ALL_ENTRIES ? (
-          // A bordered, accent-colored control, not a dismissible chip: sized
-          // and colored to read as a real navigation action (go back up a
-          // level) rather than a muted info label or a removable filter tag.
           <Pressable
-            style={[styles.backControl, { backgroundColor: colors.surface, borderColor: colors.accent }]}
-            onPress={() => setCategoryFilter({ kind: ALL_ENTRIES, categoryId: null })}
+            style={[styles.filterCard, { backgroundColor: colors.surface, borderColor: colors.accent }]}
+            onPress={clearFilter}
           >
-            <CategoryIcon iconKey="Phosphor.caret-left" color={colors.accent} size={17} />
-            <Text style={[styles.backControlText, { color: colors.accent }]} numberOfLines={1}>
-              {filterLabel} · {status}
-            </Text>
+            <CategoryIcon
+              iconKey={activeCategory ? activeCategory.icon : VIRTUAL_ICONS[filter.kind]}
+              color={activeCategory ? activeCategory.color : colors.accent}
+              size={20}
+            />
+            <View style={styles.filterText}>
+              <Text style={[styles.filterName, { color: colors.accent }]} numberOfLines={2}>
+                {filterLabel}
+              </Text>
+              <Text style={[styles.filterCount, { color: colors.textMuted }]}>{status}</Text>
+            </View>
+            <CloseButton size={28} onPress={clearFilter} />
           </Pressable>
         ) : (
           <Text style={[styles.status, { color: colors.textMuted }]}>
@@ -141,10 +148,6 @@ export default function Home() {
         onClose={() => setFilterSheetVisible(false)}
         sortMode={sortMode}
         onSortModeChange={setSortMode}
-        filter={filter}
-        filterLabel={filterLabel}
-        activeCategory={activeCategory}
-        onResetFilter={() => setCategoryFilter({ kind: ALL_ENTRIES, categoryId: null })}
       />
 
       <FlatList
@@ -208,17 +211,19 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 15, paddingVertical: 0 },
   separator: { width: 1, height: 20, marginHorizontal: 2 },
   status: { fontSize: 12, paddingHorizontal: 2 },
-  backControl: {
+  filterCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
+    gap: 12,
     borderWidth: 1.5,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 12,
+    paddingLeft: 12,
+    paddingRight: 8,
+    paddingVertical: 9,
   },
-  backControlText: { fontSize: 14, fontWeight: '700' },
+  filterText: { flex: 1, gap: 2 },
+  filterName: { fontSize: 15, fontWeight: '700' },
+  filterCount: { fontSize: 12 },
   list: { paddingTop: 6, paddingBottom: 64 },
   empty: { padding: 28, textAlign: 'center' },
 });
