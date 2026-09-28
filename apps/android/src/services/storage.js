@@ -1,6 +1,6 @@
 // Local persistence: the vocabulary database and the app settings, each in its
 // own JSON file under the app's document directory.
-import { File, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import { ARCHIVES, LOCKED } from '../utils/filterEntries';
 
 const DATABASE_FILE = 'vocabulary.json';
@@ -104,18 +104,22 @@ function timestampSuffix() {
   return new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
 }
 
-// Writes the database to a freshly named cache file the share sheet can hand
-// to another app. Cache rather than documents: this copy is disposable, the
-// real database stays where it is.
-export function stageDatabaseExport(database) {
-  const file = new File(Paths.cache, `lexicall-${timestampSuffix()}.json`);
+export async function exportDatabaseToPickedFolder(database) {
+  let directory;
 
-  if (file.exists) {
-    file.delete();
+  try {
+    directory = await Directory.pickDirectoryAsync();
+  } catch (error) {
+    if (error?.code === 'ERR_PICKER_CANCELLED') {
+      return null;
+    }
+    throw error;
   }
-  file.create({ intermediates: true });
-  file.write(JSON.stringify(database, null, 2));
-  return file.uri;
+
+  const name = `lexicall-${timestampSuffix()}.json`;
+
+  directory.createFile(name, 'application/json').write(JSON.stringify(database, null, 2));
+  return name;
 }
 
 // Parsed and shape-checked before anything is overwritten, so a wrong file

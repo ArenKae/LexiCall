@@ -1,4 +1,5 @@
 # CRUD endpoints for vocabulary categories.
+
 from datetime import datetime
 
 import openai

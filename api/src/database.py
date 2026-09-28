@@ -10,10 +10,6 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-# Bounded to 5s (PyMongo's own default is 30s): MongoDB is now a separately
-# managed shared instance, so a slow/unreachable server should fail fast —
-# both for the startup retry loop below and for any live request made while
-# it's down — rather than hang for 30s per attempt.
 _client: MongoClient = MongoClient(settings.mongo_uri, serverSelectionTimeoutMS=5000)
 _db = _client[settings.mongo_db_name]
 
@@ -46,12 +42,10 @@ def ping() -> bool:
 
 
 def ensure_indexes() -> None:
-    # Retries a bounded number of times so a shared, separately-managed
-    # Mongo instance that happens to start after the API doesn't crash the
-    # container on its very first index-create call. Worst case ~5*(5s
-    # client timeout)+4*2s =~33s before giving up and letting Docker's
-    # `restart: unless-stopped` backoff take over. Catches PyMongoError
-    # specifically — a real programming bug should still crash immediately.
+    # Retries a bounded number of times so a Mongo instance that happens 
+	# to start after the API doesn't crash the container on its very first 
+	# index-create call. Worst case ~5*(5s client timeout)+4*2s =~33s before 
+	# giving up and letting Docker's`restart: unless-stopped` backoff take over.
     last_error: PyMongoError | None = None
     for attempt in range(1, _INDEX_RETRY_ATTEMPTS + 1):
         try:
@@ -75,8 +69,6 @@ def _create_indexes() -> None:
     get_entries_collection().create_index("Id", unique=True)
     get_categories_collection().create_index("Id", unique=True)
     get_entry_images_collection().create_index("Id", unique=True)
-    # No other index: the whole collection is read on every retrieval, never
-    # filtered or sorted.
     get_category_embeddings_collection().create_index("Id", unique=True)
 
     # Speeds up the updated_since delta query used for sync pulls, which

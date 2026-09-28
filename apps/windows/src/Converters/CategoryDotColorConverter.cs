@@ -7,7 +7,6 @@ using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;
 using LexiCall.Desktop.Models;
-using LexiCall.Desktop.Services;
 using LexiCall.Desktop.Utilities;
 
 namespace LexiCall.Desktop.Converters;
@@ -22,11 +21,8 @@ public sealed class CategoryDotColorConverter : IMultiValueConverter
         }
 
         var categories = categoriesValue as IReadOnlyCollection<VocabularyCategory> ?? categoriesValue.ToList();
-        var colorIndexes = CategoryHierarchy.ComputeColorIndexes(categories);
-        var colorOverrides = CategoryColorStore.LoadAll();
-        var color = CategoryColorResolver.Resolve(category, categories, colorIndexes, colorOverrides);
 
-        return new SolidColorBrush(color);
+        return CategoryBrushCache.GetBrush(category, categories);
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture) =>

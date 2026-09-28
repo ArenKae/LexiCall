@@ -3,6 +3,7 @@
 # cache. Keyed by the category's own Id. SourceText is the exact text that
 # produced the vector — comparing it is how callers skip re-embedding a
 # category whose name, path and description haven't changed.
+
 from database import get_category_embeddings_collection, strip_mongo_id
 
 

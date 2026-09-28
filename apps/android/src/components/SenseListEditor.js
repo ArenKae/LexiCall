@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CategoryIcon } from './CategoryIcon';
+import { CloseButton } from './CloseButton';
 import { useTheme } from '../theme/useTheme';
 
 // One row per sense of the definition: add and remove freely, no reordering.
@@ -33,9 +34,7 @@ export function SenseListEditor({ senses, onChange }) {
             multiline
           />
           {senses.length > 1 && (
-            <Pressable onPress={() => remove(index)} hitSlop={8} style={styles.remove}>
-              <CategoryIcon iconKey="Phosphor.x" color={colors.textMuted} size={16} />
-            </Pressable>
+            <CloseButton size={22} style={styles.remove} onPress={() => remove(index)} />
           )}
         </View>
       ))}
@@ -61,7 +60,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minHeight: 40,
   },
-  remove: { marginTop: 10 },
+  remove: { marginTop: 9 },
   addButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 },
   addText: { fontSize: 13, fontWeight: '600' },
 });

@@ -1,5 +1,5 @@
-# Raw French Wiktionary lookup for a word — no LLM involved, session 1.2
-# builds the definition-suggestion feature on top of fetch_definition_context.
+# Raw French Wiktionary lookup for a word.
+
 from fastapi import APIRouter, Depends
 
 import wiktionary_client

@@ -2,6 +2,8 @@
 // theme or column layout), stored in settings.json — never in vocabulary.json
 // or synced to api/. See CategoryColorResolver for the actual resolution
 // (override here, otherwise an automatic hue derived from the hierarchy).
+using LexiCall.Desktop.Utilities;
+
 namespace LexiCall.Desktop.Services;
 
 public static class CategoryColorStore
@@ -13,6 +15,7 @@ public static class CategoryColorStore
         var settings = SettingsStore.Load();
         settings.CategoryColors[categoryId] = hexColor;
         SettingsStore.Save(settings);
+        CategoryBrushCache.Invalidate();
     }
 
     public static void ClearColor(Guid categoryId)
@@ -22,6 +25,7 @@ public static class CategoryColorStore
         if (settings.CategoryColors.Remove(categoryId))
         {
             SettingsStore.Save(settings);
+            CategoryBrushCache.Invalidate();
         }
     }
 }

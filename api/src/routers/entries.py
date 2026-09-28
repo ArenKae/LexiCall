@@ -1,4 +1,5 @@
 # CRUD endpoints for vocabulary entries.
+
 import base64
 import binascii
 from datetime import datetime

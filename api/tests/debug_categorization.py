@@ -16,6 +16,7 @@
 #
 # Reads the stored category embeddings as-is: run the reindex first
 # (POST /categories/reindex-embeddings) if the corpus changed.
+
 import argparse
 import json
 import sys

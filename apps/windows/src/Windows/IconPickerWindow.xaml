@@ -29,40 +29,56 @@
                  Margin="0,0,0,14"
                  ToolTip="Filtrer les icônes par mot-clé (ex. « mer », « coeur », « livre »)." />
 
-        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding Groups}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate DataType="{x:Type viewModels:IconPickerGroupViewModel}">
-                        <StackPanel Margin="0,0,0,16">
-                            <TextBlock Text="{Binding Name}"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource Brush.Text.Secondary}"
-                                       Margin="0,0,0,8" />
-                            <ItemsControl ItemsSource="{Binding Icons}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Button Width="44" Height="44"
-                                                Margin="0,0,6,6"
-                                                Padding="0"
-                                                Tag="{Binding IconKey}"
-                                                ToolTip="{Binding Keywords}"
-                                                Click="IconButton_Click">
-                                            <Path Data="{Binding IconKey, Converter={StaticResource IconKeyToGeometryConverter}}"
-                                                  Fill="{DynamicResource Brush.Text.Primary}"
-                                                  Width="20" Height="20" Stretch="Uniform" />
-                                        </Button>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
+        <ItemsControl Grid.Row="2"
+                      ItemsSource="{Binding Groups}"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      VirtualizingPanel.ScrollUnit="Pixel"
+                      ScrollViewer.CanContentScroll="True"
+                      ScrollViewer.VerticalScrollBarVisibility="Auto">
+            <ItemsControl.Template>
+                <ControlTemplate TargetType="ItemsControl">
+                    <ScrollViewer CanContentScroll="True" VerticalScrollBarVisibility="Auto">
+                        <ItemsPresenter />
+                    </ScrollViewer>
+                </ControlTemplate>
+            </ItemsControl.Template>
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type viewModels:IconPickerGroupViewModel}">
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Text="{Binding Name}"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Brush.Text.Secondary}"
+                                   Margin="0,0,0,8" />
+                        <ItemsControl ItemsSource="{Binding Icons}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Width="44" Height="44"
+                                            Margin="0,0,6,6"
+                                            Padding="0"
+                                            Tag="{Binding IconKey}"
+                                            ToolTip="{Binding Keywords}"
+                                            Click="IconButton_Click">
+                                        <Path Data="{Binding IconKey, Converter={StaticResource IconKeyToGeometryConverter}}"
+                                              Fill="{DynamicResource Brush.Text.Primary}"
+                                              Width="20" Height="20" Stretch="Uniform" />
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
     </Grid>
 </Window>

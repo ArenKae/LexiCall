@@ -119,24 +119,28 @@
                                                 <Style TargetType="Path">
                                                     <Setter Property="Visibility" Value="Collapsed" />
                                                     <Style.Triggers>
+                                                        <!-- Spun from the trigger, not from Loaded: a
+                                                             Forever animation started on load never
+                                                             stops while the dialog is open. -->
                                                         <DataTrigger Binding="{Binding IsEnrichingDraft}" Value="True">
                                                             <Setter Property="Visibility" Value="Visible" />
+                                                            <DataTrigger.EnterActions>
+                                                                <BeginStoryboard x:Name="EnrichDraftSpinner">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation
+                                                                            Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                            From="0" To="360" Duration="0:0:0.8"
+                                                                            RepeatBehavior="Forever" />
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.EnterActions>
+                                                            <DataTrigger.ExitActions>
+                                                                <StopStoryboard BeginStoryboardName="EnrichDraftSpinner" />
+                                                            </DataTrigger.ExitActions>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </Path.Style>
-                                            <Path.Triggers>
-                                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                                    <BeginStoryboard>
-                                                        <Storyboard>
-                                                            <DoubleAnimation
-                                                                Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                From="0" To="360" Duration="0:0:0.8"
-                                                                RepeatBehavior="Forever" />
-                                                        </Storyboard>
-                                                    </BeginStoryboard>
-                                                </EventTrigger>
-                                            </Path.Triggers>
                                         </Path>
                                         <Path Data="{StaticResource Icon.Phosphor.sparkle}"
                                               Width="13" Height="13"
@@ -355,24 +359,28 @@
                                                 <Style TargetType="Path">
                                                     <Setter Property="Visibility" Value="Collapsed" />
                                                     <Style.Triggers>
+                                                        <!-- Spun from the trigger, not from Loaded: a
+                                                             Forever animation started on load never
+                                                             stops while the dialog is open. -->
                                                         <DataTrigger Binding="{Binding IsCategorizingDraft}" Value="True">
                                                             <Setter Property="Visibility" Value="Visible" />
+                                                            <DataTrigger.EnterActions>
+                                                                <BeginStoryboard x:Name="CategorizeDraftSpinner">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation
+                                                                            Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                            From="0" To="360" Duration="0:0:0.8"
+                                                                            RepeatBehavior="Forever" />
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.EnterActions>
+                                                            <DataTrigger.ExitActions>
+                                                                <StopStoryboard BeginStoryboardName="CategorizeDraftSpinner" />
+                                                            </DataTrigger.ExitActions>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </Path.Style>
-                                            <Path.Triggers>
-                                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                                    <BeginStoryboard>
-                                                        <Storyboard>
-                                                            <DoubleAnimation
-                                                                Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                From="0" To="360" Duration="0:0:0.8"
-                                                                RepeatBehavior="Forever" />
-                                                        </Storyboard>
-                                                    </BeginStoryboard>
-                                                </EventTrigger>
-                                            </Path.Triggers>
                                         </Path>
                                         <Path Data="{StaticResource Icon.Phosphor.sparkle}"
                                               Width="13" Height="13"
@@ -623,24 +631,28 @@
                                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                                 <Setter Property="Fill" Value="{DynamicResource Brush.Text.Muted}" />
                                                                 <Style.Triggers>
+                                                                    <!-- Spun from the trigger, not from Loaded: a
+                                                                         Forever animation started on load never
+                                                                         stops, and each picked image adds one. -->
                                                                     <DataTrigger Binding="{Binding Status}" Value="Loading">
                                                                         <Setter Property="Visibility" Value="Visible" />
+                                                                        <DataTrigger.EnterActions>
+                                                                            <BeginStoryboard x:Name="ImageRowSpinner">
+                                                                                <Storyboard>
+                                                                                    <DoubleAnimation
+                                                                                        Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                                        From="0" To="360" Duration="0:0:0.8"
+                                                                                        RepeatBehavior="Forever" />
+                                                                                </Storyboard>
+                                                                            </BeginStoryboard>
+                                                                        </DataTrigger.EnterActions>
+                                                                        <DataTrigger.ExitActions>
+                                                                            <StopStoryboard BeginStoryboardName="ImageRowSpinner" />
+                                                                        </DataTrigger.ExitActions>
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
                                                         </Path.Style>
-                                                        <Path.Triggers>
-                                                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                                                <BeginStoryboard>
-                                                                    <Storyboard>
-                                                                        <DoubleAnimation
-                                                                            Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                            From="0" To="360" Duration="0:0:0.8"
-                                                                            RepeatBehavior="Forever" />
-                                                                    </Storyboard>
-                                                                </BeginStoryboard>
-                                                            </EventTrigger>
-                                                        </Path.Triggers>
                                                     </Path>
 
                                                     <StackPanel VerticalAlignment="Center" Margin="8,0">

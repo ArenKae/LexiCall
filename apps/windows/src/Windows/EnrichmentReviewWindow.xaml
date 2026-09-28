@@ -232,22 +232,23 @@
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding DefinitionCard.IsRephrasing}" Value="True">
                                                         <Setter Property="Visibility" Value="Visible" />
+                                                        <DataTrigger.EnterActions>
+                                                            <BeginStoryboard x:Name="RephraseSpinner">
+                                                                <Storyboard>
+                                                                    <DoubleAnimation
+                                                                        Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                        From="0" To="360" Duration="0:0:0.8"
+                                                                        RepeatBehavior="Forever" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </DataTrigger.EnterActions>
+                                                        <DataTrigger.ExitActions>
+                                                            <StopStoryboard BeginStoryboardName="RephraseSpinner" />
+                                                        </DataTrigger.ExitActions>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </Path.Style>
-                                        <Path.Triggers>
-                                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                                <BeginStoryboard>
-                                                    <Storyboard>
-                                                        <DoubleAnimation
-                                                            Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                            From="0" To="360" Duration="0:0:0.8"
-                                                            RepeatBehavior="Forever" />
-                                                    </Storyboard>
-                                                </BeginStoryboard>
-                                            </EventTrigger>
-                                        </Path.Triggers>
                                     </Path>
                                     <Path Data="{StaticResource Icon.Phosphor.arrow-clockwise}"
                                           Width="11" Height="11"

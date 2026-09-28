@@ -2,6 +2,7 @@
 // method is best-effort — it never throws, only returns a success flag. The
 // local JSON (VocabularyRepository) stays the source of truth; this client
 // only pushes a best-effort background sync.
+
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
@@ -118,12 +119,17 @@ public sealed record RephraseDefinitionRequest(string Word, string Definition);
 
 public sealed record RephraseDefinitionResult(string Definition);
 
-public sealed class VocabularyApiClient
+public sealed class VocabularyApiClient : IDisposable
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
+
+    // One handler behind all three clients: each would otherwise carry its own
+    // connection pool and idle timer, and a client is rebuilt every time the
+    // API settings change.
+    private readonly SocketsHttpHandler? _handler;
 
     private readonly HttpClient? _httpClient;
     // Separate, longer-timeout client for the LLM-backed enrichment calls:
@@ -137,33 +143,34 @@ public sealed class VocabularyApiClient
 
     public VocabularyApiClient(string? baseUrl, string? apiKey)
     {
-        _httpClient = CreateHttpClient(baseUrl, apiKey, TimeSpan.FromSeconds(2));
-        _enrichmentHttpClient = CreateHttpClient(baseUrl, apiKey, TimeSpan.FromSeconds(20));
-        _imageHttpClient = CreateHttpClient(baseUrl, apiKey, TimeSpan.FromSeconds(10));
+        if (!TryCreateBaseAddress(baseUrl, out var baseAddress))
+        {
+            return;
+        }
+
+        _handler = new SocketsHttpHandler();
+        _httpClient = CreateHttpClient(baseAddress, apiKey, TimeSpan.FromSeconds(2));
+        _enrichmentHttpClient = CreateHttpClient(baseAddress, apiKey, TimeSpan.FromSeconds(20));
+        _imageHttpClient = CreateHttpClient(baseAddress, apiKey, TimeSpan.FromSeconds(10));
     }
 
-    private static HttpClient? CreateHttpClient(string? baseUrl, string? apiKey, TimeSpan timeout)
+    // Malformed URL in settings: disable sync rather than block app startup.
+    private static bool TryCreateBaseAddress(string? baseUrl, out Uri? baseAddress)
     {
-        if (string.IsNullOrWhiteSpace(baseUrl))
-        {
-            return null;
-        }
+        baseAddress = null;
 
-        HttpClient client;
-        try
+        return !string.IsNullOrWhiteSpace(baseUrl) &&
+            Uri.TryCreate(baseUrl, UriKind.Absolute, out baseAddress);
+    }
+
+    private HttpClient CreateHttpClient(Uri? baseAddress, string? apiKey, TimeSpan timeout)
+    {
+        // disposeHandler: false — the shared handler is disposed once, by Dispose.
+        var client = new HttpClient(_handler!, disposeHandler: false)
         {
-            client = new HttpClient
-            {
-                BaseAddress = new Uri(baseUrl, UriKind.Absolute),
-                Timeout = timeout
-            };
-        }
-        catch (UriFormatException)
-        {
-            // Malformed URL in settings: disable sync rather than block
-            // app startup.
-            return null;
-        }
+            BaseAddress = baseAddress,
+            Timeout = timeout
+        };
 
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
@@ -171,6 +178,17 @@ public sealed class VocabularyApiClient
         }
 
         return client;
+    }
+
+    // Called when the API settings change and this client is replaced. A
+    // request still in flight then fails like any other unreachable-API call:
+    // every Try* method treats ObjectDisposedException as such.
+    public void Dispose()
+    {
+        _httpClient?.Dispose();
+        _enrichmentHttpClient?.Dispose();
+        _imageHttpClient?.Dispose();
+        _handler?.Dispose();
     }
 
     public bool IsConfigured => _httpClient is not null;
@@ -203,7 +221,7 @@ public sealed class VocabularyApiClient
                 ? ApiConnectionStatus.InvalidApiKey
                 : ApiConnectionStatus.Ok;
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or UriFormatException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or UriFormatException or ObjectDisposedException)
         {
             return ApiConnectionStatus.Unreachable;
         }
@@ -259,7 +277,7 @@ public sealed class VocabularyApiClient
 
             return await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or ObjectDisposedException)
         {
             Debug.WriteLine($"[image {imageId}] {ex.Message}");
             return null;
@@ -292,7 +310,7 @@ public sealed class VocabularyApiClient
                 : null;
             return new SyncPullResult<T>(items, serverTimestamp);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or ObjectDisposedException)
         {
             return null;
         }
@@ -314,7 +332,7 @@ public sealed class VocabularyApiClient
             using var response = await _httpClient.PutAsJsonAsync($"{resourcePath}/{id}", payload, JsonOptions).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or ObjectDisposedException)
         {
             return false;
         }
@@ -350,7 +368,7 @@ public sealed class VocabularyApiClient
                 ? (EntryEnrichmentStatus.Failed, null, null)
                 : (EntryEnrichmentStatus.Ok, result, null);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or ObjectDisposedException)
         {
             return (EntryEnrichmentStatus.Failed, null, ex.Message);
         }
@@ -386,7 +404,7 @@ public sealed class VocabularyApiClient
                 ? (RephraseDefinitionStatus.Failed, null, null)
                 : (RephraseDefinitionStatus.Ok, result, null);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or ObjectDisposedException)
         {
             return (RephraseDefinitionStatus.Failed, null, ex.Message);
         }
@@ -421,7 +439,7 @@ public sealed class VocabularyApiClient
                 ? (CategorizationStatus.Failed, null, null)
                 : (CategorizationStatus.Ok, result, null);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or ObjectDisposedException)
         {
             return (CategorizationStatus.Failed, null, ex.Message);
         }
@@ -456,7 +474,7 @@ public sealed class VocabularyApiClient
                 ? (CategoryReindexStatus.Failed, null, null)
                 : (CategoryReindexStatus.Ok, result, null);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or ObjectDisposedException)
         {
             return (CategoryReindexStatus.Failed, null, ex.Message);
         }
@@ -503,7 +521,7 @@ public sealed class VocabularyApiClient
             // failure from the caller's point of view.
             return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotFound;
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or ObjectDisposedException)
         {
             return false;
         }

@@ -1079,6 +1079,7 @@
                                  SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
                                  ItemContainerStyle="{StaticResource CardListBoxItemStyle}"
                                  Padding="0,0,8,0"
+                                 VirtualizingPanel.VirtualizationMode="Recycling"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
@@ -1626,22 +1627,23 @@
                                                                                 <Style.Triggers>
                                                                                     <DataTrigger Binding="{Binding Status}" Value="Loading">
                                                                                         <Setter Property="Visibility" Value="Visible" />
+                                                                                        <DataTrigger.EnterActions>
+                                                                                            <BeginStoryboard x:Name="ThumbnailSpinner">
+                                                                                                <Storyboard>
+                                                                                                    <DoubleAnimation
+                                                                                                        Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                                                        From="0" To="360" Duration="0:0:0.8"
+                                                                                                        RepeatBehavior="Forever" />
+                                                                                                </Storyboard>
+                                                                                            </BeginStoryboard>
+                                                                                        </DataTrigger.EnterActions>
+                                                                                        <DataTrigger.ExitActions>
+                                                                                            <StopStoryboard BeginStoryboardName="ThumbnailSpinner" />
+                                                                                        </DataTrigger.ExitActions>
                                                                                     </DataTrigger>
                                                                                 </Style.Triggers>
                                                                             </Style>
                                                                         </Path.Style>
-                                                                        <Path.Triggers>
-                                                                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                                                                <BeginStoryboard>
-                                                                                    <Storyboard>
-                                                                                        <DoubleAnimation
-                                                                                            Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                                            From="0" To="360" Duration="0:0:0.8"
-                                                                                            RepeatBehavior="Forever" />
-                                                                                    </Storyboard>
-                                                                                </BeginStoryboard>
-                                                                            </EventTrigger>
-                                                                        </Path.Triggers>
                                                                     </Path>
 
                                                                     <!-- Failure never shows the technical cause (HTTP status,
@@ -1781,22 +1783,23 @@
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsEnrichingEntry}" Value="True">
                                                     <Setter Property="Visibility" Value="Visible" />
+                                                    <DataTrigger.EnterActions>
+                                                        <BeginStoryboard x:Name="EnrichSpinner">
+                                                            <Storyboard>
+                                                                <DoubleAnimation
+                                                                    Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                    From="0" To="360" Duration="0:0:0.8"
+                                                                    RepeatBehavior="Forever" />
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </DataTrigger.EnterActions>
+                                                    <DataTrigger.ExitActions>
+                                                        <StopStoryboard BeginStoryboardName="EnrichSpinner" />
+                                                    </DataTrigger.ExitActions>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </Path.Style>
-                                    <Path.Triggers>
-                                        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <DoubleAnimation
-                                                        Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                        From="0" To="360" Duration="0:0:0.8"
-                                                        RepeatBehavior="Forever" />
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </EventTrigger>
-                                    </Path.Triggers>
                                 </Path>
                                 <Path Data="{StaticResource Icon.Phosphor.sparkle}"
                                       Width="13" Height="13"
@@ -1845,22 +1848,23 @@
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsCategorizingEntry}" Value="True">
                                                     <Setter Property="Visibility" Value="Visible" />
+                                                    <DataTrigger.EnterActions>
+                                                        <BeginStoryboard x:Name="CategorizeSpinner">
+                                                            <Storyboard>
+                                                                <DoubleAnimation
+                                                                    Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                    From="0" To="360" Duration="0:0:0.8"
+                                                                    RepeatBehavior="Forever" />
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </DataTrigger.EnterActions>
+                                                    <DataTrigger.ExitActions>
+                                                        <StopStoryboard BeginStoryboardName="CategorizeSpinner" />
+                                                    </DataTrigger.ExitActions>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </Path.Style>
-                                    <Path.Triggers>
-                                        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <DoubleAnimation
-                                                        Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                        From="0" To="360" Duration="0:0:0.8"
-                                                        RepeatBehavior="Forever" />
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </EventTrigger>
-                                    </Path.Triggers>
                                 </Path>
                                 <Path Data="{StaticResource Icon.Solar.tag}"
                                       Width="13" Height="13"

@@ -3,6 +3,7 @@
 # WiredTiger cache. Each document has its own Id (client-generated, like
 # every other Id in this codebase) — an entry references zero to several of
 # them via its own Images: [{Id, Caption}] array, not a shared key.
+
 from database import get_entry_images_collection, strip_mongo_id
 
 

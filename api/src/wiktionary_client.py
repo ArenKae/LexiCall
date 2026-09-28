@@ -5,6 +5,7 @@
 # (etymology, translations, pronunciation, references...); keeps synonyms
 # and a capped number of literary citations as context for the Synonyms/
 # ExampleSentences enrichment fields.
+
 import re
 
 import httpx
@@ -20,7 +21,10 @@ _NOISE_SECTION_NAMES = (
     "étymologie", "prononciation", "abréviations", "apparentés", "dérivés", "composés",
     "vocabulaire", "phrases", "traductions", "hyperonymes",
     "anagrammes", "voir aussi", "références",
+    "nom de famille", "nom propre", "prénom", "patronyme",
 )
+
+_DEFINITION_LINE_RE = re.compile(r"^#[^*:]", re.MULTILINE)
 
 _NOISE_BLOCK_RES = [
     re.compile(r"\{\{trad-début.*?\{\{trad-fin\}\}", re.DOTALL),
@@ -106,6 +110,8 @@ def _clean_wikitext(wikitext: str) -> str | None:
     cleaned = match.group(0)
     for noise_re in _NOISE_BLOCK_RES:
         cleaned = noise_re.sub("", cleaned)
+    if not _DEFINITION_LINE_RE.search(cleaned):
+        return None
     cleaned = _cap_citations(cleaned)
     return _BLANK_RUN_RE.sub("\n\n", cleaned).strip()
 

@@ -8,6 +8,11 @@ export function isEntryLocked(entry) {
   return LOCKABLE_FIELDS.every((field) => entry.LockedFields.includes(field));
 }
 
+export function lockedFieldsFor(entry, shouldLock) {
+  const kept = entry.LockedFields.filter((field) => !LOCKABLE_FIELDS.includes(field));
+  return shouldLock ? [...kept, ...LOCKABLE_FIELDS] : kept;
+}
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }

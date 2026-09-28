@@ -4,6 +4,7 @@
 # reindex_all() for a full reconciliation pass — the repair path for
 # embeddings that drifted, since refresh_subtree deliberately swallows its
 # own failures rather than failing the category write it follows.
+
 import logging
 from dataclasses import dataclass
 

@@ -1,5 +1,6 @@
-# AI enrichment routes — every LLM-backed suggestion feature
-#  lives under this one router.
+# AI enrichment routes — every LLM-backed suggestion feature 
+# lives under this one router.
+
 import httpx
 import openai
 from fastapi import APIRouter, Depends, HTTPException, Query

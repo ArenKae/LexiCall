@@ -1,6 +1,7 @@
 # AI enrichment orchestration: composes llm_client + external context
 # sources (wiktionary_client, embeddings, ...) into prompts for each
 # enrichment feature.
+
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Literal
@@ -17,6 +18,7 @@ ENRICHABLE_FIELDS = ("Definition", "Type", "Synonyms", "ExampleSentences")
 # extra slot gets filled whether or not it is warranted: the model reaches
 # for a marginal nature rather than leaving it empty.
 MAX_ENTRY_TYPES = 2
+
 # PascalCase (matches VocabularyEntry.LockedFields entries / JSON aliases) ->
 # snake_case (matches the JSON schema sent to the LLM and the response dict
 # key expected by EntryEnrichmentSuggestions).
@@ -156,6 +158,15 @@ _LEXICAL_RULES = (
     "déguisée en phrase, ni citation littéraire, ni phrase qui explique le "
     "mot au lieu de s'en servir. TROIS AU MAXIMUM, un par sens illustré, en "
     "commençant par le sens le plus courant. "
+    "L'ENTRÉE PORTE TOUJOURS SUR UN MOT COMMUN, jamais sur un nom propre. "
+    "N'emploie jamais le mot comme patronyme, prénom, toponyme, marque ou "
+    "titre d'œuvre, et ne cite aucune personne réelle : « Page » est le "
+    "jeune serviteur ou la feuille de papier, jamais quelqu'un qui s'appelle "
+    "Page. Si tu ne connais du mot qu'un emploi en nom propre, renvoie des "
+    "listes vides. "
+    "QUAND UNE DÉFINITION DE L'ENTRÉE T'EST FOURNIE, elle fait autorité : "
+    "synonymes et exemples doivent porter sur ce sens-là et sur aucun autre, "
+    "même si le contexte en documente d'autres. "
 )
 
 _STYLE_RULES = (
@@ -310,8 +321,13 @@ def _current_value_text(entry: dict, field: str) -> str:
     return value if value else "vide"
 
 
+_DEFINITION_REFERENCE_FIELDS = {"Synonyms", "ExampleSentences"}
+
+
 def _build_entry_enrichment_prompt(entry: dict, fields: list[str], grounding: Grounding) -> str:
     lines = [f"Mot : {entry['Word']}"]
+    if entry.get("Definition") and any(field in _DEFINITION_REFERENCE_FIELDS for field in fields):
+        lines.append(f"Définition de l'entrée : {_current_value_text(entry, 'Definition')}")
     for field in fields:
         lines.append(f"{_CURRENT_VALUE_LABELS[field]} : {_current_value_text(entry, field)}")
     if grounding.context:

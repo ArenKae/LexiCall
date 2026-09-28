@@ -1,6 +1,7 @@
 ﻿// Main ViewModel: exposes the category tree, the filtered entry list
 // (category + search), and CRUD operations on entries and categories to
 // MainWindow.xaml.
+
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
@@ -8,9 +9,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Media;
 using System.Windows.Threading;
-using LexiCall.Desktop.Converters;
 using LexiCall.Desktop.Models;
 using LexiCall.Desktop.Services;
 using LexiCall.Desktop.Utilities;
@@ -422,6 +421,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     // settings.json) then rebuilds the HTTP client with the new values.
     public void UpdateApiSettings(string? apiBaseUrl, string? apiKey)
     {
+        if (string.Equals(_apiBaseUrl, apiBaseUrl, StringComparison.Ordinal) &&
+            string.Equals(_apiKey, apiKey, StringComparison.Ordinal))
+        {
+            return;
+        }
+
         _apiBaseUrl = apiBaseUrl;
         _apiKey = apiKey;
 
@@ -430,7 +435,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         settings.ApiKey = apiKey;
         SettingsStore.Save(settings);
 
+        // The replaced client owns an HTTP handler and its connection pool;
+        // this runs once per edit of the Options fields, so leaking them adds up.
+        var previousClient = _apiClient;
         _apiClient = new VocabularyApiClient(apiBaseUrl, apiKey);
+        previousClient.Dispose();
+
         OnPropertyChanged(nameof(ApiBaseUrl));
         OnPropertyChanged(nameof(ApiKey));
 
@@ -811,9 +821,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     appliedPulls);
             }
 
-            RebuildCategoryTree();
-            RefreshFilteredEntries();
-            SaveDatabase();
+            // A cycle that changed nothing — the overwhelmingly common case —
+            // must not rebuild the tree, regenerate every list container or
+            // rewrite the whole database file once a minute for the lifetime
+            // of the process. Only a pull moves records around; a confirmed
+            // push or deletion just needs persisting.
+            if (appliedPulls > 0)
+            {
+                RebuildCategoryTree();
+                RefreshFilteredEntries();
+            }
+
+            if (appliedPulls > 0 ||
+                syncedCategories.Count > 0 ||
+                syncedEntries.Count > 0 ||
+                entryDeletionResults.Any(result => result.Success) ||
+                categoryDeletionResults.Any(result => result.Success))
+            {
+                SaveDatabase();
+            }
+
             GlobalSyncStatus = GlobalSyncStatus.Ok;
             LastSyncedAt = DateTimeOffset.Now;
             OnPropertyChanged(nameof(LastSyncedAtTooltip));
@@ -1398,6 +1425,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void RebuildCategoryTree()
     {
+        // The only place every category mutation funnels through, so it is
+        // also where the cached dot brushes are dropped.
+        CategoryBrushCache.Invalidate();
+
         // Rebuilt on every mutation; preserves the current expansion and selection.
         var expandedIds = CollectNodes(CategoryTree)
             .Where(node => node.Category is not null && node.IsExpanded)
@@ -1427,8 +1458,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         // Flatten gives a depth-first walk with each node's depth; a stack
         // is enough to reconstruct the nesting.
         var categoryOrder = CategoryOrderStore.LoadAll();
-        var colorIndexes = CategoryHierarchy.ComputeColorIndexes(Categories);
-        var colorOverrides = CategoryColorStore.LoadAll();
         var nodeStack = new List<CategoryNodeViewModel>();
 
         foreach (var (category, depth) in CategoryHierarchy.Flatten(Categories, categoryOrder))
@@ -1436,8 +1465,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             var node = CategoryNodeViewModel.CreateForCategory(category, OnCategoryNodeSelected);
             node.IsExpanded = expandedIds.Contains(category.Id);
             node.Depth = depth;
-            node.ColorBrush = new SolidColorBrush(
-                CategoryColorResolver.Resolve(category, Categories, colorIndexes, colorOverrides));
+            node.ColorBrush = CategoryBrushCache.GetBrush(category, Categories);
 
             if (depth == 0)
             {
@@ -1650,13 +1678,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SelectedEntryImages.Add(imageViewModel);
 
             // Bytes are inline only for images added on this machine; an
-            // entry that arrived through a pull has none, and goes to the
-            // cache-or-download path below.
-            if (Base64ImageConverter.ToBitmapImage(image.ImageBase64) is { } inline)
+            // entry that arrived through a pull has none — and so does one
+            // whose inline bytes turn out not to decode.
+            if (TryDecodeBase64(image.ImageBase64) is { } inline)
             {
                 imageViewModel.MarkLoaded(inline);
             }
-            else
+
+            if (imageViewModel.Status != EntryImageStatus.Ready)
             {
                 LoadEntryImage(_selectedEntry.Id, imageViewModel);
             }
@@ -1673,13 +1702,30 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    private static byte[]? TryDecodeBase64(string base64)
+    {
+        if (string.IsNullOrWhiteSpace(base64))
+        {
+            return null;
+        }
+
+        try
+        {
+            return System.Convert.FromBase64String(base64);
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
     private void LoadEntryImage(Guid entryId, EntryImageViewModel image)
     {
         // Read synchronously first: an already-downloaded image must not
         // flash a spinner every time its entry is selected.
         if (EntryImageCache.TryReadCached(image.Id) is { } cached)
         {
-            image.MarkLoaded(Base64ImageConverter.ToBitmapImage(cached));
+            image.MarkLoaded(cached);
             return;
         }
 
@@ -1694,7 +1740,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private async Task LoadEntryImageAsync(Guid entryId, EntryImageViewModel image)
     {
         var bytes = await EntryImageCache.LoadAsync(_apiClient, entryId, image.Id);
-        image.MarkLoaded(bytes is null ? null : Base64ImageConverter.ToBitmapImage(bytes));
+        image.MarkLoaded(bytes);
     }
 
     private void RefreshFilteredEntries()

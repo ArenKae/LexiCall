@@ -1,5 +1,6 @@
 # Data access for the `categories` collection, keyed by the application Id
 # field rather than Mongo's native _id.
+
 from datetime import datetime, timezone
 
 from pymongo import ReturnDocument
