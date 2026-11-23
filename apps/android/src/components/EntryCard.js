@@ -44,7 +44,7 @@ export function EntryCard({
         <Pressable onPress={() => onToggleLocks(!allLocked)} hitSlop={12} style={styles.lock}>
           <CategoryIcon
             iconKey={allLocked ? 'Phosphor.lock-key' : 'Phosphor.lock-key-open'}
-            color={allLocked ? colors.danger : colors.textMuted}
+            color={allLocked ? colors.success : colors.textMuted}
             size={18}
           />
         </Pressable>

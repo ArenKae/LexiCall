@@ -1100,7 +1100,7 @@
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding Converter={StaticResource EntryLockedConverter}}" Value="True">
                                                                     <Setter Property="Data" Value="{StaticResource Icon.Phosphor.lock-key}" />
-                                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Danger}" />
+                                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
