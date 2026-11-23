@@ -1,213 +1,144 @@
-# LexiCall
+<!-- Public landing page: what LexiCall is, how to run it in minutes, and why it is built this way. -->
+<p align="center">
+  <img src="assets/logo.png" width="96" alt="LexiCall logo">
+</p>
 
-A personal vocabulary tracker for words and expressions collected while reading:
-organize them into a category hierarchy, search across everything instantly, and
-keep the collection in sync across devices, without ever losing offline access to
-a single word.
+<h1 align="center">LexiCall</h1>
 
-**Status**: the Windows desktop client is feature-complete and daily-driven; the
-FastAPI/MongoDB backend is implemented and running in production on a VPS, wired
-to the desktop client through a bidirectional, timestamp-based sync layer (details
-below).
+<p align="center">
+  Collect the words you meet while reading — filed by category, enriched by AI you review, synced across your devices, and always available offline.
+</p>
 
-## Overview
+<p align="center">
+  <img src="assets/hero.webp" width="800" alt="LexiCall on a Windows laptop and an Android phone">
+</p>
 
-LexiCall started as a personal itch: reading constantly surfaces words and
-expressions worth keeping, and neither note-taking apps nor spreadsheets were
-built for that: the former have no real structure for a growing vocabulary,
-the latter lack the flexibility and performance of a dedicated solution. This repository is what
-came out of building that tool myself, end to end, from the desktop app I
-use daily to the backend that keeps it in sync.
+<p align="center">
+  <a href="#highlights">Highlights</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#why-these-choices">Why these choices</a> ·
+  <a href="#repository">Repository</a>
+</p>
 
-Two components exist today:
+## What it does
 
-- **`apps/windows`**, a WPF/.NET desktop app: the primary way vocabulary gets
-  collected, browsed, and edited.
-- **`api`**, a FastAPI + MongoDB backend that mirrors the desktop client's data,
-  deployed to a VPS behind a reverse proxy with automatic HTTPS.
+LexiCall is a personal vocabulary tracker for the words and expressions you collect while reading. Each entry holds one or several senses, grammatical types, synonyms, example sentences, notes, a source and up to four images. Entries are filed in a nested category tree and found again with an instant, accent-insensitive search.
 
-```mermaid
-flowchart LR
-    subgraph client["apps/windows (WPF)"]
-        direction TB
-        VM["MainWindowViewModel"] --> Repo["VocabularyRepository"] --> JSON["vocabulary.json<br/>(source of truth for the UI)"]
-    end
+Everything is stored on your device, so the Windows and Android apps behave the same with or without a connection. An optional backend keeps your devices in sync and powers the AI features — which only ever *suggest*: you review and accept each field yourself.
 
-    subgraph server["api (FastAPI)"]
-        direction TB
-        Routers["entries / categories routers"] --> Repos["repositories (conditional writes)"] --> Mongo["MongoDB"]
-    end
+> **Built for French vocabulary.** The interface, the AI prompts and the screenshots below are in French.
 
-    client -- "push (LWW)" --> server
-    server -- "delta pull" --> client
-```
+## Highlights
 
-The local JSON file is what the UI actually reads from; the API is a
-best-effort mirror the client pushes to and pulls from, never a hard
-dependency. Losing network access, or the API being down entirely, doesn't
-touch the desktop app's usability at all.
+- **Organized your way** : nested categories with 700+ vector icons, an automatic color per category (overridable), live counters, and virtual views for uncategorized, locked and archived entries.
+- **Rich entries** : several senses and grammatical types per word, synonyms, examples, personal notes, a source, and up to four captioned images.
+- **AI that proposes, you decide** : one click drafts the definition, type, synonyms and examples; another suggests the right category. Each suggestion goes through a review dialog where you accept or skip it field by field, and locked fields are never touched.
+- **Instant search** : accent-insensitive, in memory, no index to maintain.
+- **Offline-first sync** : edits are saved locally first and pushed in the background; the most recent edit wins, and a history view shows exactly what was sent or received.
+- **Two clients, one collection** : a native Windows app and an Android app, both with light and dark themes and JSON import/export.
 
-## Design decisions
+<br>
 
-### Local-first storage
+<p align="center">
+  <img src="assets/windows-ai-demo.webp" width="800" alt="Adding a word on Windows: AI enrichment, field-by-field review, automatic categorization, then sync">
+  <br>
+  <sub><i>Windows client: Add a word, review the AI's draft field by field, let it suggest a category, and watch the entry sync.</i></sub>
+</p>
 
-The desktop client's entire dataset lives in one JSON document
-(`%LOCALAPPDATA%\LexiCall\vocabulary.json`), loaded into memory at startup and
-rewritten whole on every mutation. No embedded database, no ORM, no schema
-migrations to manage on the client. For a personal dataset that comfortably
-fits in memory, this trades a small amount of write amplification (every save
-rewrites the whole file) for something much more valuable at this scale:
-zero moving parts, a format that's trivially readable/editable by hand, and
-an app that works exactly the same with or without network access, because
-nothing about reading or writing local data depends on it.
+<br>
 
-### Client ↔ server sync: Last-Write-Wins (LWW) over timestamps
+<p align="center">
+  <img src="assets/android-home-dark.webp" width="250" alt="Android home screen: searchable entry list">
+  <img src="assets/android-categories-dark.webp" width="250" alt="Android category tree with icons and counters">
+  <img src="assets/android-entry-dark.webp" width="250" alt="Android entry detail with synonyms, examples and source">
+  <br>
+  <sub><i>Android client: home, categories, entry.</i></sub>
+</p>
 
-This is the part of the codebase with the most going on, so it's worth
-walking through in some depth.
+## Quick start
 
-**The problem.** Reading happens anywhere, so the client has to work fully
-offline and catch up whenever a connection shows up again, without either
-side having to guess what it missed in the meantime. The straightforward way
-to guarantee nothing gets missed is to just re-send the entire local dataset
-on every catch-up: simple, but it doesn't scale. At a few hundred entries,
-that's several hundred sequential HTTP requests on every single startup,
-most of them pushing data the server already has.
+The Windows app needs nothing but itself; the backend and the phone app are optional extras.
 
-**The approach.** The sync layer is bidirectional, driven by a single
-invariant: for any given record, the copy with the most recent `UpdatedAt`
-wins, regardless of which device produced it. That invariant only holds up
-in practice with a few supporting mechanisms:
+### 1. Windows app
 
-- **Conditional writes instead of blind overwrites**, a pattern known as
-  compare-and-swap (CAS): a write only applies if the record is still in the
-  state the writer expects, checked and applied atomically in a single
-  database operation. Every update on the server is a MongoDB
-  `find_one_and_update` gated on `{"UpdatedAt": {"$lt": incoming}}`: the
-  write only applies if the incoming timestamp is actually newer than what's
-  stored. A push that arrives late
-  (e.g. replayed after being queued while offline) simply loses that
-  comparison instead of clobbering a more recent edit made elsewhere; losing
-  the comparison isn't treated as an error, the server just returns the
-  current winning copy.
-- **Soft deletes.** Deleting a record sets an `IsDeleted` flag and bumps
-  `UpdatedAt`, instead of removing the document. A hard delete would leave no
-  trace for another device to ever learn "this was deleted" from; a
-  tombstone is the one channel a deletion has to actually propagate.
-- **Delta pulls instead of full re-fetches.** Reads take an optional
-  `updated_since` watermark and return only what changed, including
-  tombstones. The server hands back its own timestamp with every response
-  (as a header), and the client persists that value verbatim as the next
-  watermark, rather than trusting its own clock for anything that affects
-  what gets fetched.
-- **Per-record dirty tracking on the client**, instead of one global "last
-  synced" checkpoint. Each local record remembers the `UpdatedAt` value it
-  was last successfully pushed at; a resync only pushes records where that
-  value is stale. This is what keeps a slow network from being a problem: a
-  single record that keeps failing to push stays "dirty" on its own, without
-  ever forcing a full re-push of everything else around it.
-- **A short-interval background timer**, not just a push-on-mutation and a
-  catch-up-on-launch. Network hiccups that resolve mid-session get picked up
-  without waiting for the next app restart, guarded against overlapping with
-  itself and against firing while an edit dialog is open.
-- **A single atomic upsert on the server, not a client-side existence
-  check.** REST has no native "create or update" verb, and the client has
-  no reliable way to know in advance whether a given record already exists
-  server-side (another device may have created or synced it first). Every
-  write is one `PUT`: MongoDB's own `find_one_and_update(..., upsert=True)`
-  creates the record when the Id is unknown and applies the same CAS-gated
-  write otherwise, in a single round trip, so the create-or-update decision
-  never has to leave the server. The one wrinkle is what happens when the
-  Id already exists but this specific push loses the CAS comparison: the
-  filter still matches nothing, so the upsert still attempts an insert,
-  which collides with the unique index and raises a duplicate-key error.
-  That error is the signal telling "stale push against an existing record"
-  apart from "genuine creation", caught and treated as a normal outcome
-  rather than a failure.
-- **Entry images live in their own MongoDB collection**, not as a field on
-  the entry document. A Mongo projection that excludes a field only saves
-  the client bandwidth; the storage engine still reads the whole document,
-  image bytes included, into cache for any scan of the collection. Splitting
-  images out keeps a growing entries collection fast to browse regardless of
-  how many of them carry an image. The client still sends the image as part
-  of the same request that creates or updates an entry, though: the server
-  decodes it, validates it, and decides on its own whether to upsert or
-  clear the separate image resource, gated on the same CAS check the entry's
-  metadata already went through. That keeps the two collections in sync
-  without relying on the client to make a second request that could fail,
-  get skipped, or race against the first.
-- **A visible, persisted operation log on the client.** Every push, pull, and
-  delete the client attempts — success or failure — is recorded to a small
-  capped log (200 entries), surfaced through a history view opened from the
-  app's own connection indicator. LWW sync is opaque by nature: a record can
-  be quietly overwritten or removed by something that happened on another
-  device, with no prompt and no confirmation dialog. Being able to see
-  exactly what happened to a given word or category, and when, matters more
-  here than it would for a system where a human reviews every write.
-
-## Tech stack
-
-| Component | Technology |
-| --- | --- |
-| Desktop app | .NET 10, C#, WPF |
-| UI architecture | MVVM (hand-rolled, no toolkit) |
-| Desktop storage | Local JSON |
-| Backend | FastAPI, Pydantic |
-| Database | MongoDB |
-| Deployment | Docker Compose |
-
-## Repository structure
-
-Monorepo, one folder per surface:
-
-```text
-apps/
-└── windows/   .NET/WPF desktop client
-api/           FastAPI + MongoDB backend
-```
-
-`apps/windows` is fully self-contained: its own solution file, pinned SDK
-version, and command runner live directly inside it. `api` is a separate
-Python codebase with its own conventions and its own [justfile](api/justfile).
-
-```text
-apps/windows/
-├── LexiCall.sln
-├── global.json           pinned .NET SDK version
-├── justfile               local run/build/test commands
-└── src/
-    ├── Models/             VocabularyEntry, VocabularyCategory, root JSON document
-    ├── ViewModels/         MVVM state and presentation logic
-    ├── Services/           local persistence, theming, API sync client
-    ├── Commands/           WPF ICommand implementations
-    ├── Converters/         XAML value converters
-    ├── Utilities/          text parsing, category-hierarchy helpers
-    ├── Themes/             light/dark color resources and shared styles
-    └── *Window.xaml        main window + modal editors
-```
-
-## Getting started
-
-**Prerequisites**: Windows 10/11, [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+Requires Windows 10/11 and the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ```powershell
-cd apps/windows
-dotnet restore
-dotnet build LexiCall.sln
+git clone https://github.com/ArenKae/LexiCall.git
+cd LexiCall/apps/windows
 dotnet run --project src/LexiCall.Desktop.csproj
 ```
 
-Or, with [`just`](https://github.com/casey/just) installed, from the repo root:
+The app starts empty and works fully offline: press **+** to add your first word. With [`just`](https://github.com/casey/just) installed, `just run-win` from the repo root does the same.
 
-```powershell
-just run-app-windows
-just build-app-windows
+### 2. Backend (optional — enables sync and AI)
+
+Requires Python 3.12, Docker and [`just`](https://github.com/casey/just), on Linux, macOS or WSL.
+
+```bash
+cp api/.env.example api/.env     # then set API_KEY
+just install                     # virtualenv + dependencies
+just start                       # MongoDB in Docker, then the API on http://localhost:8000
 ```
 
-The app runs standalone with no configuration; sync only activates once an
-API URL and key are entered in Options. See [`api/README.md`](api/README.md)
-for backend setup.
+Interactive docs are at `/docs`. In the Windows app, open **Paramètres**, enter the API URL and your `API_KEY`, then press **Tester la connexion**; the app syncs in the background from then on.
 
-## Usage
+The AI features need an OpenAI key: set `OPENAI_API_KEY` in `api/.env` before starting.
 
-_Coming soon. (last update: 8/1/2026)_
+### 3. Android app (optional)
+
+Requires Node 20 and an Android phone or emulator.
+
+```bash
+cd apps/android
+npm install
+npm run dev:android
+```
+
+This starts the Expo dev server and opens the app on the connected device or emulator. Then open the **Options** tab, enter the API URL and key, and sync. From an emulator, the host's `localhost` is `http://10.0.2.2:8000`; from a USB-connected phone, run `adb reverse tcp:8000 tcp:8000` and use `http://localhost:8000`.
+
+## Why these choices
+
+```mermaid
+flowchart LR
+    subgraph devices["Your devices — local JSON, fully offline"]
+        W["Windows app<br/>WPF / .NET"]
+        M["Android app<br/>Expo / React Native"]
+    end
+    W <-->|"sync (push + delta pull)"| A["API<br/>FastAPI"]
+    M <-->|"sync (push + delta pull)"| A
+    A --> DB[("MongoDB")]
+    A -.->|"AI suggestions"| O["OpenAI"]
+```
+
+| Choice | Why |
+| --- | --- |
+| **Local JSON file as the source of truth** | Zero moving parts, offline by design, readable by hand. A personal vocabulary fits in memory, so no database engine on the client. |
+| **A backend the apps never depend on** | Sync is best-effort: losing the network, or the server, never blocks reading or editing a word. |
+| **Last-Write-Wins with conditional writes** | A late or replayed push can never overwrite a newer edit, and there is no merge screen to build or explain. |
+| **Soft deletes and delta pulls** | Deletions reach every device, and a sync costs what changed, not the size of the collection. |
+| **FastAPI and MongoDB** | A small typed API whose documents mirror the JSON the clients already hold, with TTL indexes to clean up deletions. |
+| **AI behind the API, as suggestions** | The OpenAI key never reaches a client, every suggestion is reviewed field by field, and words the model cannot confirm are rejected instead of invented. |
+| **Embeddings first, LLM second** | Retrieval narrows the candidate categories, so categorization stays around $0.0004 per word however large the vocabulary grows, and an invented category id is structurally impossible. |
+| **WPF on .NET 10 for the desktop** | A fast, native, dependency-light Windows app — the daily driver. |
+| **Expo / React Native for Android** | One JavaScript codebase that mirrors the desktop data model, with plain JSON persistence instead of SQLite. |
+
+
+Each README below goes into the details.
+
+## Repository
+
+```text
+apps/windows/   WPF / .NET desktop client
+apps/android/   Expo / React Native client
+api/            FastAPI + MongoDB backend
+assets/         README media
+```
+
+| | |
+| --- | --- |
+| [`apps/windows`](apps/windows/README.md) | Features, build and publish, local data, sync client, code layout |
+| [`apps/android`](apps/android/README.md) | Features, run and build, navigation, sync, image caching |
+| [`api`](api/README.md) | Endpoints, sync protocol, AI enrichment, configuration, deployment |
+
+Day-to-day commands go through [`just`](https://github.com/casey/just) from the repo root — `just --list` shows them all (`run-win`, `start-android`, `start` for the API with hot reload, …).

@@ -1,7 +1,7 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 
 # Build/run recipes for the WPF app (apps/windows). The root justfile
-# exposes these with the -app-windows suffix.
+# exposes these with the -win suffix.
 
 default:
     just --list

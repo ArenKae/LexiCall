@@ -1,7 +1,6 @@
 # Justfile for the FastAPI/MongoDB backend (api/). Dev recipes (local Mongo
-# + uvicorn with reload) and production recipes (docker-compose.prod.yml, on the
-# VPS) are grouped separately below; the root justfile exposes these with
-# an -api suffix.
+# + uvicorn with reload) and production recipes (docker-compose.prod.yml) are grouped separately below; 
+# the root justfile exposes these with an -api suffix.
 
 default:
     just --list

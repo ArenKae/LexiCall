@@ -1,9 +1,6 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 
-# Root justfile for the monorepo: thin dispatcher to each sub-project's
-# justfile (apps/windows, api...). Recipes are suffixed per sub-project
-# (-app-windows, -api) to avoid name collisions once the other sub-projects
-# are in place.
+# Root justfile for the monorepo: thin dispatcher to each sub-project's justfile.
 
 default:
     just --list
