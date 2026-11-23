@@ -26,5 +26,5 @@ export function mergePulled(local, pulled) {
     }
   }
 
-  return { records: [...byId.values()], applied };
+  return { records: applied > 0 ? [...byId.values()] : local, applied };
 }

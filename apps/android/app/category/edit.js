@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from '../../src/components/CategoryIcon';
+import { CloseButton } from '../../src/components/CloseButton';
 import { CategoryParentPicker } from '../../src/components/CategoryParentPicker';
 import { ColorPicker } from '../../src/components/ColorPicker';
 import { IconPicker } from '../../src/components/IconPicker';
@@ -129,11 +130,7 @@ export default function CategoryEditor() {
           >
             <CategoryIcon iconKey={fields.IconGlyph || DEFAULT_ICON} color={colors.textPrimary} size={20} />
           </Pressable>
-          {fields.IconGlyph.length > 0 && (
-            <Pressable style={styles.clearIcon} onPress={() => set('IconGlyph')('')} hitSlop={8}>
-              <CategoryIcon iconKey="Phosphor.x" color={colors.textMuted} size={13} />
-            </Pressable>
-          )}
+          {fields.IconGlyph.length > 0 && <CloseButton size={24} onPress={() => set('IconGlyph')('')} />}
         </View>
 
         <Text style={[styles.label, { color: colors.textSecondary }]}>Couleur</Text>
@@ -229,7 +226,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  clearIcon: { padding: 4 },
   colorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   colorSwatch: { width: 32, height: 32, borderRadius: 16, borderWidth: 2 },
   clearColor: { marginLeft: 'auto', paddingVertical: 6, paddingHorizontal: 4 },

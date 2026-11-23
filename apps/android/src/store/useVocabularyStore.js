@@ -3,13 +3,13 @@ import { create } from 'zustand';
 import { normalizeCategory, normalizeEntry } from '../models/vocabulary';
 import { createApiClient } from '../services/apiClient';
 import {
+  exportDatabaseToPickedFolder,
   importDatabaseFrom,
   loadDatabase,
   loadSettings,
   resetLocalData,
   saveDatabase,
   saveSettings,
-  stageDatabaseExport,
 } from '../services/storage';
 import { loadSyncHistory, saveSyncHistory, MAX_HISTORY_ENTRIES } from '../services/syncHistoryStore';
 import { getDescendantIds } from '../utils/categoryHierarchy';
@@ -347,14 +347,18 @@ export const useVocabularyStore = create((set, get) => {
         );
 
         const applySynced = (collection) =>
-          collection.map((item) =>
-            confirmedPushes.get(item.Id) === item.ClientLastWrite
-              ? { ...item, SyncedAt: item.ClientLastWrite }
-              : item
-          );
+          confirmedPushes.size === 0
+            ? collection
+            : collection.map((item) =>
+                confirmedPushes.get(item.Id) === item.ClientLastWrite
+                  ? { ...item, SyncedAt: item.ClientLastWrite }
+                  : item
+              );
 
-        let entries = applySynced(get().entries);
-        let categories = applySynced(get().categories);
+        const localEntries = get().entries;
+        const localCategories = get().categories;
+        let entries = applySynced(localEntries);
+        let categories = applySynced(localCategories);
         let appliedPulls = 0;
         const historyRows = [
           ...result.deletions.map((row) => ({
@@ -414,16 +418,18 @@ export const useVocabularyStore = create((set, get) => {
           return;
         }
 
-        persist({
-          entries,
-          categories,
-          pendingEntryDeletions: get().pendingEntryDeletions.filter(
-            (item) => !confirmedDeletions.has(item.Id)
-          ),
-          pendingCategoryDeletions: get().pendingCategoryDeletions.filter(
-            (item) => !confirmedDeletions.has(item.Id)
-          ),
-        });
+        if (entries !== localEntries || categories !== localCategories || confirmedDeletions.size > 0) {
+          persist({
+            entries,
+            categories,
+            pendingEntryDeletions: get().pendingEntryDeletions.filter(
+              (item) => !confirmedDeletions.has(item.Id)
+            ),
+            pendingCategoryDeletions: get().pendingCategoryDeletions.filter(
+              (item) => !confirmedDeletions.has(item.Id)
+            ),
+          });
+        }
         set({
           lastPulledAt: result.pull ? result.pull.checkpoint : get().lastPulledAt,
           globalSyncStatus: result.pull ? 'Ok' : 'Problem',
@@ -489,12 +495,10 @@ export const useVocabularyStore = create((set, get) => {
       }
     },
 
-    // Hands the database to the share sheet as a dated copy; returns the uri
-    // the caller shares, since sharing itself is a UI concern.
     exportDatabase: () => {
       const state = get();
 
-      return stageDatabaseExport({
+      return exportDatabaseToPickedFolder({
         Entries: state.entries,
         Categories: state.categories,
         PendingEntryDeletions: state.pendingEntryDeletions,

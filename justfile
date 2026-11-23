@@ -53,7 +53,7 @@ start-android:
 
 # Production release APK (prebuild + gradlew assembleRelease).
 [group('app : android')]
-build-android:
+apk:
     just --justfile apps/android/justfile --working-directory apps/android build
 
 # Remove node_modules and Expo/Gradle build caches.

@@ -158,6 +158,15 @@ _LEXICAL_RULES = (
     "déguisée en phrase, ni citation littéraire, ni phrase qui explique le "
     "mot au lieu de s'en servir. TROIS AU MAXIMUM, un par sens illustré, en "
     "commençant par le sens le plus courant. "
+    "L'ENTRÉE PORTE TOUJOURS SUR UN MOT COMMUN, jamais sur un nom propre. "
+    "N'emploie jamais le mot comme patronyme, prénom, toponyme, marque ou "
+    "titre d'œuvre, et ne cite aucune personne réelle : « Page » est le "
+    "jeune serviteur ou la feuille de papier, jamais quelqu'un qui s'appelle "
+    "Page. Si tu ne connais du mot qu'un emploi en nom propre, renvoie des "
+    "listes vides. "
+    "QUAND UNE DÉFINITION DE L'ENTRÉE T'EST FOURNIE, elle fait autorité : "
+    "synonymes et exemples doivent porter sur ce sens-là et sur aucun autre, "
+    "même si le contexte en documente d'autres. "
 )
 
 _STYLE_RULES = (
@@ -312,8 +321,13 @@ def _current_value_text(entry: dict, field: str) -> str:
     return value if value else "vide"
 
 
+_DEFINITION_REFERENCE_FIELDS = {"Synonyms", "ExampleSentences"}
+
+
 def _build_entry_enrichment_prompt(entry: dict, fields: list[str], grounding: Grounding) -> str:
     lines = [f"Mot : {entry['Word']}"]
+    if entry.get("Definition") and any(field in _DEFINITION_REFERENCE_FIELDS for field in fields):
+        lines.append(f"Définition de l'entrée : {_current_value_text(entry, 'Definition')}")
     for field in fields:
         lines.append(f"{_CURRENT_VALUE_LABELS[field]} : {_current_value_text(entry, field)}")
     if grounding.context:

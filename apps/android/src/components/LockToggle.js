@@ -11,7 +11,7 @@ export function LockToggle({ locked, onToggle }) {
     <Pressable onPress={() => onToggle(!locked)} hitSlop={10}>
       <CategoryIcon
         iconKey={locked ? 'Phosphor.lock-key' : 'Phosphor.lock-key-open'}
-        color={locked ? colors.danger : colors.textSecondary}
+        color={locked ? colors.success : colors.textSecondary}
         size={15}
       />
     </Pressable>

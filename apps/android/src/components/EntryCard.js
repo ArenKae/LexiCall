@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CategoryIcon } from './CategoryIcon';
 import { useTheme } from '../theme/useTheme';
@@ -11,13 +12,13 @@ function typeLabel(types) {
 
 // One entry in the browsing list: word, grammatical type, first sense and the
 // categories it belongs to.
-export function EntryCard({
+export const EntryCard = memo(function EntryCard({
   entry,
   categoryIndex,
   onPress,
   onLongPress,
-  onToggleLocks,
   hideArchivedBadge,
+  hideLockIndicator,
 }) {
   const colors = useTheme();
   const categories = entry.CategoryIds.map((id) => categoryIndex.get(id)).filter(Boolean);
@@ -26,8 +27,8 @@ export function EntryCard({
 
   return (
     <Pressable
-      onPress={onPress}
-      onLongPress={onLongPress}
+      onPress={() => onPress(entry)}
+      onLongPress={() => onLongPress(entry)}
       delayLongPress={300}
       style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
     >
@@ -71,7 +72,7 @@ export function EntryCard({
       )}
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 14, padding: 14, marginHorizontal: 14, marginBottom: 10 },

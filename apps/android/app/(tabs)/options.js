@@ -1,4 +1,3 @@
-import * as Sharing from 'expo-sharing';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -224,20 +223,14 @@ export default function Options() {
     setConnectionMessage('');
 
     try {
-      const uri = store.exportDatabase();
+      const fileName = await store.exportDatabase();
 
-      if (!(await Sharing.isAvailableAsync())) {
-        setConnectionMessage('Partage indisponible sur cet appareil.');
-        return;
+      if (fileName !== null) {
+        Alert.alert('Exporter la base', `Base enregistrée sous ${fileName}.`);
       }
-
-      await Sharing.shareAsync(uri, {
-        mimeType: 'application/json',
-        dialogTitle: 'Exporter la base LexiCall',
-      });
     } catch (error) {
       console.warn(`[export] ${String(error?.message ?? error)}`);
-      setConnectionMessage('Export impossible.');
+      Alert.alert('Exporter la base', 'Enregistrement impossible dans ce dossier.');
     }
   }
 

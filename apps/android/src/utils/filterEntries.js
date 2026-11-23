@@ -16,10 +16,10 @@ function compareBySortMode(a, b, sortMode) {
   if (sortMode === SORT_RECENT) {
     // Newest first; falls back to Word so two entries created in the same
     // instant (or with an unparsable CreatedAt) still land in a stable order.
-    const delta = Date.parse(b.CreatedAt) - Date.parse(a.CreatedAt);
-    return Number.isNaN(delta) || delta === 0 ? compareText(a.Word, b.Word) : delta;
+    const delta = b.createdAt - a.createdAt;
+    return Number.isNaN(delta) || delta === 0 ? compareText(a.entry.Word, b.entry.Word) : delta;
   }
-  return compareText(a.Word, b.Word);
+  return compareText(a.entry.Word, b.entry.Word);
 }
 
 export function entryMatchesFilter(entry, filter, subtreeIds) {
@@ -58,10 +58,12 @@ export function selectEntries({ entries, categories, filter, query, sortMode = S
   // An entry matched only in its definition/synonyms/etc. is a weaker hit than
   // one matched in the word itself — rank the latter first. The selected sort
   // mode breaks ties (and is the sole key outside a search).
-  return matching.sort((a, b) => {
-    const rankDelta =
-      Number(entryWordMatchesSearch(b, normalizedQuery)) -
-      Number(entryWordMatchesSearch(a, normalizedQuery));
-    return rankDelta !== 0 ? rankDelta : compareBySortMode(a, b, sortMode);
-  });
+  return matching
+    .map((entry) => ({
+      entry,
+      wordHit: Number(entryWordMatchesSearch(entry, normalizedQuery)),
+      createdAt: Date.parse(entry.CreatedAt),
+    }))
+    .sort((a, b) => b.wordHit - a.wordHit || compareBySortMode(a, b, sortMode))
+    .map(({ entry }) => entry);
 }

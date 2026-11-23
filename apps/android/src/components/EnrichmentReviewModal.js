@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from './CategoryIcon';
+import { CloseButton } from './CloseButton';
 import { DefinitionReviewCard } from './DefinitionReviewCard';
 import { TextFieldReviewCard } from './TextFieldReviewCard';
 import { TypeReviewCard } from './TypeReviewCard';
@@ -90,11 +91,12 @@ export function EnrichmentReviewModal({
         style={[styles.container, { backgroundColor: colors.background }]}
         behavior="padding"
       >
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Suggestions IA</Text>
-          <Pressable onPress={onClose} hitSlop={10}>
-            <CategoryIcon iconKey="Phosphor.x" color={colors.textSecondary} size={20} />
-          </Pressable>
+        <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>Suggestions IA</Text>
+            <CloseButton onPress={onClose} />
+          </View>
+          <Text style={[styles.word, { color: colors.textPrimary }]}>{word}</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
@@ -178,15 +180,11 @@ export function EnrichmentReviewModal({
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 54 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-  },
+  header: { paddingHorizontal: 16, paddingBottom: 14, gap: 6, borderBottomWidth: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 18, fontWeight: '700' },
-  content: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
+  word: { fontFamily: 'serif', fontSize: 26 },
+  content: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 24, gap: 12 },
   footer: { borderTopWidth: 1, padding: 14 },
   saveButton: {
     flexDirection: 'row',

@@ -15,18 +15,42 @@ export function normalizeForSearch(value) {
     .toLowerCase();
 }
 
-function fieldMatches(value, normalizedQuery) {
-  return normalizeForSearch(value).includes(normalizedQuery);
+const normalizedEntries = new WeakMap();
+const normalizedNames = new Map();
+
+function normalizedEntry(entry) {
+  let normalized = normalizedEntries.get(entry);
+  if (!normalized) {
+    const fields = [
+      entry.Word,
+      ...entry.Definition,
+      entry.Notes,
+      entry.Source,
+      ...entry.Synonyms,
+      ...entry.ExampleSentences,
+    ];
+    normalized = {
+      word: normalizeForSearch(entry.Word),
+      text: fields.map(normalizeForSearch).join('\u0000'),
+    };
+    normalizedEntries.set(entry, normalized);
+  }
+  return normalized;
 }
 
-function anyFieldMatches(values, normalizedQuery) {
-  return values.some((value) => fieldMatches(value, normalizedQuery));
+function normalizedName(name) {
+  let normalized = normalizedNames.get(name);
+  if (normalized === undefined) {
+    normalized = normalizeForSearch(name);
+    normalizedNames.set(name, normalized);
+  }
+  return normalized;
 }
 
 // Whether the pattern shows up in the word itself, as opposed to only in some
 // other field — used to rank a direct match above an incidental one.
 export function entryWordMatchesSearch(entry, normalizedQuery) {
-  return fieldMatches(entry.Word, normalizedQuery);
+  return normalizedEntry(entry).word.includes(normalizedQuery);
 }
 
 export function entryMatchesSearch(entry, normalizedQuery, categoryNamesById) {
@@ -37,15 +61,10 @@ export function entryMatchesSearch(entry, normalizedQuery, categoryNamesById) {
   }
 
   return (
-    fieldMatches(entry.Word, normalizedQuery) ||
-    anyFieldMatches(entry.Definition, normalizedQuery) ||
-    fieldMatches(entry.Notes, normalizedQuery) ||
-    fieldMatches(entry.Source, normalizedQuery) ||
-    anyFieldMatches(entry.Synonyms, normalizedQuery) ||
-    anyFieldMatches(entry.ExampleSentences, normalizedQuery) ||
-    anyFieldMatches(
-      entry.CategoryIds.map((id) => categoryNamesById.get(id)).filter(Boolean),
-      normalizedQuery
-    )
+    normalizedEntry(entry).text.includes(normalizedQuery) ||
+    entry.CategoryIds.some((id) => {
+      const name = categoryNamesById.get(id);
+      return Boolean(name) && normalizedName(name).includes(normalizedQuery);
+    })
   );
 }

@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from './CategoryIcon';
 import { CategorySuggestionCard } from './CategorySuggestionCard';
+import { CloseButton } from './CloseButton';
 import { useTheme } from '../theme/useTheme';
 
 function cardFromSuggestion(suggestion) {
@@ -60,7 +61,14 @@ function buildResult(card) {
 // word carries genuinely distinct senses across different lexical fields.
 // Persists nothing itself: onSave only receives the accepted, complete
 // results.
-export function CategorizationReviewModal({ visible, suggestions, currentCategoryNames, onClose, onSave }) {
+export function CategorizationReviewModal({
+  visible,
+  word,
+  suggestions,
+  currentCategoryNames,
+  onClose,
+  onSave,
+}) {
   const colors = useTheme();
   const insets = useSafeAreaInsets();
   const [cards, setCards] = useState(() => suggestions.map(cardFromSuggestion));
@@ -83,11 +91,12 @@ export function CategorizationReviewModal({ visible, suggestions, currentCategor
         style={[styles.container, { backgroundColor: colors.background }]}
         behavior="padding"
       >
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Suggestions de catégorie</Text>
-          <Pressable onPress={onClose} hitSlop={10}>
-            <CategoryIcon iconKey="Phosphor.x" color={colors.textSecondary} size={20} />
-          </Pressable>
+        <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>Suggestions de catégorie</Text>
+            <CloseButton onPress={onClose} />
+          </View>
+          <Text style={[styles.word, { color: colors.textPrimary }]}>{word}</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
@@ -125,15 +134,11 @@ export function CategorizationReviewModal({ visible, suggestions, currentCategor
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 54 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-  },
+  header: { paddingHorizontal: 16, paddingBottom: 14, gap: 6, borderBottomWidth: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 18, fontWeight: '700' },
-  content: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
+  word: { fontFamily: 'serif', fontSize: 26 },
+  content: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 24, gap: 12 },
   footer: { borderTopWidth: 1, padding: 14 },
   saveButton: {
     flexDirection: 'row',

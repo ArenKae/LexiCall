@@ -3,6 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CategoryIcon } from './CategoryIcon';
+import { CloseButton } from './CloseButton';
 import { useTheme } from '../theme/useTheme';
 import { inlineImageUri } from '../services/imageCache';
 import { processImage } from '../utils/imageProcessor';
@@ -67,13 +68,7 @@ export function EntryImagePicker({ images, onChange }) {
         {images.map((image) => (
           <View key={image.Id} style={styles.tile}>
             <Image source={{ uri: inlineImageUri(image.ImageBase64) }} style={styles.thumbnail} />
-            <Pressable
-              onPress={() => removeImage(image.Id)}
-              style={[styles.removeBadge, { backgroundColor: colors.danger }]}
-              hitSlop={6}
-            >
-              <CategoryIcon iconKey="Phosphor.x" color={colors.textOnAccent} size={11} />
-            </Pressable>
+            <CloseButton size={22} style={styles.removeBadge} onPress={() => removeImage(image.Id)} />
             <TextInput
               style={[styles.caption, { color: colors.textSecondary, borderColor: colors.borderSubtle }]}
               value={image.Caption}
@@ -106,16 +101,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tile: { width: TILE_SIZE },
   thumbnail: { width: TILE_SIZE, height: TILE_SIZE, borderRadius: 8 },
-  removeBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 20,
-    height: 20,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  removeBadge: { position: 'absolute', top: -7, right: -7 },
   caption: {
     marginTop: 4,
     fontSize: 11,

@@ -8,6 +8,7 @@ import { EnrichmentReviewModal } from '../../src/components/EnrichmentReviewModa
 import { EntryImageGallery } from '../../src/components/EntryImageGallery';
 import { useCategoryIndex } from '../../src/hooks/useCategoryIndex';
 import { useEntryImages } from '../../src/hooks/useEntryImages';
+import { isEntryLocked, lockedFieldsFor } from '../../src/models/vocabulary';
 import { createApiClient } from '../../src/services/apiClient';
 import { useTheme } from '../../src/theme/useTheme';
 import { useVocabularyStore } from '../../src/store/useVocabularyStore';
@@ -77,6 +78,7 @@ export default function EntryDetail() {
     );
   }
 
+  const isLocked = isEntryLocked(entry);
   const types = entry.Type.filter((type) => type !== UNDEFINED_TYPE);
   const categories = entry.CategoryIds.map((categoryId) => categoryIndex.get(categoryId)).filter(
     Boolean
@@ -232,42 +234,22 @@ export default function EntryDetail() {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 18 }]}>
-      <Text selectable style={[styles.word, { color: colors.textPrimary }]}>
-        {entry.Word}
-      </Text>
+      <View style={styles.headline}>
+        <Text selectable style={[styles.word, { color: colors.textPrimary }]}>
+          {entry.Word}
+        </Text>
+        <View style={styles.lockIndicator}>
+          <CategoryIcon
+            iconKey={isLocked ? 'Phosphor.lock-key' : 'Phosphor.lock-key-open'}
+            color={isLocked ? colors.success : colors.textMuted}
+            size={22}
+          />
+        </View>
+      </View>
       {types.length > 0 && (
         <Text selectable style={[styles.type, { color: colors.textSecondary }]}>
           {types.join(', ')}
         </Text>
-      )}
-
-      {apiClient.isConfigured() && (
-        <View style={styles.aiButtons}>
-          <Pressable
-            style={[styles.aiButton, { borderColor: colors.borderStrong, opacity: isEnriching ? 0.6 : 1 }]}
-            onPress={handleEnrich}
-            disabled={isEnriching}
-          >
-            {isEnriching ? (
-              <ActivityIndicator size="small" color={colors.textSecondary} />
-            ) : (
-              <CategoryIcon iconKey="Phosphor.sparkle" color={colors.textSecondary} size={14} />
-            )}
-            <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>Enrichir</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.aiButton, { borderColor: colors.borderStrong, opacity: isCategorizing ? 0.6 : 1 }]}
-            onPress={handleCategorize}
-            disabled={isCategorizing}
-          >
-            {isCategorizing ? (
-              <ActivityIndicator size="small" color={colors.textSecondary} />
-            ) : (
-              <CategoryIcon iconKey="Solar.tag" color={colors.textSecondary} size={14} />
-            )}
-            <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>Catégoriser</Text>
-          </Pressable>
-        </View>
       )}
 
       {enrichmentSuggestions && (
@@ -288,6 +270,7 @@ export default function EntryDetail() {
       {categorizationSuggestions && (
         <CategorizationReviewModal
           visible
+          word={entry.Word}
           suggestions={categorizationSuggestions}
           currentCategoryNames={categories.map((category) => category.Name)}
           onClose={() => setCategorizationSuggestions(null)}
@@ -390,7 +373,7 @@ export default function EntryDetail() {
 
       <View
         style={[
-          styles.actionBar,
+          styles.bottomDock,
           {
             backgroundColor: colors.surface,
             borderTopColor: colors.borderSubtle,
@@ -398,30 +381,74 @@ export default function EntryDetail() {
           },
         ]}
       >
-        <ActionButton
-          iconKey="Phosphor.arrow-left"
-          label="Retour"
-          color={colors.textPrimary}
-          onPress={() => router.back()}
-        />
-        <ActionButton
-          iconKey="Phosphor.pencil"
-          label="Modifier"
-          color={colors.textPrimary}
-          onPress={() => router.push(`/entry/edit?id=${entry.Id}`)}
-        />
-        <ActionButton
-          iconKey="Solar.archive-check"
-          label={entry.IsArchived ? 'Désarchiver' : 'Archiver'}
-          color={colors.textPrimary}
-          onPress={() => toggleArchive(entry.Id)}
-        />
-        <ActionButton
-          iconKey="Phosphor.trash"
-          label="Supprimer"
-          color={colors.danger}
-          onPress={confirmDelete}
-        />
+        <View style={styles.pillRow}>
+          {apiClient.isConfigured() && (
+            <>
+              <Pressable
+                style={[styles.pill, { borderColor: colors.borderStrong, opacity: isEnriching ? 0.6 : 1 }]}
+                onPress={handleEnrich}
+                disabled={isEnriching}
+              >
+                <View style={styles.pillIcon}>
+                  {isEnriching ? (
+                    <ActivityIndicator size={14} color={colors.textSecondary} />
+                  ) : (
+                    <CategoryIcon iconKey="Phosphor.sparkle" color={colors.textSecondary} size={14} />
+                  )}
+                </View>
+                <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>Enrichir</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.pill, { borderColor: colors.borderStrong, opacity: isCategorizing ? 0.6 : 1 }]}
+                onPress={handleCategorize}
+                disabled={isCategorizing}
+              >
+                <View style={styles.pillIcon}>
+                  {isCategorizing ? (
+                    <ActivityIndicator size={14} color={colors.textSecondary} />
+                  ) : (
+                    <CategoryIcon iconKey="Solar.tag" color={colors.textSecondary} size={14} />
+                  )}
+                </View>
+                <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>Catégoriser</Text>
+              </Pressable>
+            </>
+          )}
+          <Pressable
+            style={[styles.pill, { borderColor: colors.borderStrong }]}
+            onPress={() => router.push(`/entry/edit?id=${entry.Id}`)}
+          >
+            <CategoryIcon iconKey="Phosphor.pencil" color={colors.textSecondary} size={14} />
+            <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>Modifier</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.actionBar}>
+          <ActionButton
+            iconKey="Phosphor.arrow-left"
+            label="Retour"
+            color={colors.textPrimary}
+            onPress={() => router.back()}
+          />
+          <ActionButton
+            iconKey={isLocked ? 'Phosphor.lock-key' : 'Phosphor.lock-key-open'}
+            label={isLocked ? 'Déverrouiller' : 'Verrouiller'}
+            color={colors.textPrimary}
+            onPress={() => updateEntry(entry.Id, { LockedFields: lockedFieldsFor(entry, !isLocked) })}
+          />
+          <ActionButton
+            iconKey="Solar.archive-check"
+            label={entry.IsArchived ? 'Désarchiver' : 'Archiver'}
+            color={colors.textPrimary}
+            onPress={() => toggleArchive(entry.Id)}
+          />
+          <ActionButton
+            iconKey="Phosphor.trash"
+            label="Supprimer"
+            color={colors.danger}
+            onPress={confirmDelete}
+          />
+        </View>
       </View>
     </View>
   );
@@ -432,13 +459,8 @@ const styles = StyleSheet.create({
   content: { padding: 18, paddingBottom: 28 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
   missingBack: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
-  actionBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderTopWidth: 1,
-    paddingTop: 8,
-    paddingHorizontal: 4,
-  },
+  bottomDock: { borderTopWidth: 1, paddingTop: 8, paddingHorizontal: 4 },
+  actionBar: { flexDirection: 'row', alignItems: 'flex-start' },
   actionButton: {
     flex: 1,
     alignItems: 'center',
@@ -450,10 +472,19 @@ const styles = StyleSheet.create({
   },
   actionLabel: { fontSize: 11, fontWeight: '600' },
   // Serif for the word and its senses.
-  word: { fontFamily: 'serif', fontSize: 30 },
+  headline: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  word: { flex: 1, fontFamily: 'serif', fontSize: 30 },
+  lockIndicator: { marginTop: 10 },
   type: { fontSize: 14, fontStyle: 'italic', marginTop: 2 },
-  aiButtons: { flexDirection: 'row', gap: 8, marginTop: 14 },
-  aiButton: {
+  pillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    paddingTop: 2,
+    paddingBottom: 6,
+  },
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -462,6 +493,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
+  pillIcon: { width: 14, height: 14, alignItems: 'center', justifyContent: 'center' },
   banner: { borderRadius: 10, padding: 10, marginTop: 12, gap: 4 },
   bannerHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   bannerTitle: { fontSize: 13, fontWeight: '600' },

@@ -2,7 +2,7 @@
 # The API runs outside the container (uvicorn --reload) for reactive reloading.
 services:
   mongo:
-    image: mongo:8.0
+    image: mongo:7.0
     container_name: MongoDB
     ports:
       - "27017:27017"

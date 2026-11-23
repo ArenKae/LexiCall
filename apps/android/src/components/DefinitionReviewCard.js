@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CategoryIcon } from './CategoryIcon';
+import { CloseButton } from './CloseButton';
 import { LockToggle } from './LockToggle';
 import { SuggestionCardShell } from './SuggestionCardShell';
 import { useTheme } from '../theme/useTheme';
@@ -108,15 +109,13 @@ export function DefinitionReviewCard({
               onChangeText={(text) => update(index, { text })}
               multiline
             />
-            <LockToggle
-              locked={sense.rephraseLocked}
-              onToggle={(locked) => update(index, { rephraseLocked: locked })}
-            />
-            {senses.length > 1 && (
-              <Pressable onPress={() => remove(index)} hitSlop={8} style={styles.remove}>
-                <CategoryIcon iconKey="Phosphor.x" color={colors.textMuted} size={15} />
-              </Pressable>
-            )}
+            <View style={styles.senseActions}>
+              <LockToggle
+                locked={sense.rephraseLocked}
+                onToggle={(locked) => update(index, { rephraseLocked: locked })}
+              />
+              {senses.length > 1 && <CloseButton size={22} onPress={() => remove(index)} />}
+            </View>
           </View>
         ))}
 
@@ -131,14 +130,14 @@ export function DefinitionReviewCard({
         onPress={handleRephrase}
         disabled={!canRephrase}
       >
-        {isRephrasing ? (
-          <ActivityIndicator size="small" color={colors.textSecondary} />
-        ) : (
-          <CategoryIcon iconKey="Phosphor.arrows-counter-clockwise" color={colors.textSecondary} size={14} />
-        )}
-        <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>
-          {isRephrasing ? 'Reformulation…' : 'Reformuler'}
-        </Text>
+        <View style={styles.rephraseIcon}>
+          {isRephrasing ? (
+            <ActivityIndicator size={14} color={colors.textSecondary} />
+          ) : (
+            <CategoryIcon iconKey="Phosphor.arrows-counter-clockwise" color={colors.textSecondary} size={14} />
+          )}
+        </View>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>Reformuler</Text>
       </Pressable>
       {rephraseError.length > 0 && (
         <Text style={[styles.rephraseError, { color: colors.danger }]}>{rephraseError}</Text>
@@ -160,7 +159,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minHeight: 38,
   },
-  remove: { marginTop: 10 },
+  senseActions: { flexDirection: 'row', alignItems: 'center', gap: 20, height: 22, marginTop: 8 },
   addButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
   addText: { fontSize: 13, fontWeight: '600' },
   rephrase: {
@@ -174,5 +173,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
+  rephraseIcon: { width: 14, height: 14, alignItems: 'center', justifyContent: 'center' },
   rephraseError: { fontSize: 12 },
 });
